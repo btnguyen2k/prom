@@ -109,13 +109,67 @@ func (m *MongoConnect) IsConnected() bool {
 /*
 GetDatabase returns the database object attached to this MongoConnect.
 */
-func (m *MongoConnect) GetDatabase(opts ...*options.DatabaseOptions) *mongo.Database {
-	return m.client.Database(m.db, opts...)
+func (m *MongoConnect) GetDatabase(opts ...*options.DatabaseOptions) (*mongo.Database, error) {
+	if m.client == nil {
+		err := m.TryConnect()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return m.client.Database(m.db, opts...), nil
 }
 
 /*
 GetCollection returns the collection object specified by 'collectionName'.
 */
-func (m *MongoConnect) GetCollection(collectionName string, opts ...*options.CollectionOptions) *mongo.Collection {
-	return m.GetDatabase().Collection(collectionName, opts...)
+func (m *MongoConnect) GetCollection(collectionName string, opts ...*options.CollectionOptions) (*mongo.Collection, error) {
+	db, err := m.GetDatabase()
+	if err != nil {
+		return nil, err
+	}
+	return db.Collection(collectionName, opts...), nil
+}
+
+/*
+CreateCollection creates a collection specified by 'collectionName'
+*/
+func (m *MongoConnect) CreateCollection(collectionName string) (*mongo.SingleResult, error) {
+	db, err := m.GetDatabase()
+	if err != nil {
+		return nil, err
+	}
+	ctx, _ := m.NewBackgroundContext()
+	return db.RunCommand(ctx, bson.M{"create": collectionName}), nil
+}
+
+/*
+CreateIndexes creates indexes on the specified collection.
+
+Example:
+
+	collectionName := "my_table"
+	indexes := []interface{}{
+		map[string]interface{}{
+			"key": map[string]interface{}{
+				"field_1": 1, // ascending index
+			},
+			"name":   "uidx_1",
+			"unique": true,
+		},
+		map[string]interface{}{
+			"key": map[string]interface{}{
+				"field_2": -1, // descending index
+			},
+			"name": "idx_sid",
+		},
+	}
+	dbResult, err := m.CreateIndexes(collectionName, indexes)
+*/
+func (m *MongoConnect) CreateIndexes(collectionName string, indexes []interface{}) (*mongo.SingleResult, error) {
+	db, err := m.GetDatabase()
+	if err != nil {
+		return nil, err
+	}
+	ctx, _ := m.NewBackgroundContext()
+	return db.RunCommand(ctx, bson.M{"createIndexes": collectionName, "indexes": indexes}), nil
 }
