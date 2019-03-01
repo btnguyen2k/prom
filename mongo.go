@@ -107,6 +107,20 @@ func (m *MongoConnect) IsConnected() bool {
 }
 
 /*
+GetMongoClient returns the underlying MongoDB client instance.
+This function will try to establish connection to MongoDB server/relica set if there is no active one.
+*/
+func (m *MongoConnect) GetMongoClient() (*mongo.Client, error) {
+	if m.client == nil {
+		err := m.TryConnect()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return m.client, nil
+}
+
+/*
 GetDatabase returns the database object attached to this MongoConnect.
 */
 func (m *MongoConnect) GetDatabase(opts ...*options.DatabaseOptions) (*mongo.Database, error) {
@@ -173,3 +187,17 @@ func (m *MongoConnect) CreateIndexes(collectionName string, indexes []interface{
 	ctx, _ := m.NewBackgroundContext()
 	return db.RunCommand(ctx, bson.M{"createIndexes": collectionName, "indexes": indexes}), nil
 }
+
+// /*
+// InsertOne inserts one single document to the specified collection.
+// */
+// func (m *MongoConnect) InsertOne(ctx context.Context, collectionName string, document interface{}, opts ...*options.InsertOneOptions) (*mongo.InsertOneResult, error) {
+// 	collection, err := m.GetCollection(collectionName)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	if ctx == nil {
+// 		ctx, _ = m.NewBackgroundContext()
+// 	}
+// 	return collection.InsertOne(ctx, document, opts...)
+// }
