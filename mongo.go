@@ -63,6 +63,23 @@ func DecodeSingleResult(dbResult *mongo.SingleResult) (*bson.M, error) {
 	return &row, nil
 }
 
+/*
+DecodeResultCallback loops through the cursor and, for each fetched document, passes it to the callback function.
+Note: docNum is 1-based, and scoped to the cursor context. This function does not close the cursor!
+*/
+func DecodeResultCallback(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc *bson.M, err error)) {
+	dNum := 1
+	for cursor.Next(ctx) {
+		var d bson.M
+		err := cursor.Decode(&d)
+		if err != nil {
+			callback(dNum, nil, err)
+		} else {
+			callback(dNum, &d, nil)
+		}
+	}
+}
+
 /*----------------------------------------------------------------------*/
 
 /*
