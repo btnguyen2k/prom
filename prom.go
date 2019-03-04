@@ -1,9 +1,11 @@
 /*
-Prom is a utility library to manage shared connection in Golang.
+Package prom provides helpers to manage shared connections in Golang.
+
+Documentation: see project's GitHub (https://godoc.org/github.com/btnguyen2k/prom)
 */
 package prom
 
 const (
 	// Version of prom
-	Version = "0.0.1"
+	Version = "0.0.2"
 )

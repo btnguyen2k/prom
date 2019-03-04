@@ -10,8 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Prom for the official Go driver for MongoDB (https://github.com/mongodb/mongo-go-driver)
-
 /*
 MongoConnect holds a MongoDB client that can be shared within the application.
 */
@@ -43,10 +41,11 @@ func NewMongoConnect(url, db string, defaultTimeoutMs int64) (*MongoConnect, err
 	return m, m.TryConnect()
 }
 
+/*----------------------------------------------------------------------*/
 /*
-DecodeSingleResult is a helper function to transform 'mongo.SingleResult' to 'bson.M'.
+DecodeSingleResult transforms 'mongo.SingleResult' to 'bson.M'.
 */
-func DecodeSingleResult(dbResult *mongo.SingleResult) (*bson.M, error) {
+func (m *MongoConnect) DecodeSingleResult(dbResult *mongo.SingleResult) (*bson.M, error) {
 	if dbResult.Err() != nil {
 		return nil, dbResult.Err()
 	}
@@ -67,7 +66,7 @@ func DecodeSingleResult(dbResult *mongo.SingleResult) (*bson.M, error) {
 DecodeResultCallback loops through the cursor and, for each fetched document, passes it to the callback function.
 Note: docNum is 1-based, and scoped to the cursor context. This function does not close the cursor!
 */
-func DecodeResultCallback(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc *bson.M, err error)) {
+func (m *MongoConnect) DecodeResultCallback(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc *bson.M, err error)) {
 	dNum := 1
 	for cursor.Next(ctx) {
 		var d bson.M
@@ -79,8 +78,6 @@ func DecodeResultCallback(ctx context.Context, cursor *mongo.Cursor, callback fu
 		}
 	}
 }
-
-/*----------------------------------------------------------------------*/
 
 /*
 NewBackgroundContext creates a new background context with specified timeout in milliseconds.
@@ -204,17 +201,3 @@ func (m *MongoConnect) CreateIndexes(collectionName string, indexes []interface{
 	ctx, _ := m.NewBackgroundContext()
 	return db.RunCommand(ctx, bson.M{"createIndexes": collectionName, "indexes": indexes}), nil
 }
-
-// /*
-// InsertOne inserts one single document to the specified collection.
-// */
-// func (m *MongoConnect) InsertOne(ctx context.Context, collectionName string, document interface{}, opts ...*options.InsertOneOptions) (*mongo.InsertOneResult, error) {
-// 	collection, err := m.GetCollection(collectionName)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if ctx == nil {
-// 		ctx, _ = m.NewBackgroundContext()
-// 	}
-// 	return collection.InsertOne(ctx, document, opts...)
-// }
