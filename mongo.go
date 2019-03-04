@@ -27,7 +27,7 @@ Parameters:
 
   - url             : connection url, including authentication credentials
   - db              : name of database to connect to
-  - defaultTimeoutMs: efault timeout for db operations, in milliseconds
+  - defaultTimeoutMs: default timeout for db operations, in milliseconds
 
 Return: the MongoConnect instance and connection error (if any). Note: this function always return a MongoConnect instance.
 In case of connection error, call TryConnect(...) to reestablish the connection.
