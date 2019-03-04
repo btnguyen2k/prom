@@ -1,4 +1,4 @@
-** 'Prom' for the official Go driver for MongoDB (https://github.com/mongodb/mongo-go-driver) **
+**'Prom' for the official Go driver for MongoDB (https://github.com/mongodb/mongo-go-driver)**
 
 Usage:
 
@@ -14,4 +14,4 @@ if err != nil {
 // from now on, one MongoConnect instance can be shared & used by all goroutines within the application
 ```
 
-[![GoDoc](https://godoc.org/github.com/btnguyen2k/prom?status.svg)](https://godoc.org/github.com/btnguyen2k/prom#MongoConnect)
+Documentation at [![GoDoc](https://godoc.org/github.com/btnguyen2k/prom?status.svg)](https://godoc.org/github.com/btnguyen2k/prom#MongoConnect)
