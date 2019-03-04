@@ -41,7 +41,6 @@ func NewMongoConnect(url, db string, defaultTimeoutMs int64) (*MongoConnect, err
 	return m, m.TryConnect()
 }
 
-/*----------------------------------------------------------------------*/
 /*
 DecodeSingleResult transforms 'mongo.SingleResult' to 'bson.M'.
 */
