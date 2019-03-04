@@ -1,4 +1,4 @@
-## 'Prom' for the official Go driver for MongoDB (https://github.com/mongodb/mongo-go-driver)
+** 'Prom' for the official Go driver for MongoDB (https://github.com/mongodb/mongo-go-driver) **
 
 Usage:
 
