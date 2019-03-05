@@ -11,7 +11,7 @@ import (
 )
 
 /*
-MongoConnect holds a MongoDB client that can be shared within the application.
+MongoConnect holds a MongoDB client (https://github.com/mongodb/mongo-go-driver) that can be shared within the application.
 */
 type MongoConnect struct {
 	url       string        // connection url, including authentication credentials

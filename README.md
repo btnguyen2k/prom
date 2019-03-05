@@ -7,15 +7,19 @@ Utility library to manage shared connection in Golang.
 
 ## Documentation
 
+- ['Prom' for go-redis](go-redis.md).
 - ['Prom' for the official Go driver for MongoDB](mongo.md).
+
 
 ## History
 
 ### 2019-03-05 - v0.0.3
 
 - ['Prom' for the official Go driver for MongoDB](mongo.md):
-  - Bug fixes, enhancements & refactoring.
+  - Bug fixes, enhancements & refactoring
   - Add [usage examples](examples/example_mongo.go)
+- New ['Prom' for go-redis](go-redis.md):  
+  - [Usage examples](examples/example_go-redis.go)
 
 ### 2019-03-04 - v0.0.2
 
