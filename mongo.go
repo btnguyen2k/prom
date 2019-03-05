@@ -2,7 +2,7 @@ package prom
 
 import (
 	"context"
-	"sync"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -29,16 +29,27 @@ Parameters:
   - db              : name of database to connect to
   - defaultTimeoutMs: default timeout for db operations, in milliseconds
 
-Return: the MongoConnect instance and connection error (if any). Note: this function always return a MongoConnect instance.
-In case of connection error, call TryConnect(...) to reestablish the connection.
+Return: the MongoConnect instance and error (if any). Note:
+
+  - In case of connection error: this function returns the MongoConnect instance and the error.
+  - Other error: this function returns (nil, error)
 */
 func NewMongoConnect(url, db string, defaultTimeoutMs int) (*MongoConnect, error) {
+	if defaultTimeoutMs < 0 {
+		defaultTimeoutMs = 0
+	}
 	m := &MongoConnect{
 		url:       url,
 		db:        db,
 		timeoutMs: time.Duration(defaultTimeoutMs),
 	}
-	return m, m.TryConnect()
+	client, err := mongo.NewClient(options.Client().ApplyURI(m.url))
+	if err != nil {
+		return nil, err
+	}
+	m.client = client
+	ctx, _ := m.NewBackgroundContext()
+	return m, m.client.Connect(ctx)
 }
 
 /*
@@ -82,7 +93,7 @@ func (m *MongoConnect) DecodeResultCallback(ctx context.Context, cursor *mongo.C
 NewBackgroundContext creates a new background context with specified timeout in milliseconds.
 If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
 */
-func (m *MongoConnect) NewBackgroundContext(timeoutMs ...int64) (context.Context, context.CancelFunc) {
+func (m *MongoConnect) NewBackgroundContext(timeoutMs ...int) (context.Context, context.CancelFunc) {
 	d := m.timeoutMs
 	if len(timeoutMs) > 0 && timeoutMs[0] > 0 {
 		d = time.Duration(timeoutMs[0])
@@ -90,81 +101,77 @@ func (m *MongoConnect) NewBackgroundContext(timeoutMs ...int64) (context.Context
 	return context.WithTimeout(context.Background(), d*time.Millisecond)
 }
 
-var mongoMutex = &sync.Mutex{}
-
 /*
-TryConnect tries to establish connection to MongoDB server or replica set specified in the url supplied from NewMongoConnect.
+Ping tries to send a "ping" request to MongoDB server.
 If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
 */
-func (m *MongoConnect) TryConnect(timeoutMs ...int) error {
-	if m.client == nil {
-		mongoMutex.Lock()
-		defer mongoMutex.Unlock()
-		if m.client == nil {
-			ctx, _ := m.NewBackgroundContext()
-			c, err := mongo.Connect(ctx, options.Client().ApplyURI(m.url))
-			if err != nil {
-				return err
-			}
-			m.client = c
-		}
-	}
-	return nil
+func (m *MongoConnect) Ping(timeoutMs ...int) error {
+	ctx, _ := m.NewBackgroundContext(timeoutMs...)
+	return m.client.Ping(ctx, readpref.Primary())
 }
 
 /*
-IsConnected returns true if the connection to MongoDB has established. If not, call TryConnect(...) to connect.
+IsConnected returns true if the connection to MongoDB has established.
 */
 func (m *MongoConnect) IsConnected() bool {
-	return m.client != nil
+	err := m.Ping()
+	return err == nil
 }
 
 /*
 GetMongoClient returns the underlying MongoDB client instance.
-This function will try to establish connection to MongoDB server/relica set if there is no active one.
 */
-func (m *MongoConnect) GetMongoClient() (*mongo.Client, error) {
-	if m.client == nil {
-		err := m.TryConnect()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return m.client, nil
+func (m *MongoConnect) GetMongoClient() *mongo.Client {
+	return m.client
 }
 
 /*
 GetDatabase returns the database object attached to this MongoConnect.
 */
-func (m *MongoConnect) GetDatabase(opts ...*options.DatabaseOptions) (*mongo.Database, error) {
-	if m.client == nil {
-		err := m.TryConnect()
-		if err != nil {
-			return nil, err
-		}
+func (m *MongoConnect) GetDatabase(opts ...*options.DatabaseOptions) *mongo.Database {
+	return m.client.Database(m.db, opts...)
+}
+
+/*
+HasDatabase checks if a database exists on MongoDB server.
+*/
+func (m *MongoConnect) HasDatabase(dbName string, opts ...*options.ListDatabasesOptions) (bool, error) {
+	dbList, err := m.client.ListDatabaseNames(nil, bson.M{"name": dbName}, opts...)
+	if err != nil {
+		return false, err
 	}
-	return m.client.Database(m.db, opts...), nil
+	return len(dbList) > 0, nil
 }
 
 /*
 GetCollection returns the collection object specified by 'collectionName'.
 */
-func (m *MongoConnect) GetCollection(collectionName string, opts ...*options.CollectionOptions) (*mongo.Collection, error) {
-	db, err := m.GetDatabase()
+func (m *MongoConnect) GetCollection(collectionName string, opts ...*options.CollectionOptions) *mongo.Collection {
+	db := m.GetDatabase()
+	return db.Collection(collectionName, opts...)
+}
+
+/*
+HasCollection checks if a collection exists in the database.
+*/
+func (m *MongoConnect) HasCollection(collectionName string, opts ...*options.ListCollectionsOptions) (bool, error) {
+	ctx, _ := m.NewBackgroundContext()
+	collectionList, err := m.GetDatabase().ListCollections(ctx, bson.M{"name": collectionName}, opts...)
+	defer collectionList.Close(ctx)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
-	return db.Collection(collectionName, opts...), nil
+	if collectionList.Err() != nil {
+		return false, collectionList.Err()
+	}
+	return collectionList.Next(ctx), nil
 }
 
 /*
 CreateCollection creates a collection specified by 'collectionName'
 */
 func (m *MongoConnect) CreateCollection(collectionName string) (*mongo.SingleResult, error) {
-	db, err := m.GetDatabase()
-	if err != nil {
-		return nil, err
-	}
+	db := m.GetDatabase()
 	ctx, _ := m.NewBackgroundContext()
 	return db.RunCommand(ctx, bson.M{"create": collectionName}), nil
 }
@@ -187,16 +194,13 @@ Example:
 			"key": map[string]interface{}{
 				"field_2": -1, // descending index
 			},
-			"name": "idx_sid",
+			"name": "idx_2",
 		},
 	}
 	dbResult, err := m.CreateIndexes(collectionName, indexes)
 */
 func (m *MongoConnect) CreateIndexes(collectionName string, indexes []interface{}) (*mongo.SingleResult, error) {
-	db, err := m.GetDatabase()
-	if err != nil {
-		return nil, err
-	}
+	db := m.GetDatabase()
 	ctx, _ := m.NewBackgroundContext()
 	return db.RunCommand(ctx, bson.M{"createIndexes": collectionName, "indexes": indexes}), nil
 }

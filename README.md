@@ -11,6 +11,12 @@ Utility library to manage shared connection in Golang.
 
 ## History
 
+### 2019-03-05 - v0.0.3
+
+- ['Prom' for the official Go driver for MongoDB](mongo.md):
+  - Bug fixes, enhancements & refactoring.
+  - Add [usage examples](examples/example_mongo.go)
+
 ### 2019-03-04 - v0.0.2
 
 - Function `DecodeSingleResult` and `DecodeResultCallback` are now attached to `*MongoConnect`
