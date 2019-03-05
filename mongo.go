@@ -32,7 +32,7 @@ Parameters:
 Return: the MongoConnect instance and connection error (if any). Note: this function always return a MongoConnect instance.
 In case of connection error, call TryConnect(...) to reestablish the connection.
 */
-func NewMongoConnect(url, db string, defaultTimeoutMs int64) (*MongoConnect, error) {
+func NewMongoConnect(url, db string, defaultTimeoutMs int) (*MongoConnect, error) {
 	m := &MongoConnect{
 		url:       url,
 		db:        db,
@@ -96,7 +96,7 @@ var mongoMutex = &sync.Mutex{}
 TryConnect tries to establish connection to MongoDB server or replica set specified in the url supplied from NewMongoConnect.
 If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
 */
-func (m *MongoConnect) TryConnect(timeoutMs ...int64) error {
+func (m *MongoConnect) TryConnect(timeoutMs ...int) error {
 	if m.client == nil {
 		mongoMutex.Lock()
 		defer mongoMutex.Unlock()

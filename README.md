@@ -14,6 +14,7 @@ Utility library to manage shared connection in Golang.
 ### 2019-03-04 - v0.0.2
 
 - Function `DecodeSingleResult` and `DecodeResultCallback` are now attached to `*MongoConnect`
+- Change Mongo's timeout parameter from `int64` to `int`
 
 ### 2019-02-28 - v0.0.1
 
