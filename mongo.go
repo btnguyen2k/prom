@@ -77,8 +77,7 @@ DecodeResultCallback loops through the cursor and, for each fetched document, pa
 Note: docNum is 1-based, and scoped to the cursor context. This function does not close the cursor!
 */
 func (m *MongoConnect) DecodeResultCallback(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc *bson.M, err error)) {
-	dNum := 1
-	for cursor.Next(ctx) {
+	for dNum := 1; cursor.Next(ctx); dNum++ {
 		var d bson.M
 		err := cursor.Decode(&d)
 		if err != nil {
@@ -86,6 +85,39 @@ func (m *MongoConnect) DecodeResultCallback(ctx context.Context, cursor *mongo.C
 		} else {
 			callback(dNum, &d, nil)
 		}
+	}
+}
+
+/*
+DecodeSingleResultRaw transforms 'mongo.SingleResult' to raw JSON data.
+
+Availability: this method is available since v0.0.3.1
+*/
+func (m *MongoConnect) DecodeSingleResultRaw(dbResult *mongo.SingleResult) ([]byte, error) {
+	if dbResult.Err() != nil {
+		return nil, dbResult.Err()
+	}
+	row, err := dbResult.DecodeBytes()
+	if err != nil && err != mongo.ErrNoDocuments {
+		// error
+		return nil, err
+	}
+	if err != nil && err == mongo.ErrNoDocuments {
+		// no document found
+		return nil, nil
+	}
+	return row, nil
+}
+
+/*
+DecodeResultCallbackRaw loops through the cursor and, for each fetched document, passes it to the callback function.
+Note: docNum is 1-based, and scoped to the cursor context. This function does not close the cursor!
+
+Availability: this method is available since v0.0.3.1
+*/
+func (m *MongoConnect) DecodeResultCallbackRaw(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc []byte, err error)) {
+	for dNum := 1; cursor.Next(ctx); dNum++ {
+		callback(dNum, cursor.Current, cursor.Err())
 	}
 }
 
