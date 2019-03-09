@@ -16,9 +16,9 @@ Utility library to manage shared connection in Golang.
 ### 2019-03-08 - v0.0.3.1
 
 - ['Prom' for the official Go driver for MongoDB](mongo.md): add 2 functions
-  - `DecodeSingleResultRaw(*mongo.SingleResult) ([]byte, error)`
-  - `DecodeResultCallbackRaw(context.Context, *mongo.Cursor, func(docNum int, doc []byte, err error))`
-- Bug fixes.
+  - `DecodeSingleResultRaw(*mongo.SingleResult) (string, error)`
+  - `DecodeResultCallbackRaw(context.Context, *mongo.Cursor, func(docNum int, doc string, err error))`
+- Bug fixes & refactoring.
 
 
 ### 2019-03-05 - v0.0.3
