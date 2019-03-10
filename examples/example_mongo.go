@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/btnguyen2k/prom"
 	"go.mongodb.org/mongo-driver/bson"
@@ -124,7 +125,7 @@ func main() {
 		// load a document
 		filter := bson.M{"username": "btnguyen2k"}
 		demo := mongoConnect.GetCollection("demo")
-		fmt.Println("Loading a document with filter:", filter)
+		fmt.Println("Loading a document (decoded as document) with filter:", filter)
 		result := demo.FindOne(nil, filter)
 		{
 			row, err := mongoConnect.DecodeSingleResult(result)
@@ -155,16 +156,23 @@ func main() {
 		// load a document: multiple document matched, but only one returned
 		filter := bson.M{"email": "btnguyen2k(at)gmail.com"}
 		demo := mongoConnect.GetCollection("demo")
-		fmt.Println("Loading a document with filter:", filter)
+		fmt.Println("Loading a document (decoded as raw json data) with filter:", filter)
 		result := demo.FindOne(nil, filter)
 		{
 			row, err := mongoConnect.DecodeSingleResultRaw(result)
 			if err != nil {
 				fmt.Println("\tError:", err)
-			} else if row == "" {
+			} else if row == nil {
 				fmt.Println("\tDocument not found with filter:", filter)
 			} else {
-				fmt.Println("\tDocument:", row)
+				var doc interface{}
+				err := json.Unmarshal(row, &doc)
+				if err != nil {
+					fmt.Println("\tError:", err)
+					fmt.Println("\tData :", string(row))
+				} else {
+					fmt.Println("\tDocument:", doc)
+				}
 			}
 		}
 		{
@@ -172,10 +180,17 @@ func main() {
 			row, err := mongoConnect.DecodeSingleResultRaw(result)
 			if err != nil {
 				fmt.Println("\tError:", err)
-			} else if row == "" {
+			} else if row == nil {
 				fmt.Println("\tDocument not found with filter:", filter)
 			} else {
-				fmt.Println("\tDocument:", row)
+				var doc interface{}
+				err := json.Unmarshal(row, &doc)
+				if err != nil {
+					fmt.Println("\tError:", err)
+					fmt.Println("\tData :", string(row))
+				} else {
+					fmt.Println("\tDocument:", doc)
+				}
 			}
 		}
 
@@ -186,7 +201,7 @@ func main() {
 		// load list of documents
 		filter := bson.M{"email": "btnguyen2k(at)gmail.com"}
 		demo := mongoConnect.GetCollection("demo")
-		fmt.Println("Loading documents with filter:", filter)
+		fmt.Println("Loading documents (with callback & decoded as document) with filter:", filter)
 		result, err := demo.Find(nil, filter)
 		if err != nil {
 			fmt.Println("\tError:", err)
@@ -208,17 +223,24 @@ func main() {
 		// load list of documents
 		filter := bson.M{"email": "btnguyen2k(at)gmail.com"}
 		demo := mongoConnect.GetCollection("demo")
-		fmt.Println("Loading documents with filter:", filter)
+		fmt.Println("Loading documents (with callback & decoded as raw json data) with filter:", filter)
 		result, err := demo.Find(nil, filter)
 		if err != nil {
 			fmt.Println("\tError:", err)
 		} else {
 			defer result.Close(nil)
-			mongoConnect.DecodeResultCallbackRaw(nil, result, func(docNum int, doc string, err error) {
+			mongoConnect.DecodeResultCallbackRaw(nil, result, func(docNum int, row []byte, err error) {
 				if err != nil {
 					fmt.Println("\tError loading document #", docNum)
 				} else {
-					fmt.Println("\tDoc [", docNum, "]:", doc)
+					var doc interface{}
+					err := json.Unmarshal(row, &doc)
+					if err != nil {
+						fmt.Println("\tError:", err)
+						fmt.Println("\tData :", string(row))
+					} else {
+						fmt.Println("\tDoc [", docNum, "]:", doc)
+					}
 				}
 			})
 		}

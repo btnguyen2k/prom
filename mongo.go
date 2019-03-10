@@ -2,6 +2,7 @@ package prom
 
 import (
 	"context"
+	"encoding/json"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"time"
 
@@ -93,20 +94,12 @@ DecodeSingleResultRaw transforms 'mongo.SingleResult' to raw JSON data.
 
 Availability: this method is available since v0.0.3.1
 */
-func (m *MongoConnect) DecodeSingleResultRaw(dbResult *mongo.SingleResult) (string, error) {
-	if dbResult.Err() != nil {
-		return "", dbResult.Err()
+func (m *MongoConnect) DecodeSingleResultRaw(dbResult *mongo.SingleResult) ([]byte, error) {
+	doc, err := m.DecodeSingleResult(dbResult)
+	if doc == nil || err != nil {
+		return nil, err
 	}
-	row, err := dbResult.DecodeBytes()
-	if err != nil && err != mongo.ErrNoDocuments {
-		// error
-		return "", err
-	}
-	if err != nil && err == mongo.ErrNoDocuments {
-		// no document found
-		return "", nil
-	}
-	return row.String(), nil
+	return json.Marshal(doc)
 }
 
 /*
@@ -115,9 +108,16 @@ Note: docNum is 1-based, and scoped to the cursor context. This function does no
 
 Availability: this method is available since v0.0.3.1
 */
-func (m *MongoConnect) DecodeResultCallbackRaw(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc string, err error)) {
+func (m *MongoConnect) DecodeResultCallbackRaw(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc []byte, err error)) {
 	for dNum := 1; cursor.Next(ctx); dNum++ {
-		callback(dNum, cursor.Current.String(), cursor.Err())
+		var d bson.M
+		err := cursor.Decode(&d)
+		if err != nil {
+			callback(dNum, nil, err)
+		} else {
+			raw, err := json.Marshal(d)
+			callback(dNum, raw, err)
+		}
 	}
 }
 
