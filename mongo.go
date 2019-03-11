@@ -75,16 +75,23 @@ func (m *MongoConnect) DecodeSingleResult(dbResult *mongo.SingleResult) (bson.M,
 
 /*
 DecodeResultCallback loops through the cursor and, for each fetched document, passes it to the callback function.
-Note: docNum is 1-based, and scoped to the cursor context. This function does not close the cursor!
+Note:
+
+	- docNum is 1-based, and scoped to the cursor context. This function does not close the cursor!
+	- If callback function returns 'false', the loop will break and DecodeResultCallback returns.
 */
-func (m *MongoConnect) DecodeResultCallback(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc bson.M, err error)) {
+func (m *MongoConnect) DecodeResultCallback(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc bson.M, err error) bool) {
 	for dNum := 1; cursor.Next(ctx); dNum++ {
 		var d bson.M
 		err := cursor.Decode(&d)
 		if err != nil {
-			callback(dNum, nil, err)
+			if !callback(dNum, nil, err) {
+				break
+			}
 		} else {
-			callback(dNum, d, nil)
+			if !callback(dNum, d, nil) {
+				break
+			}
 		}
 	}
 }
@@ -104,19 +111,26 @@ func (m *MongoConnect) DecodeSingleResultRaw(dbResult *mongo.SingleResult) ([]by
 
 /*
 DecodeResultCallbackRaw loops through the cursor and, for each fetched document, passes it to the callback function.
-Note: docNum is 1-based, and scoped to the cursor context. This function does not close the cursor!
+Note:
+
+	- docNum is 1-based, and scoped to the cursor context. This function does not close the cursor!
+	- If callback function returns 'false', the loop will break and DecodeResultCallbackRaw returns.
 
 Availability: this method is available since v0.0.3.1
 */
-func (m *MongoConnect) DecodeResultCallbackRaw(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc []byte, err error)) {
+func (m *MongoConnect) DecodeResultCallbackRaw(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc []byte, err error) bool) {
 	for dNum := 1; cursor.Next(ctx); dNum++ {
 		var d bson.M
 		err := cursor.Decode(&d)
 		if err != nil {
-			callback(dNum, nil, err)
+			if !callback(dNum, nil, err) {
+				break
+			}
 		} else {
 			raw, err := json.Marshal(d)
-			callback(dNum, raw, err)
+			if !callback(dNum, raw, err) {
+				break
+			}
 		}
 	}
 }

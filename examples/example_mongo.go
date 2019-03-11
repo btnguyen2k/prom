@@ -207,12 +207,13 @@ func main() {
 			fmt.Println("\tError:", err)
 		} else {
 			defer result.Close(nil)
-			mongoConnect.DecodeResultCallback(nil, result, func(docNum int, doc bson.M, err error) {
+			mongoConnect.DecodeResultCallback(nil, result, func(docNum int, doc bson.M, err error) bool {
 				if err != nil {
 					fmt.Println("\tError loading document #", docNum)
 				} else {
 					fmt.Println("\tDoc [", docNum, "]:", doc)
 				}
+				return true // continue processing remaining rows
 			})
 		}
 
@@ -229,7 +230,7 @@ func main() {
 			fmt.Println("\tError:", err)
 		} else {
 			defer result.Close(nil)
-			mongoConnect.DecodeResultCallbackRaw(nil, result, func(docNum int, row []byte, err error) {
+			mongoConnect.DecodeResultCallbackRaw(nil, result, func(docNum int, row []byte, err error) bool {
 				if err != nil {
 					fmt.Println("\tError loading document #", docNum)
 				} else {
@@ -242,6 +243,7 @@ func main() {
 						fmt.Println("\tDoc [", docNum, "]:", doc)
 					}
 				}
+				return true // continue processing remaining rows
 			})
 		}
 
