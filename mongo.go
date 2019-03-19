@@ -18,7 +18,7 @@ type MongoConnect struct {
 	url       string        // connection url, including authentication credentials
 	db        string        // database name
 	client    *mongo.Client // client instance
-	timeoutMs time.Duration // default timeout for db operations, in milliseconds
+	timeoutMs int           // default timeout for db operations, in milliseconds
 }
 
 /*
@@ -42,7 +42,7 @@ func NewMongoConnect(url, db string, defaultTimeoutMs int) (*MongoConnect, error
 	m := &MongoConnect{
 		url:       url,
 		db:        db,
-		timeoutMs: time.Duration(defaultTimeoutMs),
+		timeoutMs: defaultTimeoutMs,
 	}
 	client, err := mongo.NewClient(options.Client().ApplyURI(m.url))
 	if err != nil {
@@ -142,9 +142,9 @@ If there is no specified timeout, or timeout value is less than or equal to 0, t
 func (m *MongoConnect) NewBackgroundContext(timeoutMs ...int) (context.Context, context.CancelFunc) {
 	d := m.timeoutMs
 	if len(timeoutMs) > 0 && timeoutMs[0] > 0 {
-		d = time.Duration(timeoutMs[0])
+		d = timeoutMs[0]
 	}
-	return context.WithTimeout(context.Background(), d*time.Millisecond)
+	return context.WithTimeout(context.Background(), time.Duration(d)*time.Millisecond)
 }
 
 /*

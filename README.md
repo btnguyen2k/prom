@@ -13,6 +13,12 @@ Utility library to manage shared connection in Golang.
 
 ## History
 
+### 2019-03-19 - v0.0.4
+
+- ['Prom' for database/sql](sql.md):
+  - Usage examples: [MySQL](examples/example_mysql.go), [PostgreSQL](examples/example_pgsql.go)
+
+
 ### 2019-03-08 - v0.0.3.1
 
 - ['Prom' for the official Go driver for MongoDB](mongo.md): add 2 functions
