@@ -8,7 +8,7 @@ import (
 )
 
 /*
-SqlConnect configures database connection pooling options.
+SqlPoolOptions configures database connection pooling options.
 */
 type SqlPoolOptions struct {
 	/*
@@ -84,8 +84,8 @@ func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoo
 NewBackgroundContext creates a new background context with specified timeout in milliseconds.
 If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
 */
-func (m *SqlConnect) NewBackgroundContext(timeoutMs ...int) (context.Context, context.CancelFunc) {
-	d := m.timeoutMs
+func (sc *SqlConnect) NewBackgroundContext(timeoutMs ...int) (context.Context, context.CancelFunc) {
+	d := sc.timeoutMs
 	if len(timeoutMs) > 0 && timeoutMs[0] > 0 {
 		d = timeoutMs[0]
 	}
