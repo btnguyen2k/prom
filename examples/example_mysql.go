@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// construct an 'prom.MongoConnect' instance
+// construct an 'prom.SqlConnect' instance
 func createSqlConnectForMySql() *prom.SqlConnect {
 	driver := "mysql"
 	dsn := "test:test@tcp(localhost:3306)/test"
