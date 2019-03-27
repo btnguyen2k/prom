@@ -58,11 +58,11 @@ Disconnect closes all connections associated with the underlying MongoDB client.
 
 Available since v0.1.0
 */
-func (sc *MongoConnect) Disconnect(ctx context.Context) error {
+func (m *MongoConnect) Disconnect(ctx context.Context) error {
 	if ctx == nil {
-		ctx, _ = sc.NewBackgroundContext()
+		ctx, _ = m.NewBackgroundContext()
 	}
-	return sc.client.Disconnect(ctx)
+	return m.client.Disconnect(ctx)
 }
 
 /*

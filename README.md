@@ -20,7 +20,8 @@ Utility library to manage shared connection in Golang.
   - New method `NewSqlConnectWithFlavor`
 - `SqlConnect.fetchOneRow` fetches correct column's data type instead of `[]byte` for MySQL.
   This makes results of `SqlConnect.FetchRows` and `SqlConnect.FetchRowsCallback` are correctly typed, too.
-- Update examples for MongoDB, MySQL and PostgreSQL
+- Update examples for [MongoDB](examples/example_mongo.go), [MySQL](examples/example_mysql.go) and [PostgreSQL](examples/example_pgsql.go).
+- Add examples for [MSSQL](examples/example_mssql.go) and [Oracle DB](examples/example_oracle.go).
 
 
 ### 2019-03-19 - v0.0.4

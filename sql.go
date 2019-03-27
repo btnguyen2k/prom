@@ -300,7 +300,6 @@ If no row matches the query, FetchRow returns (<empty slice>,nil).
 
 Note: FetchRows does NOT call 'rows.close()' when done!
 */
-
 func (sc *SqlConnect) FetchRows(rows *sql.Rows) ([]map[string]interface{}, error) {
 	colTypes, err := rows.ColumnTypes()
 	if err != nil {
