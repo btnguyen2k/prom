@@ -54,6 +54,18 @@ func NewMongoConnect(url, db string, defaultTimeoutMs int) (*MongoConnect, error
 }
 
 /*
+Disconnect closes all connections associated with the underlying MongoDB client.
+
+Available since v0.1.0
+*/
+func (sc *MongoConnect) Disconnect(ctx context.Context) error {
+	if ctx == nil {
+		ctx, _ = sc.NewBackgroundContext()
+	}
+	return sc.client.Disconnect(ctx)
+}
+
+/*
 DecodeSingleResult transforms 'mongo.SingleResult' to 'bson.M'.
 */
 func (m *MongoConnect) DecodeSingleResult(dbResult *mongo.SingleResult) (bson.M, error) {

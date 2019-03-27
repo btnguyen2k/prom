@@ -4,7 +4,29 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"reflect"
+	"strings"
 	"time"
+)
+
+/*
+DbFlavor specifies the flavor or database server/vendor.
+
+Available since v0.1.0
+*/
+type DbFlavor int
+
+/*
+Predefined db flavors.
+
+Available since v0.1.0
+*/
+const (
+	FlavorDefault DbFlavor = iota
+	FlavorMySql
+	FlavorPgSql
+	FlavorMsSql
+	FlavorOracle
 )
 
 /*
@@ -12,20 +34,20 @@ SqlPoolOptions configures database connection pooling options.
 */
 type SqlPoolOptions struct {
 	/*
-	Maximum amount of time a connection may be reused, default is 1 hour,
-	see https://golang.org/pkg/database/sql/#DB.SetConnMaxLifetime
+		Maximum amount of time a connection may be reused, default is 1 hour,
+		see https://golang.org/pkg/database/sql/#DB.SetConnMaxLifetime
 	*/
 	ConnMaxLifetime time.Duration
 
 	/*
-	Maximum number of idle connections in the pool, default is 1,
-	see https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns
+		Maximum number of idle connections in the pool, default is 1,
+		see https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns
 	*/
 	MaxIdleConns int
 
 	/*
-	Maximum number of open connections to the database, default is 2,
-	see https://golang.org/pkg/database/sql/#DB.SetMaxOpenConns
+		Maximum number of open connections to the database, default is 2,
+		see https://golang.org/pkg/database/sql/#DB.SetMaxOpenConns
 	*/
 	MaxOpenConns int
 }
@@ -39,25 +61,38 @@ type SqlConnect struct {
 	driver, dsn string          // driver and data source name (DSN)
 	poolOptions *SqlPoolOptions // connection pool options
 	timeoutMs   int             // default timeout for db operations, in milliseconds
+	flavor      DbFlavor        // database flavor
 	db          *sql.DB         // database instance
 }
 
 /*
 NewSqlConnect constructs a new SqlConnect instance.
 
+Parameters: see #NewSqlConnectWithFlavor.
+*/
+func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+	return NewSqlConnectWithFlavor(driver, dsn, defaultTimeoutMs, poolOptions, FlavorDefault)
+}
+
+/*
+NewSqlConnectWithFlavor constructs a new SqlConnect instance.
+
+Available since v0.1.0
+
 Parameters:
 
-  - driver          : database driver name
-  - dsn             : data source name (format [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN])
-  - defaultTimeoutMs: default timeout for db operations, in milliseconds
-  - poolOptions     : connection pool options. If nil, default value is used
+	- driver          : database driver name
+	- dsn             : data source name (format [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN])
+	- defaultTimeoutMs: default timeout for db operations, in milliseconds
+	- poolOptions     : connection pool options. If nil, default value is used
+	- flavor          : database flavor associated with the SqlConnect instance.
 
 Return: the SqlConnect instance and error (if any). Note:
 
   - In case of connection error: this function returns the SqlConnect instance and the error.
   - Other error: this function returns (nil, error)
 */
-func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions, flavor DbFlavor) (*SqlConnect, error) {
 	if defaultTimeoutMs < 0 {
 		defaultTimeoutMs = 0
 	}
@@ -69,6 +104,7 @@ func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoo
 		dsn:         dsn,
 		poolOptions: poolOptions,
 		timeoutMs:   defaultTimeoutMs,
+		flavor:      flavor,
 	}
 	db, err := sql.Open(driver, dsn)
 	if poolOptions != nil {
@@ -78,6 +114,25 @@ func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoo
 	}
 	sc.db = db
 	return sc, err
+}
+
+/*
+GetDbFlavor returns the current database flavor associated with this SqlConnect.
+
+Available since v0.1.0
+*/
+func (sc *SqlConnect) GetDbFlavor() DbFlavor {
+	return sc.flavor
+}
+
+/*
+SetDbFlavor associates a database flavor with this SqlConnect.
+
+Available since v0.1.0
+*/
+func (sc *SqlConnect) SetDbFlavor(flavor DbFlavor) *SqlConnect {
+	sc.flavor = flavor
+	return sc
 }
 
 /*
@@ -157,8 +212,56 @@ func (sc *SqlConnect) FetchRow(row *sql.Row, numCols int) ([]interface{}, error)
 	return vals, err
 }
 
-func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, cols []string) (map[string]interface{}, error) {
-	numCols := len(cols)
+var rawBytesType = reflect.TypeOf(sql.RawBytes{})
+var dbStringTypes = map[string]map[DbFlavor]bool{
+	"CHAR":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"VARCHAR":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"TEXT":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true},
+	"CHARACTER":         {FlavorDefault: true, FlavorPgSql: true},
+	"CHARACTER VARYING": {FlavorDefault: true, FlavorPgSql: true},
+	"NCHAR":             {FlavorDefault: true, FlavorMsSql: true, FlavorOracle: true},
+	"NVARCHAR":          {FlavorDefault: true, FlavorMsSql: true},
+	"NTEXT":             {FlavorDefault: true, FlavorMsSql: true},
+	"VARCHAR2":          {FlavorDefault: true, FlavorOracle: true},
+	"NVARCHAR2":         {FlavorDefault: true, FlavorOracle: true},
+	"CLOB":              {FlavorDefault: true, FlavorOracle: true},
+	"NCLOB":             {FlavorDefault: true, FlavorOracle: true},
+	"LONG":              {FlavorDefault: true, FlavorOracle: true},
+	"BPCHAR":            {FlavorDefault: true, FlavorPgSql: true},
+}
+var dbDateTimeTypes = map[string]map[DbFlavor]bool{
+	"TIME":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true},
+	"DATE":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"YEAR":           {FlavorDefault: true, FlavorMySql: true},
+	"DATETIME":       {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true},
+	"DATETIME2":      {FlavorDefault: true, FlavorMsSql: true},
+	"DATETIMEOFFSET": {FlavorDefault: true, FlavorMsSql: true},
+	"SMALLDATETIME":  {FlavorDefault: true, FlavorMsSql: true},
+	"TIMESTAMP":      {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true},
+}
+
+func (sc *SqlConnect) isStringType(col *sql.ColumnType) bool {
+	name := strings.ToUpper(col.DatabaseTypeName())
+	m, e := dbStringTypes[name]
+	if !e {
+		return false
+	}
+	_, e = m[sc.flavor]
+	return e
+}
+
+func (sc *SqlConnect) isDateTimeType(col *sql.ColumnType) bool {
+	name := strings.ToUpper(col.DatabaseTypeName())
+	m, e := dbDateTimeTypes[name]
+	if !e {
+		return false
+	}
+	_, e = m[sc.flavor]
+	return e
+}
+
+func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType) (map[string]interface{}, error) {
+	numCols := len(colsAndTypes)
 	vals := make([]interface{}, numCols)
 	scanVals := make([]interface{}, numCols)
 	for i := 0; i < numCols; i++ {
@@ -169,8 +272,24 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, cols []string) (map[string]int
 		return nil, nil
 	}
 	result := map[string]interface{}{}
-	for k, v := range cols {
-		result[v] = vals[k]
+	for k, v := range colsAndTypes {
+		// if v.Name() == "data_time" || v.Name() == "data_timez" {
+		// 	fmt.Println(v.Name(), v.DatabaseTypeName(), v.ScanType(), v.ScanType().Kind())
+		// 	fmt.Println(vals[k])
+		// }
+		if v.ScanType() == rawBytesType && sc.isStringType(v) {
+			// when string is loaded as []byte
+			result[v.Name()] = string(vals[k].([]byte))
+		} else if v.ScanType() == rawBytesType && sc.isDateTimeType(v) {
+			// when date/time is loaded as []byte
+			// TODO
+			result[v.Name()] = string(vals[k].([]byte))
+		} else if sc.flavor == FlavorPgSql && v.ScanType().Kind() == reflect.Interface && sc.isStringType(v) {
+			// Postgresql's CHAR(1) is loaded as []byte
+			result[v.Name()] = string(vals[k].([]byte))
+		} else {
+			result[v.Name()] = vals[k]
+		}
 	}
 	return result, err
 }
@@ -181,14 +300,15 @@ If no row matches the query, FetchRow returns (<empty slice>,nil).
 
 Note: FetchRows does NOT call 'rows.close()' when done!
 */
+
 func (sc *SqlConnect) FetchRows(rows *sql.Rows) ([]map[string]interface{}, error) {
-	cols, err := rows.Columns()
+	colTypes, err := rows.ColumnTypes()
 	if err != nil {
 		return nil, err
 	}
 	result := make([]map[string]interface{}, 0)
 	for rows.Next() {
-		rowData, err := sc.fetchOneRow(rows, cols)
+		rowData, err := sc.fetchOneRow(rows, colTypes)
 		if err != nil {
 			return nil, err
 		}
@@ -204,13 +324,13 @@ FetchRowsCallback stops the loop when there is no more row to load or 'callback'
 Note: FetchRowsCallback does NOT call 'rows.close()' when done!
 */
 func (sc *SqlConnect) FetchRowsCallback(rows *sql.Rows, callback func(row map[string]interface{}, err error) bool) error {
-	cols, err := rows.Columns()
+	colTypes, err := rows.ColumnTypes()
 	if err != nil {
 		return err
 	}
 	for rows.Next() {
 		var next bool
-		rowData, err := sc.fetchOneRow(rows, cols)
+		rowData, err := sc.fetchOneRow(rows, colTypes)
 		if err != nil {
 			next = callback(nil, err)
 		} else {

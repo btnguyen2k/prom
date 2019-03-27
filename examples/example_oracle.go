@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/btnguyen2k/prom"
-	_ "github.com/go-sql-driver/mysql"
+	_ "gopkg.in/goracle.v2"
 	"math/rand"
 	"reflect"
 	"strconv"
@@ -11,11 +11,11 @@ import (
 	"time"
 )
 
-// construct an 'prom.SqlConnect' instance
-func createSqlConnectMysql() *prom.SqlConnect {
-	driver := "mysql"
-	dsn := "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&loc=Asia%2FHo_Chi_Minh&parseTime=true"
-	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorMySql)
+// construct an 'prom.MongoConnect' instance
+func createSqlConnectOracle() *prom.SqlConnect {
+	driver := "goracle"
+	dsn := "test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521)))(CONNECT_DATA=(SID=ORCLCDB)))"
+	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorOracle)
 	if sqlConnect == nil || err != nil {
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -27,18 +27,18 @@ func createSqlConnectMysql() *prom.SqlConnect {
 	return sqlConnect
 }
 
-var colsMysql = []string{"id", "username", "email",
+var colsOracle = []string{"id", "username", "email",
 	"data_bool", "data_int", "data_float",
 	"data_time", "data_timez",
 	"data_date", "data_datez",
 	"data_datetime", "data_datetimez",
 	"data_timestamp", "data_timestampz"}
 
-func printRowMysql(row map[string]interface{}) {
-	id := row["id"]
+func printRowOracle(row map[string]interface{}) {
+	id := row["ID"]
 	fmt.Printf("\t\tRow [%v]\n", id)
-	for _, n := range colsMysql {
-		v := row[n]
+	for _, n := range colsOracle {
+		v := row[strings.ToUpper(n)]
 		fmt.Println("\t\t\t", n, "[", reflect.TypeOf(v), "] = ", v)
 	}
 }
@@ -46,7 +46,7 @@ func printRowMysql(row map[string]interface{}) {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	SEP := "======================================================================"
-	sqlConnect := createSqlConnectMysql()
+	sqlConnect := createSqlConnectOracle()
 	defer sqlConnect.Close()
 
 	{
@@ -70,33 +70,32 @@ func main() {
 		fmt.Println("-== Drop/Create Table ==-")
 
 		// setting up
-		sql := "DROP TABLE IF EXISTS tbl_demo"
+		sql := "DROP TABLE tbl_demo"
 		_, err := sqlConnect.GetDB().Exec(sql)
 		if err != nil {
-			fmt.Printf("\tError while executing query [%s]: %e\n", sql, err)
+			fmt.Printf("\tError while executing query [%s]: %s\n", sql, err)
+		}
+		fmt.Println("\tDropped table [tbl_demo]")
+
+		types := []string{"INT", "NVARCHAR2(64)", "NVARCHAR2(128)",
+			"NCHAR(1)", "INT", "BINARY_DOUBLE",
+			"DATE", "DATE",
+			"DATE", "DATE",
+			"DATE", "DATE",
+			"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
+
+		sql = "CREATE TABLE tbl_demo ("
+		for i := range colsOracle {
+			sql += colsOracle[i] + " " + types[i] + ","
+		}
+		sql += "PRIMARY KEY(id))"
+		fmt.Println("\tQuery:" + sql)
+
+		_, err = sqlConnect.GetDB().Exec(sql)
+		if err != nil {
+			fmt.Printf("\tError while executing query: %s\n", err)
 		} else {
-			fmt.Println("\tDropped table [tbl_demo]")
-
-			types := []string{"INT", "VARCHAR(64)", "VARCHAR(128)",
-				"CHAR(1)", "INT", "DOUBLE",
-				"TIME", "TIME",
-				"DATE", "DATE",
-				"DATETIME", "DATETIME",
-				"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
-
-			sql := "CREATE TABLE tbl_demo ("
-			for i := range colsMysql {
-				sql += colsMysql[i] + " " + types[i] + ","
-			}
-			sql += "PRIMARY KEY(id))"
-			fmt.Println("\tQuery:" + sql)
-
-			_, err := sqlConnect.GetDB().Exec(sql)
-			if err != nil {
-				fmt.Printf("\tError while executing query: %s\n", err)
-			} else {
-				fmt.Println("\tCreated table [tbl_demo]")
-			}
+			fmt.Println("\tCreated table [tbl_demo]")
 		}
 
 		fmt.Println(SEP)
@@ -107,10 +106,13 @@ func main() {
 
 		// insert some rows
 		sql := "INSERT INTO tbl_demo ("
-		sql += strings.Join(colsMysql, ",")
+		sql += strings.Join(colsOracle, ",")
 		sql += ") VALUES ("
-		sql += strings.Repeat("?,", len(colsMysql)-1)
-		sql += "?)"
+		for k := range colsOracle {
+			sql += ":" + strconv.Itoa(k+1) + ","
+		}
+		sql = sql[0 : len(sql)-1]
+		sql += ")"
 
 		n := 100
 		fmt.Printf("\tInserting %d rows to table [tbl_demo]\n", n)
@@ -144,12 +146,12 @@ func main() {
 		fmt.Println("-== Query Single Row from Table ==-")
 
 		// query single row
-		sql := "SELECT * FROM tbl_demo WHERE id=?"
+		sql := "SELECT * FROM tbl_demo WHERE id=:1"
 
 		id := rand.Intn(100) + 1
 		fmt.Printf("\tFetching row id %d from table [tbl_demo]\n", id)
 		dbRow := sqlConnect.GetDB().QueryRow(sql, id)
-		data, err := sqlConnect.FetchRow(dbRow, len(colsMysql))
+		data, err := sqlConnect.FetchRow(dbRow, len(colsOracle))
 		if err != nil {
 			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %e\n", id, err)
 		} else if data == nil {
@@ -168,7 +170,7 @@ func main() {
 		id = 999
 		fmt.Printf("\tFetching row id %d from table [tbl_demo]\n", id)
 		dbRow = sqlConnect.GetDB().QueryRow(sql, id)
-		data, err = sqlConnect.FetchRow(dbRow, len(colsMysql))
+		data, err = sqlConnect.FetchRow(dbRow, len(colsOracle))
 		if err != nil {
 			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %e\n", id, err)
 		} else if data == nil {
@@ -190,8 +192,9 @@ func main() {
 	{
 		fmt.Println("-== Query Multiple Rows from Table ==-")
 
-		// query multiple rows
-		sql := "SELECT * FROM tbl_demo WHERE id>=? LIMIT 4"
+		// query multiple rows: https://docs.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql?view=sql-server-2017
+		// (SQL Server 2012+ only)
+		sql := "SELECT * FROM tbl_demo WHERE id>=:1 ORDER BY id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY"
 
 		id := rand.Intn(100) + 1
 		fmt.Printf("\tFetching rows starting at %d from table [tbl_demo]\n", id)
@@ -205,7 +208,7 @@ func main() {
 				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %e\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowMysql(r)
+					printRowOracle(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -224,7 +227,7 @@ func main() {
 				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %e\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowMysql(r)
+					printRowOracle(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -238,12 +241,12 @@ func main() {
 		fmt.Println("-== Query Multiple Rows from Table (using callback) ==-")
 
 		// query multiple rows with callback function
-		sql := "SELECT * FROM tbl_demo WHERE id>=? LIMIT 4"
+		sql := "SELECT * FROM tbl_demo WHERE id>=:1 ORDER BY id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY"
 		callback := func(row map[string]interface{}, err error) bool {
 			if err != nil {
 				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %e\n", err)
 			} else {
-				printRowMysql(row)
+				printRowOracle(row)
 			}
 			return true
 		}

@@ -13,6 +13,16 @@ Utility library to manage shared connection in Golang.
 
 ## History
 
+### 2019-03-27 - v0.1.0
+
+- Migrated Go modular design.
+- Add `DbFlavor`:
+  - New method `NewSqlConnectWithFlavor`
+- `SqlConnect.fetchOneRow` fetches correct column's data type instead of `[]byte` for MySQL.
+  This makes results of `SqlConnect.FetchRows` and `SqlConnect.FetchRowsCallback` are correctly typed, too.
+- Update examples for MongoDB, MySQL and PostgreSQL
+
+
 ### 2019-03-19 - v0.0.4
 
 - ['Prom' for database/sql](sql.md):

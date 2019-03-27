@@ -19,46 +19,61 @@ func createMongoConnect() *prom.MongoConnect {
 	return mongoConnect
 }
 
+func toJson(o interface{}) string {
+	js, _ := json.Marshal(o)
+	return string(js)
+}
+
 func main() {
+	SEP := "======================================================================"
 	mongoConnect := createMongoConnect()
+	defer mongoConnect.Disconnect(nil)
 
 	{
+		fmt.Println("-== Database & Ping info ==-")
+
 		// get the database object and send ping command
 		dbObj := mongoConnect.GetDatabase()
-		fmt.Println("Current database:", dbObj.Name())
-		fmt.Println("Is connected    :", mongoConnect.IsConnected())
+		fmt.Println("\tCurrent database:", dbObj.Name())
+		fmt.Println("\tIs connected    :", mongoConnect.IsConnected())
 		err := mongoConnect.Ping()
 		if err != nil {
-			fmt.Println("Ping error      :", err)
+			fmt.Println("\tPing error      :", err)
 		} else {
-			fmt.Println("Ping ok")
+			fmt.Println("\tPing ok")
 		}
 
-		fmt.Println("==================================================")
+		fmt.Println(SEP)
 	}
 
 	{
-		// check if a database/collection exists
+		fmt.Println("-== Database & Collection Existence ==-")
+
+		// check if a database exists
 		hasDb, err := mongoConnect.HasDatabase("test")
-		fmt.Println("Has database [test]  :", hasDb, err)
+		fmt.Println("\tHas database [test]  :", hasDb, err)
 		hasDb, err = mongoConnect.HasDatabase("test1")
-		fmt.Println("Has database [test1] :", hasDb, err)
+		fmt.Println("\tHas database [test1] :", hasDb, err)
 
 		// check if a collection in current database exists
 		hasCollection, err := mongoConnect.HasCollection("demo")
-		fmt.Println("Has collection [demo]:", hasCollection, err)
+		fmt.Println("\tHas collection [demo]:", hasCollection, err)
+		hasCollection, err = mongoConnect.HasCollection("demo1")
+		fmt.Println("\tHas collection [demo1]:", hasCollection, err)
 
-		fmt.Println("==================================================")
+		fmt.Println(SEP)
 	}
 
 	{
+		fmt.Println("-== Drop/Create Collection & Index ==-")
+
 		// drop a collection
 		err := mongoConnect.GetCollection("demo").Drop(nil)
-		fmt.Println("Drop collection [demo]'s            :", err)
+		fmt.Println("\tDrop collection [demo]'s            :", err)
 
 		// create a collection
 		result, err := mongoConnect.CreateCollection("demo")
-		fmt.Println("Create collection [demo]'s          :", result.Err(), err)
+		fmt.Println("\tCreate collection [demo]'s          :", result.Err(), err)
 		if err == nil && result.Err() == nil {
 			// create indexes for a collection
 			indexes := []interface{}{
@@ -77,31 +92,35 @@ func main() {
 				},
 			}
 			result, err = mongoConnect.CreateIndexes("demo", indexes)
-			fmt.Println("Create indexes for collection [demo]:", result.Err(), err)
+			fmt.Println("\tCreate indexes for collection [demo]:", result.Err(), err)
 		}
 
-		fmt.Println("==================================================")
+		fmt.Println(SEP)
 	}
 
 	{
-		// insert some documents
+		fmt.Println("-== Insert Documents to Collection ==-")
 		demo := mongoConnect.GetCollection("demo")
 
 		doc := map[string]interface{}{
-			"username": "btnguyen2k",
-			"email":    "btnguyen2k(at)gmail.com",
-			"name": map[string]interface{}{
-				"first": "Thanh",
-				"last":  "Nguyen",
+			"username":   "btnguyen2k",
+			"email":      "btnguyen2k(at)gmail.com",
+			"data_bool":  true,
+			"data_int":   103,
+			"data_float": 19.81,
+			"data_map": map[string]interface{}{
+				"a": "a string",
+				"b": 1,
+				"c": false,
 			},
-			"tags": []string{"Java", "Golang"},
+			"data_arr": []interface{}{"1", 2, 3.4},
 		}
-		fmt.Println("Inserting document:", doc)
+		fmt.Println("\tInserting document:", toJson(doc))
 		result, err := demo.InsertOne(nil, doc)
 		if err != nil {
-			fmt.Println("\tError:", err)
+			fmt.Println("\t\tError:", err)
 		} else {
-			fmt.Println("\tNew document:", result.InsertedID)
+			fmt.Println("\t\tNew document:", result.InsertedID)
 		}
 
 		doc = map[string]interface{}{
@@ -110,68 +129,71 @@ func main() {
 			"name":     "Thanh Nguyen",
 			"tags":     []string{"HTML", "CSS", "JS"},
 		}
-		fmt.Println("Inserting document:", doc)
+		fmt.Println("\tInserting document:", toJson(doc))
 		result, err = demo.InsertOne(nil, doc)
 		if err != nil {
-			fmt.Println("\tError:", err)
+			fmt.Println("\t\tError:", err)
 		} else {
-			fmt.Println("\tNew document:", result.InsertedID)
+			fmt.Println("\t\tNew document:", result.InsertedID)
 		}
 
-		fmt.Println("==================================================")
+		fmt.Println(SEP)
 	}
 
 	{
-		// load a document
-		filter := bson.M{"username": "btnguyen2k"}
+		fmt.Println("-== Load a Single Document from Collection ==-")
 		demo := mongoConnect.GetCollection("demo")
-		fmt.Println("Loading a document (decoded as document) with filter:", filter)
+
+		filter := bson.M{"username": "btnguyen2k"}
+		fmt.Println("\tLoading a document (decoded as document) with filter:", filter)
 		result := demo.FindOne(nil, filter)
 		{
 			row, err := mongoConnect.DecodeSingleResult(result)
 			if err != nil {
-				fmt.Println("\tError:", err)
+				fmt.Println("\t\tError:", err)
 			} else if row == nil {
-				fmt.Println("\tDocument not found with filter:", filter)
+				fmt.Println("\t\tDocument not found with filter:", filter)
 			} else {
-				fmt.Println("\tDocument:", row)
+				fmt.Println("\t\tDocument:", toJson(row))
 			}
 		}
 		{
 			// result of type mongo.SingleResult is only available once, the following will result "document not found"!
 			row, err := mongoConnect.DecodeSingleResult(result)
 			if err != nil {
-				fmt.Println("\tError:", err)
+				fmt.Println("\t\tError:", err)
 			} else if row == nil {
-				fmt.Println("\tDocument not found with filter:", filter)
+				fmt.Println("\t\tDocument not found with filter:", filter)
 			} else {
-				fmt.Println("\tDocument:", row)
+				fmt.Println("\t\tDocument:", toJson(row))
 			}
 		}
 
-		fmt.Println("==================================================")
+		fmt.Println(SEP)
 	}
 
 	{
+		fmt.Println("-== Load a Single Document (multiple matches) from Collection ==-")
+		demo := mongoConnect.GetCollection("demo")
+
 		// load a document: multiple document matched, but only one returned
 		filter := bson.M{"email": "btnguyen2k(at)gmail.com"}
-		demo := mongoConnect.GetCollection("demo")
-		fmt.Println("Loading a document (decoded as raw json data) with filter:", filter)
+		fmt.Println("\tLoading a document (decoded as raw json data) with filter:", filter)
 		result := demo.FindOne(nil, filter)
 		{
 			row, err := mongoConnect.DecodeSingleResultRaw(result)
 			if err != nil {
-				fmt.Println("\tError:", err)
+				fmt.Println("\t\tError:", err)
 			} else if row == nil {
-				fmt.Println("\tDocument not found with filter:", filter)
+				fmt.Println("\t\tDocument not found with filter:", filter)
 			} else {
 				var doc interface{}
 				err := json.Unmarshal(row, &doc)
 				if err != nil {
-					fmt.Println("\tError:", err)
-					fmt.Println("\tData :", string(row))
+					fmt.Println("\t\tError:", err)
+					fmt.Println("\t\tData :", string(row))
 				} else {
-					fmt.Println("\tDocument:", doc)
+					fmt.Println("\t\tDocument:", toJson(doc))
 				}
 			}
 		}
@@ -179,74 +201,78 @@ func main() {
 			// result of type mongo.SingleResult is only available once, the following will result "document not found"!
 			row, err := mongoConnect.DecodeSingleResultRaw(result)
 			if err != nil {
-				fmt.Println("\tError:", err)
+				fmt.Println("\t\tError:", err)
 			} else if row == nil {
-				fmt.Println("\tDocument not found with filter:", filter)
+				fmt.Println("\t\tDocument not found with filter:", filter)
 			} else {
 				var doc interface{}
 				err := json.Unmarshal(row, &doc)
 				if err != nil {
-					fmt.Println("\tError:", err)
-					fmt.Println("\tData :", string(row))
+					fmt.Println("\\ttError:", err)
+					fmt.Println("\t\tData :", string(row))
 				} else {
-					fmt.Println("\tDocument:", doc)
+					fmt.Println("\t\tDocument:", toJson(doc))
 				}
 			}
 		}
 
-		fmt.Println("==================================================")
+		fmt.Println(SEP)
 	}
 
 	{
+		fmt.Println("-== Load a Multiple Documents from Collection ==-")
+		demo := mongoConnect.GetCollection("demo")
+
 		// load list of documents
 		filter := bson.M{"email": "btnguyen2k(at)gmail.com"}
-		demo := mongoConnect.GetCollection("demo")
-		fmt.Println("Loading documents (with callback & decoded as document) with filter:", filter)
+		fmt.Println("\tLoading documents (with callback & decoded as document) with filter:", filter)
 		result, err := demo.Find(nil, filter)
 		if err != nil {
-			fmt.Println("\tError:", err)
+			fmt.Println("\t\tError:", err)
 		} else {
 			defer result.Close(nil)
 			mongoConnect.DecodeResultCallback(nil, result, func(docNum int, doc bson.M, err error) bool {
 				if err != nil {
-					fmt.Println("\tError loading document #", docNum)
+					fmt.Println("\t\tError loading document #", docNum)
 				} else {
-					fmt.Println("\tDoc [", docNum, "]:", doc)
+					fmt.Println("\t\tDoc [", docNum, "]:", toJson(doc))
 				}
 				return true // continue processing remaining rows
 			})
 		}
 
-		fmt.Println("==================================================")
+		fmt.Println(SEP)
 	}
 
 	{
+		fmt.Println("-== Load a Multiple Documents from Collection ==-")
+		demo := mongoConnect.GetCollection("demo")
+
 		// load list of documents
 		filter := bson.M{"email": "btnguyen2k(at)gmail.com"}
-		demo := mongoConnect.GetCollection("demo")
-		fmt.Println("Loading documents (with callback & decoded as raw json data) with filter:", filter)
+		fmt.Println("\tLoading documents (with callback & decoded as raw json data) with filter:", filter)
 		result, err := demo.Find(nil, filter)
 		if err != nil {
-			fmt.Println("\tError:", err)
+			fmt.Println("\t\tError:", err)
 		} else {
 			defer result.Close(nil)
 			mongoConnect.DecodeResultCallbackRaw(nil, result, func(docNum int, row []byte, err error) bool {
 				if err != nil {
-					fmt.Println("\tError loading document #", docNum)
+					fmt.Println("\t\tError loading document #", docNum)
 				} else {
 					var doc interface{}
 					err := json.Unmarshal(row, &doc)
 					if err != nil {
-						fmt.Println("\tError:", err)
-						fmt.Println("\tData :", string(row))
+						fmt.Println("\t\tError:", err)
+						fmt.Println("\t\tData :", string(row))
 					} else {
-						fmt.Println("\tDoc [", docNum, "]:", doc)
+						fmt.Println("\tDoc [", docNum, "]:", toJson(doc))
 					}
 				}
 				return true // continue processing remaining rows
 			})
 		}
 
-		fmt.Println("==================================================")
+		fmt.Println(SEP)
 	}
 }
