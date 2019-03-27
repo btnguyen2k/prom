@@ -52,4 +52,4 @@ for i := 1; i <= n; i++ {
 
 See usage examples in [examples directory](examples/). Documentation at [![GoDoc](https://godoc.org/github.com/btnguyen2k/prom?status.svg)](https://godoc.org/github.com/btnguyen2k/prom#SqlConnect)
 
-See also [database/sql package](https://golang.org/pkg/database/sql/).
+See also [database/sql](https://golang.org/pkg/database/sql/) package.

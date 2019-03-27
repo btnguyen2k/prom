@@ -9,6 +9,7 @@ Utility library to manage shared connection in Golang.
 
 - ['Prom' for go-redis](go-redis.md).
 - ['Prom' for the official Go driver for MongoDB](mongo.md).
+- ['Prom' for database/sql](sql.md).
 
 
 ## History
