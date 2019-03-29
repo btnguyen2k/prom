@@ -73,7 +73,7 @@ func main() {
 		sql := "DROP TABLE IF EXISTS tbl_demo"
 		_, err := sqlConnect.GetDB().Exec(sql)
 		if err != nil {
-			fmt.Printf("\tError while executing query [%s]: %e\n", sql, err)
+			fmt.Printf("\tError while executing query [%s]: %s\n", sql, err)
 		} else {
 			fmt.Println("\tDropped table [tbl_demo]")
 
@@ -154,7 +154,7 @@ func main() {
 		dbRow := sqlConnect.GetDB().QueryRow(sql, id)
 		data, err := sqlConnect.FetchRow(dbRow, len(colsMssql))
 		if err != nil {
-			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %e\n", id, err)
+			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tRow not found")
 		} else {
@@ -173,7 +173,7 @@ func main() {
 		dbRow = sqlConnect.GetDB().QueryRow(sql, id)
 		data, err = sqlConnect.FetchRow(dbRow, len(colsMssql))
 		if err != nil {
-			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %e\n", id, err)
+			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tNo row matches query")
 		} else {
@@ -202,11 +202,11 @@ func main() {
 		dbRows1, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows1.Close()
 		if err != nil {
-			fmt.Printf("\tE\trror while executing query: %e\n", err)
+			fmt.Printf("\tE\trror while executing query: %s\n", err)
 		} else {
 			rows, err := sqlConnect.FetchRows(dbRows1)
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %e\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
 					printRowMssql(r)
@@ -221,11 +221,11 @@ func main() {
 		dbRows2, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows2.Close()
 		if err != nil {
-			fmt.Printf("\t\tError while executing query: %e\n", err)
+			fmt.Printf("\t\tError while executing query: %s\n", err)
 		} else {
 			rows, err := sqlConnect.FetchRows(dbRows2)
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %e\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
 					printRowMssql(r)
@@ -245,7 +245,7 @@ func main() {
 		sql := "SELECT * FROM tbl_demo WHERE id>=@p1 ORDER BY id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY"
 		callback := func(row map[string]interface{}, err error) bool {
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %e\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else {
 				printRowMssql(row)
 			}
@@ -257,7 +257,7 @@ func main() {
 		dbRows1, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows1.Close()
 		if err != nil {
-			fmt.Printf("\t\tError while executing query: %e\n", err)
+			fmt.Printf("\t\tError while executing query: %s\n", err)
 		} else {
 			sqlConnect.FetchRowsCallback(dbRows1, callback)
 		}
@@ -267,7 +267,7 @@ func main() {
 		dbRows2, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows2.Close()
 		if err != nil {
-			fmt.Printf("\t\tError while executing query: %e\n", err)
+			fmt.Printf("\t\tError while executing query: %s\n", err)
 		} else {
 			sqlConnect.FetchRowsCallback(dbRows2, callback)
 		}

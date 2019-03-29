@@ -103,6 +103,7 @@ func main() {
 
 	{
 		fmt.Println("-== Insert Rows to Table ==-")
+		loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
 
 		// insert some rows
 		sql := "INSERT INTO tbl_demo ("
@@ -117,7 +118,7 @@ func main() {
 		n := 100
 		fmt.Printf("\tInserting %d rows to table [tbl_demo]\n", n)
 		for i := 1; i <= n; i++ {
-			t := time.Unix(int64(rand.Int31()), rand.Int63()%1000000000)
+			t := time.Unix(int64(rand.Int31()), rand.Int63()%1000000000).In(loc)
 			id := i
 			username := t.String()
 			email := strconv.Itoa(int(rand.Int31n(int32(n)))) + "@" + strconv.Itoa(int(rand.Int31n(9999))) + ".com"
@@ -192,8 +193,6 @@ func main() {
 	{
 		fmt.Println("-== Query Multiple Rows from Table ==-")
 
-		// query multiple rows: https://docs.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql?view=sql-server-2017
-		// (SQL Server 2012+ only)
 		sql := "SELECT * FROM tbl_demo WHERE id>=:1 ORDER BY id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY"
 
 		id := rand.Intn(100) + 1
