@@ -271,19 +271,20 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
+	if err != nil {
+		return nil, err
+	}
 	result := map[string]interface{}{}
 	for k, v := range colsAndTypes {
-		// if v.Name() == "data_time" || v.Name() == "data_timez" {
-		// 	fmt.Println(v.Name(), v.DatabaseTypeName(), v.ScanType(), v.ScanType().Kind())
-		// 	fmt.Println(vals[k])
-		// }
 		if v.ScanType() == rawBytesType && sc.isStringType(v) {
 			// when string is loaded as []byte
 			result[v.Name()] = string(vals[k].([]byte))
-		} else if v.ScanType() == rawBytesType && sc.isDateTimeType(v) {
-			// when date/time is loaded as []byte
-			// TODO
-			result[v.Name()] = string(vals[k].([]byte))
+		} else if sc.flavor == FlavorMySql && v.ScanType() == rawBytesType && strings.ToUpper(v.DatabaseTypeName()) == "TIME" {
+			// Mysql's TIME is loaded as []byte
+			result[v.Name()], err = time.Parse("15:04:05", string(vals[k].([]byte)))
+			if err != nil {
+				return nil, err
+			}
 		} else if sc.flavor == FlavorPgSql && v.ScanType().Kind() == reflect.Interface && sc.isStringType(v) {
 			// Postgresql's CHAR(1) is loaded as []byte
 			result[v.Name()] = string(vals[k].([]byte))

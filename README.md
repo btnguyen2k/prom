@@ -14,6 +14,11 @@ Utility library to manage shared connection in Golang.
 
 ## History
 
+### 2019-04-01 - v0.1.1
+
+- ['Prom' for database/sql](sql.md): solve the case when Mysql's `TIME` is loaded as `[]byte`.
+
+
 ### 2019-03-27 - v0.1.0
 
 - Migrated Go modular design.
