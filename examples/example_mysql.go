@@ -11,10 +11,13 @@ import (
 	"time"
 )
 
+var timezoneMysql = "Asia/Kabul"
+
 // construct an 'prom.SqlConnect' instance
 func createSqlConnectMysql() *prom.SqlConnect {
 	driver := "mysql"
-	dsn := "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&loc=Asia%2FHo_Chi_Minh&parseTime=true"
+	dsn := "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc="
+	dsn += strings.ReplaceAll(timezoneMysql, "/", "%2f")
 	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorMySql)
 	if sqlConnect == nil || err != nil {
 		if err != nil {
@@ -24,6 +27,8 @@ func createSqlConnectMysql() *prom.SqlConnect {
 			panic("error creating [prom.SqlConnect] instance")
 		}
 	}
+	loc, _ := time.LoadLocation(timezoneMysql)
+	sqlConnect.SetLocation(loc)
 	return sqlConnect
 }
 
@@ -48,6 +53,8 @@ func main() {
 	SEP := "======================================================================"
 	sqlConnect := createSqlConnectMysql()
 	defer sqlConnect.Close()
+	loc, _ := time.LoadLocation(timezoneMysql)
+	fmt.Println("Timezone:", loc)
 
 	{
 		fmt.Println("-== Database & Ping info ==-")
@@ -104,7 +111,6 @@ func main() {
 
 	{
 		fmt.Println("-== Insert Rows to Table ==-")
-		loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
 
 		// insert some rows
 		sql := "INSERT INTO tbl_demo ("
@@ -152,7 +158,7 @@ func main() {
 		dbRow := sqlConnect.GetDB().QueryRow(sql, id)
 		data, err := sqlConnect.FetchRow(dbRow, len(colsMysql))
 		if err != nil {
-			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %e\n", id, err)
+			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tRow not found")
 		} else {
@@ -171,7 +177,7 @@ func main() {
 		dbRow = sqlConnect.GetDB().QueryRow(sql, id)
 		data, err = sqlConnect.FetchRow(dbRow, len(colsMysql))
 		if err != nil {
-			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %e\n", id, err)
+			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tNo row matches query")
 		} else {

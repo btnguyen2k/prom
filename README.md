@@ -14,6 +14,13 @@ Utility library to manage shared connection in Golang.
 
 ## History
 
+### 2019-04-03 - v0.1.2
+
+- ['Prom' for database/sql](sql.md):
+  - Add timezone location attribute to `SqlConnect` struct.
+  - Correctly parse date/time data from db using timezone location attribute.
+
+
 ### 2019-04-01 - v0.1.1
 
 - ['Prom' for database/sql](sql.md): solve the case when Mysql's `TIME` is loaded as `[]byte`.

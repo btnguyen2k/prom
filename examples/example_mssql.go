@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+var timezoneMssql = "Asia/Kabul"
+
 // construct an 'prom.MongoConnect' instance
 func createSqlConnectMssql() *prom.SqlConnect {
 	driver := "sqlserver"
@@ -24,6 +26,8 @@ func createSqlConnectMssql() *prom.SqlConnect {
 			panic("error creating [prom.SqlConnect] instance")
 		}
 	}
+	loc, _ := time.LoadLocation(timezoneMssql)
+	sqlConnect.SetLocation(loc)
 	return sqlConnect
 }
 
@@ -48,6 +52,8 @@ func main() {
 	SEP := "======================================================================"
 	sqlConnect := createSqlConnectMssql()
 	defer sqlConnect.Close()
+	loc, _ := time.LoadLocation(timezoneMssql)
+	fmt.Println("Timezone:", loc)
 
 	{
 		fmt.Println("-== Database & Ping info ==-")
@@ -118,7 +124,7 @@ func main() {
 		n := 100
 		fmt.Printf("\tInserting %d rows to table [tbl_demo]\n", n)
 		for i := 1; i <= n; i++ {
-			t := time.Unix(int64(rand.Int31()), rand.Int63()%1000000000)
+			t := time.Unix(int64(rand.Int31()), rand.Int63()%1000000000).In(loc)
 			id := i
 			username := t.String()
 			email := strconv.Itoa(int(rand.Int31n(int32(n)))) + "@" + strconv.Itoa(int(rand.Int31n(9999))) + ".com"
@@ -154,16 +160,16 @@ func main() {
 		dbRow := sqlConnect.GetDB().QueryRow(sql, id)
 		data, err := sqlConnect.FetchRow(dbRow, len(colsMssql))
 		if err != nil {
-			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
+			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tRow not found")
 		} else {
 			for _, v := range data {
 				switch v.(type) {
 				case []byte:
-					fmt.Println("\t\t", string(v.([]byte)))
+					fmt.Println("\t\t", reflect.TypeOf(v), string(v.([]byte)))
 				default:
-					fmt.Println("\t\t", v)
+					fmt.Println("\t\t", reflect.TypeOf(v), v)
 				}
 			}
 		}
@@ -173,16 +179,16 @@ func main() {
 		dbRow = sqlConnect.GetDB().QueryRow(sql, id)
 		data, err = sqlConnect.FetchRow(dbRow, len(colsMssql))
 		if err != nil {
-			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
+			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tNo row matches query")
 		} else {
 			for _, v := range data {
 				switch v.(type) {
 				case []byte:
-					fmt.Println("\t\t", string(v.([]byte)))
+					fmt.Println("\t\t", reflect.TypeOf(v), string(v.([]byte)))
 				default:
-					fmt.Println("\t\t", v)
+					fmt.Println("\t\t", reflect.TypeOf(v), v)
 				}
 			}
 		}

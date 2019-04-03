@@ -63,6 +63,7 @@ type SqlConnect struct {
 	timeoutMs   int             // default timeout for db operations, in milliseconds
 	flavor      DbFlavor        // database flavor
 	db          *sql.DB         // database instance
+	loc         *time.Location  // timezone location to parse date/time data, new since v0.1.2
 }
 
 /*
@@ -105,6 +106,7 @@ func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOptio
 		poolOptions: poolOptions,
 		timeoutMs:   defaultTimeoutMs,
 		flavor:      flavor,
+		loc:         time.UTC,
 	}
 	db, err := sql.Open(driver, dsn)
 	if poolOptions != nil {
@@ -133,6 +135,36 @@ Available since v0.1.0
 func (sc *SqlConnect) SetDbFlavor(flavor DbFlavor) *SqlConnect {
 	sc.flavor = flavor
 	return sc
+}
+
+/*
+GetLocation returns the timezone location associated with this SqlConnect.
+
+Available since v0.1.2
+*/
+func (sc *SqlConnect) GetLocation() *time.Location {
+	return sc.loc
+}
+
+/*
+SetLocation associates a timezone location with this SqlConnect, used when parsing date/time data. Default value is time.UTC.
+
+Available since v0.1.2
+*/
+func (sc *SqlConnect) SetLocation(loc *time.Location) *SqlConnect {
+	if loc == nil {
+		sc.loc = time.UTC
+	} else {
+		sc.loc = loc
+	}
+	return sc
+}
+
+func (sc *SqlConnect) ensureLocation() *time.Location {
+	if sc.loc == nil {
+		sc.loc = time.UTC
+	}
+	return sc.loc
 }
 
 /*
@@ -213,6 +245,8 @@ func (sc *SqlConnect) FetchRow(row *sql.Row, numCols int) ([]interface{}, error)
 }
 
 var rawBytesType = reflect.TypeOf(sql.RawBytes{})
+var bytesArrType = reflect.TypeOf([]byte{})
+var uint8ArrType = reflect.TypeOf([]uint8{})
 var dbStringTypes = map[string]map[DbFlavor]bool{
 	"CHAR":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
 	"VARCHAR":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
@@ -260,6 +294,11 @@ func (sc *SqlConnect) isDateTimeType(col *sql.ColumnType) bool {
 	return e
 }
 
+func isRawBytesType(v interface{}) bool {
+	t := reflect.TypeOf(v)
+	return t == rawBytesType || t == bytesArrType || t == uint8ArrType
+}
+
 func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType) (map[string]interface{}, error) {
 	numCols := len(colsAndTypes)
 	vals := make([]interface{}, numCols)
@@ -276,12 +315,25 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 	}
 	result := map[string]interface{}{}
 	for k, v := range colsAndTypes {
-		if v.ScanType() == rawBytesType && sc.isStringType(v) {
+		if sc.isStringType(v) && isRawBytesType(vals[k]) {
 			// when string is loaded as []byte
 			result[v.Name()] = string(vals[k].([]byte))
-		} else if sc.flavor == FlavorMySql && v.ScanType() == rawBytesType && strings.ToUpper(v.DatabaseTypeName()) == "TIME" {
-			// Mysql's TIME is loaded as []byte
-			result[v.Name()], err = time.Parse("15:04:05", string(vals[k].([]byte)))
+		} else if sc.flavor == FlavorMySql && sc.isDateTimeType(v) && isRawBytesType(vals[k]) {
+			// Mysql's TIME/DATE/DATETIME/TIMESTAMP is loaded as []byte
+			loc := sc.ensureLocation()
+			var err error
+			switch strings.ToUpper(v.DatabaseTypeName()) {
+			case "TIME":
+				result[v.Name()], err = time.ParseInLocation("15:04:05", string(vals[k].([]byte)), loc)
+			case "DATE":
+				result[v.Name()], err = time.ParseInLocation("2006-01-02", string(vals[k].([]byte)), loc)
+			case "DATETIME":
+				result[v.Name()], err = time.ParseInLocation("2006-01-02 15:04:05", string(vals[k].([]byte)), loc)
+			case "TIMESTAMP":
+				result[v.Name()], err = time.ParseInLocation("2006-01-02 15:04:05", string(vals[k].([]byte)), loc)
+			default:
+				return nil, err
+			}
 			if err != nil {
 				return nil, err
 			}

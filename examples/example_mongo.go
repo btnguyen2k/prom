@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"github.com/btnguyen2k/prom"
 	"go.mongodb.org/mongo-driver/bson"
+	"math/rand"
+	"time"
 )
+
+var timezoneMongo = "Asia/Kabul"
 
 // construct an 'prom.MongoConnect' instance
 func createMongoConnect() *prom.MongoConnect {
@@ -25,9 +29,12 @@ func toJson(o interface{}) string {
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
 	SEP := "======================================================================"
 	mongoConnect := createMongoConnect()
 	defer mongoConnect.Disconnect(nil)
+	loc, _ := time.LoadLocation(timezoneMongo)
+	fmt.Println("Timezone:", loc)
 
 	{
 		fmt.Println("-== Database & Ping info ==-")
@@ -102,18 +109,21 @@ func main() {
 		fmt.Println("-== Insert Documents to Collection ==-")
 		demo := mongoConnect.GetCollection("demo")
 
+		t := time.Unix(int64(rand.Int31()), rand.Int63()%1000000000).In(loc)
 		doc := map[string]interface{}{
 			"username":   "btnguyen2k",
 			"email":      "btnguyen2k(at)gmail.com",
 			"data_bool":  true,
 			"data_int":   103,
 			"data_float": 19.81,
+			"date_time":  t,
 			"data_map": map[string]interface{}{
 				"a": "a string",
 				"b": 1,
 				"c": false,
+				"t": t,
 			},
-			"data_arr": []interface{}{"1", 2, 3.4},
+			"data_arr": []interface{}{"1", 2, 3.4, t},
 		}
 		fmt.Println("\tInserting document:", toJson(doc))
 		result, err := demo.InsertOne(nil, doc)
@@ -123,11 +133,13 @@ func main() {
 			fmt.Println("\t\tNew document:", result.InsertedID)
 		}
 
+		t = time.Unix(int64(rand.Int31()), rand.Int63()%1000000000).In(loc)
 		doc = map[string]interface{}{
 			"username": "nbthanh",
 			"email":    "btnguyen2k(at)gmail.com",
 			"name":     "Thanh Nguyen",
 			"tags":     []string{"HTML", "CSS", "JS"},
+			"time":     t,
 		}
 		fmt.Println("\tInserting document:", toJson(doc))
 		result, err = demo.InsertOne(nil, doc)

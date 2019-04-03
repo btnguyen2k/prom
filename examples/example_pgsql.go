@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+var timezonePgsql = "Asia/Kabul"
+
 // construct an 'prom.MongoConnect' instance
 func createSqlConnectPgsql() *prom.SqlConnect {
 	driver := "postgres"
@@ -24,6 +26,8 @@ func createSqlConnectPgsql() *prom.SqlConnect {
 			panic("error creating [prom.SqlConnect] instance")
 		}
 	}
+	loc, _ := time.LoadLocation(timezonePgsql)
+	sqlConnect.SetLocation(loc)
 	return sqlConnect
 }
 
@@ -48,6 +52,8 @@ func main() {
 	SEP := "======================================================================"
 	sqlConnect := createSqlConnectPgsql()
 	defer sqlConnect.Close()
+	loc, _ := time.LoadLocation(timezonePgsql)
+	fmt.Println("Timezone:", loc)
 
 	{
 		fmt.Println("-== Database & Ping info ==-")
@@ -104,7 +110,6 @@ func main() {
 
 	{
 		fmt.Println("-== Insert Rows to Table ==-")
-		loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
 
 		// insert some rows
 		sql := "INSERT INTO tbl_demo ("
@@ -162,9 +167,9 @@ func main() {
 			for _, v := range data {
 				switch v.(type) {
 				case []byte:
-					fmt.Println("\t\t", string(v.([]byte)))
+					fmt.Println("\t\t", reflect.TypeOf(v), string(v.([]byte)))
 				default:
-					fmt.Println("\t\t", v)
+					fmt.Println("\t\t", reflect.TypeOf(v), v)
 				}
 			}
 		}
@@ -174,16 +179,16 @@ func main() {
 		dbRow = sqlConnect.GetDB().QueryRow(sql, id)
 		data, err = sqlConnect.FetchRow(dbRow, len(colsPgsql))
 		if err != nil {
-			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
+			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tNo row matches query")
 		} else {
 			for _, v := range data {
 				switch v.(type) {
 				case []byte:
-					fmt.Println("\t\t", string(v.([]byte)))
+					fmt.Println("\t\t", reflect.TypeOf(v), string(v.([]byte)))
 				default:
-					fmt.Println("\t\t", v)
+					fmt.Println("\t\t", reflect.TypeOf(v), v)
 				}
 			}
 		}
@@ -202,7 +207,7 @@ func main() {
 		dbRows1, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows1.Close()
 		if err != nil {
-			fmt.Printf("\tE\trror while executing query: %s\n", err)
+			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else {
 			rows, err := sqlConnect.FetchRows(dbRows1)
 			if err != nil {
