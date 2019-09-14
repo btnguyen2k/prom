@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"github.com/btnguyen2k/prom"
+    "fmt"
+    "github.com/btnguyen2k/prom"
 )
 
 /*
@@ -14,30 +14,41 @@ Setup a Redis Sentinel using docker:
 */
 
 func main() {
-	hostsAndPorts := "localhost:6379;localhost:26379" // first server is normal Redis server, second one is sentinel server
-	password := ""
-	maxRetries := 3
-	goRedisConnect := prom.NewGoRedisConnect(hostsAndPorts, password, maxRetries)
+    SEP := "======================================================================"
 
-	db := 0
-	client := goRedisConnect.GetClient(db)
-	{
-		fmt.Println("Redis client:", client)
-		result, err := client.FlushAll().Result()
-		fmt.Println("FlushAll:", result, err)
-		result, err = client.Ping().Result()
-		fmt.Println("Ping    :", result, err)
-		fmt.Println("==============================")
-	}
+    hostsAndPorts := "localhost:7006;localhost:5000" // first server is normal Redis server, second one is sentinel server
+    password := ""
+    maxRetries := 3
+    goRedisConnect := prom.NewGoRedisConnect(hostsAndPorts, password, maxRetries)
 
-	goRedisConnect.SetSentinelMasterName("mymaster")
-	failoverClient := goRedisConnect.GetFailoverClient(db)
-	{
-		fmt.Println("Sentinel Redis client:", failoverClient)
-		result, err := failoverClient.FlushAll().Result()
-		fmt.Println("FlushAll:", result, err)
-		result, err = failoverClient.Ping().Result()
-		fmt.Println("Ping    :", result, err)
-		fmt.Println("==============================")
-	}
+    db := 0
+    client := goRedisConnect.GetClient(db)
+    {
+        fmt.Println(SEP)
+        fmt.Println("Redis client:", client)
+        result, err := client.FlushAll().Result()
+        fmt.Println("FlushAll:", result, err)
+        result, err = client.Ping().Result()
+        fmt.Println("Ping    :", result, err)
+
+        fmt.Println(SEP)
+        resultGet := client.Get("key")
+        fmt.Println("Get[key]:", resultGet)
+        resultSet := client.Set("key", "value", 0)
+        fmt.Println("Set[key]:", resultSet)
+        resultGet = client.Get("key")
+        fmt.Println("Get[key]:", resultGet)
+    }
+
+    //
+    // goRedisConnect.SetSentinelMasterName("master")
+    // failoverClient := goRedisConnect.GetFailoverClient(db)
+    // {
+    // 	fmt.Println("Sentinel Redis client:", failoverClient)
+    // 	result, err := failoverClient.FlushAll().Result()
+    // 	fmt.Println("FlushAll:", result, err)
+    // 	result, err = failoverClient.Ping().Result()
+    // 	fmt.Println("Ping    :", result, err)
+    // 	fmt.Println("==============================")
+    // }
 }

@@ -14,6 +14,18 @@ Utility library to manage shared connection in Golang.
 
 ## History
 
+### 2019-09-14 - v0.1.3
+
+- ['Prom' for go-redis](go-redis.md):
+  - Upgrade to [github.com/go-redis/redis](https://github.com/go-redis/redis) `v6.15.5`.
+- ['Prom' for the official Go driver for MongoDB](mongo.md):
+  - Upgrade to [go.mongodb.org/mongo-driver](https://godoc.org/go.mongodb.org/mongo-driver/) `v1.1.1`.
+  - Fixed bug `"no documents in result"`
+- ['Prom' for database/sql](sql.md):
+  - Upgrade to [github.com/lib/pq](https://github.com/lib/pq) `v1.2.0`.
+  - Upgrade to [gopkg.in/goracle.v2](https://github.com/go-goracle/goracle) `v2.20.1`.
+
+
 ### 2019-04-03 - v0.1.2
 
 - ['Prom' for database/sql](sql.md):

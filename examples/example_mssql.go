@@ -16,7 +16,7 @@ var timezoneMssql = "Asia/Kabul"
 // construct an 'prom.MongoConnect' instance
 func createSqlConnectMssql() *prom.SqlConnect {
 	driver := "sqlserver"
-	dsn := "sqlserver://sa:test@localhost:1433?database=tempdb"
+	dsn := "sqlserver://sa:Password1@localhost:1433?database=tempdb"
 	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorMsSql)
 	if sqlConnect == nil || err != nil {
 		if err != nil {

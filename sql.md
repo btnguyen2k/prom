@@ -1,6 +1,12 @@
 **'Prom' for the `database/sql` package (https://golang.org/pkg/database/sql/)**
 
-Usage (for MySQL):
+Drivers:
+- [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql).
+- [x] PostgreSQL: [github.com/lib/pq](https://github.com/lib/pq).
+- [x] Oracle: [gopkg.in/goracle.v2](https://github.com/go-goracle/goracle).
+- [ ] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb) (_experimental_).
+
+Sample usage (MySQL):
 
 ```golang
 import (
