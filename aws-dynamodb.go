@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	// AwsDynamodbNoIndex indicates that no index will be used
 	AwsDynamodbNoIndex = ""
 )
 
@@ -25,7 +26,7 @@ AwsDynamodbItem defines a generic structure for DynamoDB item.
 type AwsDynamodbItem map[string]interface{}
 
 /*
-AwsDynamodbItem defines a generic name & type pair.
+AwsDynamodbNameAndType defines a generic name & type pair.
 */
 type AwsDynamodbNameAndType struct{ Name, Type string }
 

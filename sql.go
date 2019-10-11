@@ -168,10 +168,21 @@ func (sc *SqlConnect) ensureLocation() *time.Location {
 }
 
 /*
-NewContext creates a new background context with specified timeout in milliseconds.
-If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
+NewBackgroundContext is alias of NewContext.
+
+Deprecated: since v0.2.0, use NewContext instead.
 */
 func (sc *SqlConnect) NewBackgroundContext(timeoutMs ...int) (context.Context, context.CancelFunc) {
+	return sc.NewContext(timeoutMs...)
+}
+
+/*
+NewContext creates a new context with specified timeout in milliseconds.
+If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
+
+Available: since v0.2.0
+*/
+func (sc *SqlConnect) NewContext(timeoutMs ...int) (context.Context, context.CancelFunc) {
 	d := sc.timeoutMs
 	if len(timeoutMs) > 0 && timeoutMs[0] > 0 {
 		d = timeoutMs[0]
