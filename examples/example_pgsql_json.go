@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// construct an 'prom.MongoConnect' instance
+// construct an 'prom.SqlConnect' instance
 func createSqlConnectPgsqlJson() *prom.SqlConnect {
 	driver := "postgres"
 	dsn := "postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"

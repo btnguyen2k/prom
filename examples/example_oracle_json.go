@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// construct an 'prom.MongoConnect' instance
+// construct an 'prom.SqlConnect' instance
 func createSqlConnectOracleJson() *prom.SqlConnect {
 	driver := "goracle"
 	dsn := "test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521)))(CONNECT_DATA=(SID=ORCLCDB)))"

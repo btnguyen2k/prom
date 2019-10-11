@@ -13,7 +13,7 @@ import (
 
 var timezoneMssql = "Asia/Kabul"
 
-// construct an 'prom.MongoConnect' instance
+// construct an 'prom.SqlConnect' instance
 func createSqlConnectMssql() *prom.SqlConnect {
 	driver := "sqlserver"
 	dsn := "sqlserver://sa:Password1@localhost:1433?database=tempdb"

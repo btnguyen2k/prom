@@ -9,13 +9,13 @@ import (
 	"time"
 )
 
-var timezoneMongo = "Asia/Kabul"
+var _timezoneMongo = "Asia/Ho_Chi_Minh"
 
 // construct an 'prom.MongoConnect' instance
-func createMongoConnect() *prom.MongoConnect {
-	url := "mongodb://test:test@localhost:27017/test"
+func _createMongoConnect() *prom.MongoConnect {
+	url := "mongodb://test:test@localhost:27017/test?retryWrites=true&w=majority"
 	db := "test"
-	timeoutMs := 10000
+	timeoutMs := 30000
 	mongoConnect, _ := prom.NewMongoConnect(url, db, timeoutMs)
 	if mongoConnect == nil {
 		panic("error creating [prom.MongoConnect] instance")
@@ -23,7 +23,7 @@ func createMongoConnect() *prom.MongoConnect {
 	return mongoConnect
 }
 
-func toJson(o interface{}) string {
+func _toJson(o interface{}) string {
 	js, _ := json.Marshal(o)
 	return string(js)
 }
@@ -31,9 +31,9 @@ func toJson(o interface{}) string {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	SEP := "======================================================================"
-	mongoConnect := createMongoConnect()
-	defer mongoConnect.Close(nil)
-	loc, _ := time.LoadLocation(timezoneMongo)
+	mongoConnect := _createMongoConnect()
+	defer mongoConnect.Disconnect(nil)
+	loc, _ := time.LoadLocation(_timezoneMongo)
 	fmt.Println("Timezone:", loc)
 
 	{
@@ -125,7 +125,7 @@ func main() {
 			},
 			"data_arr": []interface{}{"1", 2, 3.4, t},
 		}
-		fmt.Println("\tInserting document:", toJson(doc))
+		fmt.Println("\tInserting document:", _toJson(doc))
 		result, err := demo.InsertOne(nil, doc)
 		if err != nil {
 			fmt.Println("\t\tError:", err)
@@ -141,7 +141,7 @@ func main() {
 			"tags":     []string{"HTML", "CSS", "JS"},
 			"time":     t,
 		}
-		fmt.Println("\tInserting document:", toJson(doc))
+		fmt.Println("\tInserting document:", _toJson(doc))
 		result, err = demo.InsertOne(nil, doc)
 		if err != nil {
 			fmt.Println("\t\tError:", err)
@@ -166,7 +166,7 @@ func main() {
 			} else if row == nil {
 				fmt.Println("\t\tDocument not found with filter:", filter)
 			} else {
-				fmt.Println("\t\tDocument:", toJson(row))
+				fmt.Println("\t\tDocument:", _toJson(row))
 			}
 		}
 		{
@@ -177,7 +177,7 @@ func main() {
 			} else if row == nil {
 				fmt.Println("\t\tDocument not found with filter:", filter)
 			} else {
-				fmt.Println("\t\tDocument:", toJson(row))
+				fmt.Println("\t\tDocument:", _toJson(row))
 			}
 		}
 
@@ -205,7 +205,7 @@ func main() {
 					fmt.Println("\t\tError:", err)
 					fmt.Println("\t\tData :", string(row))
 				} else {
-					fmt.Println("\t\tDocument:", toJson(doc))
+					fmt.Println("\t\tDocument:", _toJson(doc))
 				}
 			}
 		}
@@ -223,7 +223,7 @@ func main() {
 					fmt.Println("\\ttError:", err)
 					fmt.Println("\t\tData :", string(row))
 				} else {
-					fmt.Println("\t\tDocument:", toJson(doc))
+					fmt.Println("\t\tDocument:", _toJson(doc))
 				}
 			}
 		}
@@ -247,7 +247,7 @@ func main() {
 				if err != nil {
 					fmt.Println("\t\tError loading document #", docNum)
 				} else {
-					fmt.Println("\t\tDoc [", docNum, "]:", toJson(doc))
+					fmt.Println("\t\tDoc [", docNum, "]:", _toJson(doc))
 				}
 				return true // continue processing remaining rows
 			})
@@ -278,7 +278,7 @@ func main() {
 						fmt.Println("\t\tError:", err)
 						fmt.Println("\t\tData :", string(row))
 					} else {
-						fmt.Println("\tDoc [", docNum, "]:", toJson(doc))
+						fmt.Println("\tDoc [", docNum, "]:", _toJson(doc))
 					}
 				}
 				return true // continue processing remaining rows

@@ -13,7 +13,7 @@ import (
 
 var timezoneOracle = "Asia/Kabul"
 
-// construct an 'prom.MongoConnect' instance
+// construct an 'prom.SqlConnect' instance
 func createSqlConnectOracle() *prom.SqlConnect {
 	driver := "goracle"
 	dsn := "test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521)))(CONNECT_DATA=(SID=ORCLCDB)))"

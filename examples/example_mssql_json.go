@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// construct an 'prom.MongoConnect' instance
+// construct an 'prom.SqlConnect' instance
 func createSqlConnectMssqlJson() *prom.SqlConnect {
 	driver := "sqlserver"
 	dsn := "sqlserver://sa:Password1@localhost:1433?database=tempdb"
