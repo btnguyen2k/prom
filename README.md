@@ -10,9 +10,25 @@ Utility library to manage shared connection in Golang.
 - ['Prom' for go-redis](go-redis.md).
 - ['Prom' for the official Go driver for MongoDB](mongo.md).
 - ['Prom' for database/sql](sql.md).
+- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
 
 
 ## History
+
+### 2019-10-12 - v0.2.0
+
+- New ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+  - [Usage examples](examples/example_aws-dynamodb_base.go).
+- For API consistency:
+  - New function `MongoConnect.Close(context.Context) error` to replace `Disconnect(ctx context.Context) error`.
+  - New function `GoRedisConnect.Close() error`.
+- ['Prom' for go-redis](go-redis.md):
+  - Upgrade to [github.com/go-redis/redis](https://github.com/go-redis/redis) `v6.15.6`.
+- ['Prom' for the official Go driver for MongoDB](mongo.md):
+  - Upgrade to [go.mongodb.org/mongo-driver](https://godoc.org/go.mongodb.org/mongo-driver/) `v1.1.2`.
+- ['Prom' for database/sql](sql.md):
+  - Upgrade to [gopkg.in/goracle.v2](https://github.com/go-goracle/goracle) `v2.21.4`.
+
 
 ### 2019-09-14 - v0.1.3
 
@@ -68,7 +84,7 @@ Utility library to manage shared connection in Golang.
 - ['Prom' for the official Go driver for MongoDB](mongo.md):
   - Bug fixes, enhancements & refactoring
   - Add [usage examples](examples/example_mongo.go)
-- New ['Prom' for go-redis](go-redis.md):  
+- New ['Prom' for go-redis](go-redis.md):
   - [Usage examples](examples/example_go-redis.go)
 
 ### 2019-03-04 - v0.0.2

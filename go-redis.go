@@ -69,6 +69,43 @@ var mutexGoredis sync.Mutex
 
 /*----------------------------------------------------------------------*/
 
+func (r *GoRedisConnect) closeClients() {
+	if r.clients != nil {
+		for _, c := range r.clients {
+			c.Close()
+		}
+	}
+	r.clients = map[int]*redis.Client{}
+}
+
+func (r *GoRedisConnect) closeFailoverClients() {
+	if r.failoverClients != nil {
+		for _, c := range r.failoverClients {
+			c.Close()
+		}
+	}
+	r.failoverClients = map[int]*redis.Client{}
+}
+
+func (r *GoRedisConnect) closeClusterClient() {
+	if r.clusterClient != nil {
+		r.clusterClient.Close()
+	}
+	r.clusterClient = nil
+}
+
+/*
+Close closes all underlying Redis connections associated with this GoRedisConnect.
+
+Available: since v0.2.0
+*/
+func (r *GoRedisConnect) Close() error {
+	go r.closeClients()
+	go r.closeFailoverClients()
+	go r.closeClusterClient()
+	return nil
+}
+
 func (r *GoRedisConnect) newClient(db int) *redis.Client {
 	if db < 0 {
 		db = 0

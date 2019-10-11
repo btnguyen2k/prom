@@ -12,14 +12,14 @@ import (
 /*
 DbFlavor specifies the flavor or database server/vendor.
 
-Available since v0.1.0
+Available: since v0.1.0
 */
 type DbFlavor int
 
 /*
 Predefined db flavors.
 
-Available since v0.1.0
+Available: since v0.1.0
 */
 const (
 	FlavorDefault DbFlavor = iota
@@ -78,8 +78,6 @@ func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoo
 /*
 NewSqlConnectWithFlavor constructs a new SqlConnect instance.
 
-Available since v0.1.0
-
 Parameters:
 
 	- driver          : database driver name
@@ -92,6 +90,8 @@ Return: the SqlConnect instance and error (if any). Note:
 
   - In case of connection error: this function returns the SqlConnect instance and the error.
   - Other error: this function returns (nil, error)
+
+Available: since v0.1.0
 */
 func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions, flavor DbFlavor) (*SqlConnect, error) {
 	if defaultTimeoutMs < 0 {
@@ -121,7 +121,7 @@ func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOptio
 /*
 GetDbFlavor returns the current database flavor associated with this SqlConnect.
 
-Available since v0.1.0
+Available: since v0.1.0
 */
 func (sc *SqlConnect) GetDbFlavor() DbFlavor {
 	return sc.flavor
@@ -130,7 +130,7 @@ func (sc *SqlConnect) GetDbFlavor() DbFlavor {
 /*
 SetDbFlavor associates a database flavor with this SqlConnect.
 
-Available since v0.1.0
+Available: since v0.1.0
 */
 func (sc *SqlConnect) SetDbFlavor(flavor DbFlavor) *SqlConnect {
 	sc.flavor = flavor
@@ -140,7 +140,7 @@ func (sc *SqlConnect) SetDbFlavor(flavor DbFlavor) *SqlConnect {
 /*
 GetLocation returns the timezone location associated with this SqlConnect.
 
-Available since v0.1.2
+Available: since v0.1.2
 */
 func (sc *SqlConnect) GetLocation() *time.Location {
 	return sc.loc
@@ -149,7 +149,7 @@ func (sc *SqlConnect) GetLocation() *time.Location {
 /*
 SetLocation associates a timezone location with this SqlConnect, used when parsing date/time data. Default value is time.UTC.
 
-Available since v0.1.2
+Available: since v0.1.2
 */
 func (sc *SqlConnect) SetLocation(loc *time.Location) *SqlConnect {
 	if loc == nil {
@@ -168,7 +168,7 @@ func (sc *SqlConnect) ensureLocation() *time.Location {
 }
 
 /*
-NewBackgroundContext creates a new background context with specified timeout in milliseconds.
+NewContext creates a new background context with specified timeout in milliseconds.
 If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
 */
 func (sc *SqlConnect) NewBackgroundContext(timeoutMs ...int) (context.Context, context.CancelFunc) {
