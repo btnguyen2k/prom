@@ -7,5 +7,5 @@ package prom
 
 const (
 	// Version of prom
-	Version = "0.1.3"
+	Version = "0.2.0"
 )
