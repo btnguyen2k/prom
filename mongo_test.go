@@ -1,6 +1,8 @@
 package prom
 
 import (
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"testing"
 	"time"
 )
@@ -80,34 +82,149 @@ func TestMongoConnect_CreateCollection(t *testing.T) {
 	}
 }
 
-func TestMongoConnect_CreateIndexes(t *testing.T) {
-	name := "TestMongoConnect_CreateIndexes"
+func TestMongoConnect_CreateIndexes1(t *testing.T) {
+	name := "TestMongoConnect_CreateIndexes1"
 	mc := _newMongoConnect()
-	err := mc.GetCollection(_testMongoCollection).Drop(nil)
-	if err != nil {
-		t.Fatalf("%s failed - error dropping collection [%s]: %e", name, _testMongoCollection, err)
-	}
-	_, err = mc.CreateCollection(_testMongoCollection)
-	if err != nil {
-		t.Fatalf("%s failed - error creating collection [%s]: %e", name, _testMongoCollection, err)
-	}
+
+	fieldMapNamespace := "ns"
+	fieldMapFrom := "frm"
+	fieldMapTo := "to"
 	indexes := []interface{}{
 		map[string]interface{}{
 			"key": map[string]interface{}{
-				"id": 1, // ascending index
+				fieldMapNamespace: 1,
+				fieldMapFrom:      1,
 			},
-			"name":   "uidx_id",
+			"name":   "uidx_from",
 			"unique": true,
 		},
 		map[string]interface{}{
 			"key": map[string]interface{}{
-				"email": -1, // descending index
+				fieldMapNamespace: 1,
+				fieldMapTo:        1,
 			},
-			"name": "uidx_email",
+			"name": "idx_to",
 		},
 	}
-	_, err = mc.CreateIndexes(_testMongoCollection, indexes)
-	if err != nil {
-		t.Fatalf("%s failed - error creating indexes: %e", name, err)
+	for i := 0; i < 10; i++ {
+		err := mc.GetCollection(_testMongoCollection).Drop(nil)
+		if err != nil {
+			t.Fatalf("[Loop %d] %s failed - error dropping collection [%s]: %e", i, name, _testMongoCollection, err)
+		}
+		colResult, err := mc.CreateCollection(_testMongoCollection)
+		if err != nil || colResult.Err() != nil {
+			if err != nil {
+				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, err)
+			} else {
+				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, colResult.Err())
+			}
+		}
+		idxResult, err := mc.CreateCollectionIndexes(_testMongoCollection, indexes)
+		if err != nil || idxResult == nil || len(idxResult) < 1 {
+			if err != nil {
+				t.Fatalf("[Loop %d] %s failed - error creating indexes: %e", i, name, err)
+			} else {
+				t.Fatalf("[Loop %d] %s failed - error creating indexes: %#v", i, name, idxResult)
+			}
+		}
+	}
+}
+
+func TestMongoConnect_CreateIndexes2(t *testing.T) {
+	name := "TestMongoConnect_CreateIndexes2"
+	mc := _newMongoConnect()
+
+	fieldMapNamespace := "ns"
+	fieldMapFrom := "frm"
+	fieldMapTo := "to"
+	idxName := "idx_to"
+	indexes := []interface{}{
+		map[string]interface{}{
+			"key": map[string]interface{}{
+				fieldMapNamespace: 1,
+				fieldMapFrom:      1,
+			},
+			"name":   "uidx_from",
+			"unique": true,
+		},
+		mongo.IndexModel{
+			Keys: map[string]interface{}{
+				fieldMapNamespace: 1,
+				fieldMapTo:        1,
+			},
+			Options: &options.IndexOptions{Name: &idxName},
+		},
+	}
+	for i := 0; i < 10; i++ {
+		err := mc.GetCollection(_testMongoCollection).Drop(nil)
+		if err != nil {
+			t.Fatalf("[Loop %d] %s failed - error dropping collection [%s]: %e", i, name, _testMongoCollection, err)
+		}
+		colResult, err := mc.CreateCollection(_testMongoCollection)
+		if err != nil || colResult.Err() != nil {
+			if err != nil {
+				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, err)
+			} else {
+				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, colResult.Err())
+			}
+		}
+		idxResult, err := mc.CreateCollectionIndexes(_testMongoCollection, indexes)
+		if err != nil || idxResult == nil || len(idxResult) < 1 {
+			if err != nil {
+				t.Fatalf("[Loop %d] %s failed - error creating indexes: %e", i, name, err)
+			} else {
+				t.Fatalf("[Loop %d] %s failed - error creating indexes: %#v", i, name, idxResult)
+			}
+		}
+	}
+}
+
+func TestMongoConnect_CreateIndexes3(t *testing.T) {
+	name := "TestMongoConnect_CreateIndexes3"
+	mc := _newMongoConnect()
+
+	fieldMapNamespace := "ns"
+	fieldMapFrom := "frm"
+	fieldMapTo := "to"
+	uidxName := "uidx_from"
+	isUnique := true
+	idxName := "idx_to"
+	indexes := []interface{}{
+		mongo.IndexModel{
+			Keys: map[string]interface{}{
+				fieldMapNamespace: 1,
+				fieldMapFrom:      1,
+			},
+			Options: &options.IndexOptions{Name: &uidxName, Unique: &isUnique},
+		},
+		mongo.IndexModel{
+			Keys: map[string]interface{}{
+				fieldMapNamespace: 1,
+				fieldMapTo:        1,
+			},
+			Options: &options.IndexOptions{Name: &idxName},
+		},
+	}
+	for i := 0; i < 10; i++ {
+		err := mc.GetCollection(_testMongoCollection).Drop(nil)
+		if err != nil {
+			t.Fatalf("[Loop %d] %s failed - error dropping collection [%s]: %e", i, name, _testMongoCollection, err)
+		}
+		colResult, err := mc.CreateCollection(_testMongoCollection)
+		if err != nil || colResult.Err() != nil {
+			if err != nil {
+				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, err)
+			} else {
+				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, colResult.Err())
+			}
+		}
+		idxResult, err := mc.CreateCollectionIndexes(_testMongoCollection, indexes)
+		if err != nil || idxResult == nil || len(idxResult) < 1 {
+			if err != nil {
+				t.Fatalf("[Loop %d] %s failed - error creating indexes: %e", i, name, err)
+			} else {
+				t.Fatalf("[Loop %d] %s failed - error creating indexes: %#v", i, name, idxResult)
+			}
+		}
 	}
 }

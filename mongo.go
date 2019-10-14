@@ -3,10 +3,15 @@ package prom
 import (
 	"context"
 	"encoding/json"
+	"github.com/btnguyen2k/consu/reddo"
+	"github.com/btnguyen2k/consu/semita"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"reflect"
+	"strconv"
 	"time"
 )
 
@@ -259,7 +264,7 @@ Example:
 			"key": map[string]interface{}{
 				"field_1": 1, // ascending index
 			},
-			"name":   "uidx_1",
+			"name"  : "uidx_1",
 			"unique": true,
 		},
 		map[string]interface{}{
@@ -270,9 +275,111 @@ Example:
 		},
 	}
 	dbResult, err := m.CreateIndexes(collectionName, indexes)
+
+Deprecated: since v0.2.1, use CreateCollectionIndexes.
 */
 func (m *MongoConnect) CreateIndexes(collectionName string, indexes []interface{}) (*mongo.SingleResult, error) {
 	db := m.GetDatabase()
 	ctx, _ := m.NewContext()
 	return db.RunCommand(ctx, bson.M{"createIndexes": collectionName, "indexes": indexes}), nil
+}
+
+/*
+CreateCollectionIndexes creates indexes on the specified collection. The names of the created indexes are returned.
+
+Example (index definition can be a map, or a mongo.IndexModel):
+
+	collectionName := "my_table"
+	indexes := []interface{}{
+		map[string]interface{}{
+			"key": map[string]interface{}{
+				"field_1": 1, // ascending index
+			},
+			"name"  : "uidx_1",
+			"unique": true,
+		},
+		mongo.IndexModel{
+			Keys: map[string]interface{}{
+				"field_2": -1, // descending index
+			},
+			Options: &options.IndexOptions{
+				Name  : &name,
+				Unique: &isUnique,
+			},
+		},
+	}
+	indexesNames, err := m.CreateCollectionIndexes(collectionName, indexes)
+
+Available: since v0.2.1
+*/
+func (m *MongoConnect) CreateCollectionIndexes(collectionName string, indexes []interface{}) ([]string, error) {
+	ctx, _ := m.NewContext()
+	indexModels := make([]mongo.IndexModel, 0)
+	for _, index := range indexes {
+		indexModel := toIndexModel(index)
+		if indexModel == nil {
+			return nil, errors.Errorf("cannot convert index definition to mongo.IndexModel")
+		}
+		indexModels = append(indexModels, *indexModel)
+	}
+	return m.GetCollection(collectionName).Indexes().CreateMany(ctx, indexModels)
+}
+
+func toIndexModel(index interface{}) *mongo.IndexModel {
+	typ := reflect.TypeOf(index)
+	if typ.Kind() == reflect.Struct && typ.Name() == "mongo.IndexModel" {
+		indexModel, _ := reddo.Convert(index, typ)
+		im := indexModel.(mongo.IndexModel)
+		return &im
+	}
+	s := semita.NewSemita(index)
+	var err error
+
+	// extract "Keys"
+	var Keys interface{}
+	for _, k := range []string{"keys", "key", "Keys", "Key"} {
+		Keys, err = s.GetValue(k)
+		if err == nil && Keys != nil {
+			break
+		}
+	}
+	if err != nil || Keys == nil {
+		return nil
+	}
+
+	// extract unique
+	var Unique = false
+	var _uninque interface{}
+	for _, k := range []string{"unique", "Unique"} {
+		_uninque, err = s.GetValueOfType(k, reddo.TypeBool)
+		if err == nil && _uninque != nil {
+			break
+		}
+	}
+	if err != nil || _uninque == nil {
+		Unique = false
+	} else {
+		Unique = _uninque.(bool)
+	}
+
+	// extract name
+	var Name = ""
+	var _name interface{}
+	for _, k := range []string{"name", "Name"} {
+		_name, err = s.GetValueOfType(k, reddo.TypeString)
+		if err == nil && _name != nil {
+			break
+		}
+	}
+	if err != nil || _name == nil {
+		if Unique {
+			Name = "uidx_" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		} else {
+			Name = "idx_" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		}
+	} else {
+		Name = _name.(string)
+	}
+
+	return &mongo.IndexModel{Keys: Keys, Options: &options.IndexOptions{Name: &Name, Unique: &Unique}}
 }

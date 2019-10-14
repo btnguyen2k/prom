@@ -5,6 +5,7 @@ go 1.11
 require (
 	github.com/aws/aws-sdk-go v1.25.10
 	github.com/btnguyen2k/consu/reddo v0.1.6
+	github.com/btnguyen2k/consu/semita v0.1.4
 	github.com/denisenkom/go-mssqldb v0.0.0-20191001013358-cfbb681360f0
 	github.com/go-redis/redis v6.15.6+incompatible
 	github.com/go-sql-driver/mysql v1.4.1

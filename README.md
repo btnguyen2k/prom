@@ -15,6 +15,13 @@ Utility library to manage shared connection in Golang.
 
 ## History
 
+### 2019-10-14 - v0.2.1
+
+- ['Prom' for the official Go driver for MongoDB](mongo.md):
+  - Deprecate function `CreateIndexes`, replaced with `CreateCollectionIndexes`.
+- Add tests.
+
+
 ### 2019-10-12 - v0.2.0
 
 - New ['Prom' for AWS DyamoDB](aws-dynamodb.md):
