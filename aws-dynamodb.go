@@ -2,6 +2,7 @@ package prom
 
 import (
 	"context"
+	"errors"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -9,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/btnguyen2k/consu/reddo"
-	"github.com/pkg/errors"
 	"reflect"
 	"strconv"
 	"time"
@@ -233,7 +233,7 @@ Return: the AwsDynamodbConnect instance and error (if any). Note:
 */
 func NewAwsDynamodbConnect(cfg *aws.Config, sess *session.Session, db *dynamodb.DynamoDB, defaultTimeoutMs int) (*AwsDynamodbConnect, error) {
 	if cfg == nil && sess == nil && db == nil {
-		return nil, errors.Errorf("At least one of {config, session, db} must not be nil.")
+		return nil, errors.New("at least one of {config, session, db} must not be nil")
 	}
 	if defaultTimeoutMs < 0 {
 		defaultTimeoutMs = 0
@@ -257,7 +257,7 @@ func NewAwsDynamodbConnect(cfg *aws.Config, sess *session.Session, db *dynamodb.
 			adc.db = mydb
 			adc.ownDb = true
 		} else {
-			return nil, errors.Errorf("Cannot create DynamoDB client instance.")
+			return nil, errors.New("cannot create DynamoDB client instance")
 		}
 	}
 	return adc, nil

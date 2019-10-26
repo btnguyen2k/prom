@@ -3,9 +3,9 @@ package prom
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/consu/semita"
-	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -48,13 +48,13 @@ func NewMongoConnect(url, db string, defaultTimeoutMs int) (*MongoConnect, error
 		db:        db,
 		timeoutMs: defaultTimeoutMs,
 	}
-	client, err := mongo.NewClient(options.Client().ApplyURI(m.url))
-	if err != nil {
+	if client, err := mongo.NewClient(options.Client().ApplyURI(m.url)); err != nil {
 		return nil, err
+	} else {
+		m.client = client
+		ctx, _ := m.NewContext()
+		return m, m.client.Connect(ctx)
 	}
-	m.client = client
-	ctx, _ := m.NewContext()
-	return m, m.client.Connect(ctx)
 }
 
 /*
@@ -63,9 +63,6 @@ Close closes all connections associated with the underlying MongoDB client.
 Available: since v0.2.0
 */
 func (m *MongoConnect) Close(ctx context.Context) error {
-	if ctx == nil {
-		ctx, _ = m.NewContext()
-	}
 	return m.client.Disconnect(ctx)
 }
 
@@ -83,11 +80,10 @@ DecodeSingleResult transforms 'mongo.SingleResult' to 'bson.M'.
 */
 func (m *MongoConnect) DecodeSingleResult(dbResult *mongo.SingleResult) (bson.M, error) {
 	var row bson.M
-	err := dbResult.Decode(&row)
-	if err == mongo.ErrNoDocuments {
-		return nil, nil
-	}
-	if err != nil {
+	if err := dbResult.Decode(&row); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return row, nil
@@ -103,15 +99,12 @@ Note:
 func (m *MongoConnect) DecodeResultCallback(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc bson.M, err error) bool) {
 	for dNum := 1; cursor.Next(ctx); dNum++ {
 		var d bson.M
-		err := cursor.Decode(&d)
-		if err != nil {
+		if err := cursor.Decode(&d); err != nil {
 			if !callback(dNum, nil, err) {
 				break
 			}
-		} else {
-			if !callback(dNum, d, nil) {
-				break
-			}
+		} else if !callback(dNum, d, nil) {
+			break
 		}
 	}
 }
@@ -122,11 +115,11 @@ DecodeSingleResultRaw transforms 'mongo.SingleResult' to raw JSON data.
 Available: since v0.0.3.1
 */
 func (m *MongoConnect) DecodeSingleResultRaw(dbResult *mongo.SingleResult) ([]byte, error) {
-	doc, err := m.DecodeSingleResult(dbResult)
-	if doc == nil || err != nil {
+	if doc, err := m.DecodeSingleResult(dbResult); doc == nil || err != nil {
 		return nil, err
+	} else {
+		return json.Marshal(doc)
 	}
-	return json.Marshal(doc)
 }
 
 /*
@@ -141,8 +134,7 @@ Available: since v0.0.3.1
 func (m *MongoConnect) DecodeResultCallbackRaw(ctx context.Context, cursor *mongo.Cursor, callback func(docNum int, doc []byte, err error) bool) {
 	for dNum := 1; cursor.Next(ctx); dNum++ {
 		var d bson.M
-		err := cursor.Decode(&d)
-		if err != nil {
+		if err := cursor.Decode(&d); err != nil {
 			if !callback(dNum, nil, err) {
 				break
 			}
@@ -182,8 +174,7 @@ func (m *MongoConnect) NewContext(timeoutMs ...int) (context.Context, context.Ca
 Ping tries to send a "ping" request to MongoDB server.
 If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
 */
-func (m *MongoConnect) Ping(timeoutMs ...int) error {
-	ctx, _ := m.NewContext(timeoutMs...)
+func (m *MongoConnect) Ping(ctx context.Context) error {
 	return m.client.Ping(ctx, readpref.Primary())
 }
 
@@ -191,8 +182,7 @@ func (m *MongoConnect) Ping(timeoutMs ...int) error {
 IsConnected returns true if the connection to MongoDB has established.
 */
 func (m *MongoConnect) IsConnected() bool {
-	err := m.Ping()
-	return err == nil
+	return m.Ping(nil) == nil
 }
 
 /*
@@ -213,19 +203,19 @@ func (m *MongoConnect) GetDatabase(opts ...*options.DatabaseOptions) *mongo.Data
 HasDatabase checks if a database exists on MongoDB server.
 */
 func (m *MongoConnect) HasDatabase(dbName string, opts ...*options.ListDatabasesOptions) (bool, error) {
-	dbList, err := m.client.ListDatabaseNames(nil, bson.M{"name": dbName}, opts...)
-	if err != nil {
+	ctx, _ := m.NewContext()
+	if dbList, err := m.client.ListDatabaseNames(ctx, bson.M{"name": dbName}, opts...); err != nil {
 		return false, err
+	} else {
+		return len(dbList) > 0, nil
 	}
-	return len(dbList) > 0, nil
 }
 
 /*
 GetCollection returns the collection object specified by 'collectionName'.
 */
 func (m *MongoConnect) GetCollection(collectionName string, opts ...*options.CollectionOptions) *mongo.Collection {
-	db := m.GetDatabase()
-	return db.Collection(collectionName, opts...)
+	return m.GetDatabase().Collection(collectionName, opts...)
 }
 
 /*
@@ -248,9 +238,8 @@ func (m *MongoConnect) HasCollection(collectionName string, opts ...*options.Lis
 CreateCollection creates a collection specified by 'collectionName'
 */
 func (m *MongoConnect) CreateCollection(collectionName string) (*mongo.SingleResult, error) {
-	db := m.GetDatabase()
 	ctx, _ := m.NewContext()
-	return db.RunCommand(ctx, bson.M{"create": collectionName}), nil
+	return m.GetDatabase().RunCommand(ctx, bson.M{"create": collectionName}), nil
 }
 
 /*
@@ -279,9 +268,8 @@ Example:
 Deprecated: since v0.2.1, use CreateCollectionIndexes.
 */
 func (m *MongoConnect) CreateIndexes(collectionName string, indexes []interface{}) (*mongo.SingleResult, error) {
-	db := m.GetDatabase()
 	ctx, _ := m.NewContext()
-	return db.RunCommand(ctx, bson.M{"createIndexes": collectionName, "indexes": indexes}), nil
+	return m.GetDatabase().RunCommand(ctx, bson.M{"createIndexes": collectionName, "indexes": indexes}), nil
 }
 
 /*
@@ -313,15 +301,15 @@ Example (index definition can be a map, or a mongo.IndexModel):
 Available: since v0.2.1
 */
 func (m *MongoConnect) CreateCollectionIndexes(collectionName string, indexes []interface{}) ([]string, error) {
-	ctx, _ := m.NewContext()
 	indexModels := make([]mongo.IndexModel, 0)
 	for _, index := range indexes {
-		indexModel := toIndexModel(index)
-		if indexModel == nil {
-			return nil, errors.Errorf("cannot convert index definition to mongo.IndexModel")
+		if indexModel := toIndexModel(index); indexModel == nil {
+			return nil, errors.New("cannot convert index definition to mongo.IndexModel")
+		} else {
+			indexModels = append(indexModels, *indexModel)
 		}
-		indexModels = append(indexModels, *indexModel)
 	}
+	ctx, _ := m.NewContext()
 	return m.GetCollection(collectionName).Indexes().CreateMany(ctx, indexModels)
 }
 

@@ -209,7 +209,7 @@ Ping verifies a connection to the database is still alive, establishing a connec
 */
 func (sc *SqlConnect) Ping(ctx context.Context) error {
 	if ctx == nil {
-		ctx, _ = sc.NewBackgroundContext()
+		ctx, _ = sc.NewContext()
 	}
 	return sc.db.PingContext(ctx)
 }
@@ -229,7 +229,7 @@ Every 'Conn' must be returned to the database pool after use by calling 'Conn.Cl
 */
 func (sc *SqlConnect) Conn(ctx context.Context) (*sql.Conn, error) {
 	if ctx == nil {
-		ctx, _ = sc.NewBackgroundContext()
+		ctx, _ = sc.NewContext()
 	}
 	return sc.db.Conn(ctx)
 }
@@ -248,11 +248,11 @@ func (sc *SqlConnect) FetchRow(row *sql.Row, numCols int) ([]interface{}, error)
 	for i := 0; i < numCols; i++ {
 		scanVals[i] = &vals[i]
 	}
-	err := row.Scan(scanVals...)
-	if err == sql.ErrNoRows {
+	if err := row.Scan(scanVals...); err == sql.ErrNoRows {
 		return nil, nil
+	} else {
+		return vals, err
 	}
-	return vals, err
 }
 
 var rawBytesType = reflect.TypeOf(sql.RawBytes{})
@@ -287,22 +287,22 @@ var dbDateTimeTypes = map[string]map[DbFlavor]bool{
 
 func (sc *SqlConnect) isStringType(col *sql.ColumnType) bool {
 	name := strings.ToUpper(col.DatabaseTypeName())
-	m, e := dbStringTypes[name]
-	if !e {
+	if m, ok := dbStringTypes[name]; !ok {
 		return false
+	} else {
+		_, ok = m[sc.flavor]
+		return ok
 	}
-	_, e = m[sc.flavor]
-	return e
 }
 
 func (sc *SqlConnect) isDateTimeType(col *sql.ColumnType) bool {
 	name := strings.ToUpper(col.DatabaseTypeName())
-	m, e := dbDateTimeTypes[name]
-	if !e {
+	if m, ok := dbDateTimeTypes[name]; !ok {
 		return false
+	} else {
+		_, ok = m[sc.flavor]
+		return ok
 	}
-	_, e = m[sc.flavor]
-	return e
 }
 
 func isRawBytesType(v interface{}) bool {
@@ -317,11 +317,10 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 	for i := 0; i < numCols; i++ {
 		scanVals[i] = &vals[i]
 	}
-	err := rows.Scan(scanVals...)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
+	if err := rows.Scan(scanVals...); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 	result := map[string]interface{}{}
@@ -332,7 +331,7 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 		} else if sc.flavor == FlavorMySql && sc.isDateTimeType(v) && isRawBytesType(vals[k]) {
 			// Mysql's TIME/DATE/DATETIME/TIMESTAMP is loaded as []byte
 			loc := sc.ensureLocation()
-			var err error
+			var err error = nil
 			switch strings.ToUpper(v.DatabaseTypeName()) {
 			case "TIME":
 				result[v.Name()], err = time.ParseInLocation("15:04:05", string(vals[k].([]byte)), loc)
@@ -343,7 +342,7 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			case "TIMESTAMP":
 				result[v.Name()], err = time.ParseInLocation("2006-01-02 15:04:05", string(vals[k].([]byte)), loc)
 			default:
-				return nil, err
+				err = errors.New("unknown date/time column type " + v.DatabaseTypeName())
 			}
 			if err != nil {
 				return nil, err
@@ -355,7 +354,7 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			result[v.Name()] = vals[k]
 		}
 	}
-	return result, err
+	return result, nil
 }
 
 /*
@@ -365,19 +364,19 @@ If no row matches the query, FetchRow returns (<empty slice>,nil).
 Note: FetchRows does NOT call 'rows.close()' when done!
 */
 func (sc *SqlConnect) FetchRows(rows *sql.Rows) ([]map[string]interface{}, error) {
-	colTypes, err := rows.ColumnTypes()
-	if err != nil {
+	if colTypes, err := rows.ColumnTypes(); err != nil {
 		return nil, err
-	}
-	result := make([]map[string]interface{}, 0)
-	for rows.Next() {
-		rowData, err := sc.fetchOneRow(rows, colTypes)
-		if err != nil {
-			return nil, err
+	} else {
+		result := make([]map[string]interface{}, 0)
+		for rows.Next() {
+			if rowData, err := sc.fetchOneRow(rows, colTypes); err != nil {
+				return nil, err
+			} else {
+				result = append(result, rowData)
+			}
 		}
-		result = append(result, rowData)
+		return result, rows.Err()
 	}
-	return result, rows.Err()
 }
 
 /*
@@ -387,21 +386,17 @@ FetchRowsCallback stops the loop when there is no more row to load or 'callback'
 Note: FetchRowsCallback does NOT call 'rows.close()' when done!
 */
 func (sc *SqlConnect) FetchRowsCallback(rows *sql.Rows, callback func(row map[string]interface{}, err error) bool) error {
-	colTypes, err := rows.ColumnTypes()
-	if err != nil {
+	if colTypes, err := rows.ColumnTypes(); err != nil {
 		return err
-	}
-	for rows.Next() {
-		var next bool
-		rowData, err := sc.fetchOneRow(rows, colTypes)
-		if err != nil {
-			next = callback(nil, err)
-		} else {
-			next = callback(rowData, nil)
+	} else {
+		var next = true
+		for next && rows.Next() {
+			if rowData, err := sc.fetchOneRow(rows, colTypes); err != nil {
+				next = callback(nil, err)
+			} else {
+				next = callback(rowData, nil)
+			}
 		}
-		if !next {
-			break
-		}
+		return rows.Err()
 	}
-	return rows.Err()
 }

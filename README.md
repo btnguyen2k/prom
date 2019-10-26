@@ -12,8 +12,16 @@ Utility library to manage shared connection in Golang.
 - ['Prom' for database/sql](sql.md).
 - ['Prom' for AWS DyamoDB](aws-dynamodb.md).
 
+Go version, direct and tested dependencies: see [go.mod](go.mod).
 
 ## History
+
+### 2019-10-25 - v0.2.2
+
+- Change `MongoConnect.Ping(timeoutMs ...int)` to `MongoConnect.Ping(ctx context.Context)`.
+- Bump Go version to `1.12` and update dependencies.
+- Other fixes & enhancements.
+
 
 ### 2019-10-14 - v0.2.1
 
