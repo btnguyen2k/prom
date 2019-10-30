@@ -16,6 +16,11 @@ Go version, direct and tested dependencies: see [go.mod](go.mod).
 
 ## History
 
+### 2019-10-30 - v0.2.3
+
+- `MongoConnect`: fixed a bug that incorrectly creates collection index when passing `mongo.IndexModel` as parameter.
+
+
 ### 2019-10-25 - v0.2.2
 
 - Change `MongoConnect.Ping(timeoutMs ...int)` to `MongoConnect.Ping(ctx context.Context)`.

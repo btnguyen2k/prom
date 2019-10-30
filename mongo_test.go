@@ -1,6 +1,8 @@
 package prom
 
 import (
+	"github.com/btnguyen2k/consu/reddo"
+	"github.com/btnguyen2k/consu/semita"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"testing"
@@ -127,6 +129,31 @@ func TestMongoConnect_CreateIndexes1(t *testing.T) {
 				t.Fatalf("[Loop %d] %s failed - error creating indexes: %#v", i, name, idxResult)
 			}
 		}
+		cur, err := mc.GetCollection(_testMongoCollection).Indexes().List(nil)
+		if err != nil {
+			t.Fatalf("[Loop %d] %s failed - error listing collection index [%s]: %e", i, name, _testMongoCollection, err)
+		}
+		var ok1, ok2 = false, false
+		for cur.Next(nil) {
+			var i map[string]interface{}
+			cur.Decode(&i)
+			s := semita.NewSemita(i)
+			name, _ := s.GetValueOfType("name", reddo.TypeString)
+			if name.(string) == "uidx_from" {
+				ok, _ := s.GetValueOfType("unique", reddo.TypeBool)
+				ok1 = ok.(bool)
+			}
+			if name.(string) == "idx_to" {
+				ok2 = true
+			}
+		}
+		cur.Close(nil)
+		if !ok1 {
+			t.Fatalf("[Loop %d] %s failed - cannot find index [%s] or its unique attribute is not true", i, name, "uidx_from")
+		}
+		if !ok2 {
+			t.Fatalf("[Loop %d] %s failed - cannot find index [%s]", i, name, "idx_to")
+		}
 	}
 }
 
@@ -175,6 +202,31 @@ func TestMongoConnect_CreateIndexes2(t *testing.T) {
 			} else {
 				t.Fatalf("[Loop %d] %s failed - error creating indexes: %#v", i, name, idxResult)
 			}
+		}
+		cur, err := mc.GetCollection(_testMongoCollection).Indexes().List(nil)
+		if err != nil {
+			t.Fatalf("[Loop %d] %s failed - error listing collection index [%s]: %e", i, name, _testMongoCollection, err)
+		}
+		var ok1, ok2 = false, false
+		for cur.Next(nil) {
+			var i map[string]interface{}
+			cur.Decode(&i)
+			s := semita.NewSemita(i)
+			name, _ := s.GetValueOfType("name", reddo.TypeString)
+			if name.(string) == "uidx_from" {
+				ok, _ := s.GetValueOfType("unique", reddo.TypeBool)
+				ok1 = ok.(bool)
+			}
+			if name.(string) == "idx_to" {
+				ok2 = true
+			}
+		}
+		cur.Close(nil)
+		if !ok1 {
+			t.Fatalf("[Loop %d] %s failed - cannot find index [%s] or its unique attribute is not true", i, name, "uidx_from")
+		}
+		if !ok2 {
+			t.Fatalf("[Loop %d] %s failed - cannot find index [%s]", i, name, "idx_to")
 		}
 	}
 }
@@ -225,6 +277,31 @@ func TestMongoConnect_CreateIndexes3(t *testing.T) {
 			} else {
 				t.Fatalf("[Loop %d] %s failed - error creating indexes: %#v", i, name, idxResult)
 			}
+		}
+		cur, err := mc.GetCollection(_testMongoCollection).Indexes().List(nil)
+		if err != nil {
+			t.Fatalf("[Loop %d] %s failed - error listing collection index [%s]: %e", i, name, _testMongoCollection, err)
+		}
+		var ok1, ok2 = false, false
+		for cur.Next(nil) {
+			var i map[string]interface{}
+			cur.Decode(&i)
+			s := semita.NewSemita(i)
+			name, _ := s.GetValueOfType("name", reddo.TypeString)
+			if name.(string) == "uidx_from" {
+				ok, _ := s.GetValueOfType("unique", reddo.TypeBool)
+				ok1 = ok.(bool)
+			}
+			if name.(string) == "idx_to" {
+				ok2 = true
+			}
+		}
+		cur.Close(nil)
+		if !ok1 {
+			t.Fatalf("[Loop %d] %s failed - cannot find index [%s] or its unique attribute is not true", i, name, "uidx_from")
+		}
+		if !ok2 {
+			t.Fatalf("[Loop %d] %s failed - cannot find index [%s]", i, name, "idx_to")
 		}
 	}
 }

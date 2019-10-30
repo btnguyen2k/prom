@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"reflect"
 	"strconv"
 	"time"
 )
@@ -314,11 +313,11 @@ func (m *MongoConnect) CreateCollectionIndexes(collectionName string, indexes []
 }
 
 func toIndexModel(index interface{}) *mongo.IndexModel {
-	typ := reflect.TypeOf(index)
-	if typ.Kind() == reflect.Struct && typ.Name() == "mongo.IndexModel" {
-		indexModel, _ := reddo.Convert(index, typ)
-		im := indexModel.(mongo.IndexModel)
-		return &im
+	if indexModel, ok := index.(mongo.IndexModel); ok {
+		return &indexModel
+	}
+	if indexModel, ok := index.(*mongo.IndexModel); ok {
+		return indexModel
 	}
 	s := semita.NewSemita(index)
 	var err error
