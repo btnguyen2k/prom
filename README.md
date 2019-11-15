@@ -16,6 +16,16 @@ Go version, direct and tested dependencies: see [go.mod](go.mod).
 
 ## History
 
+### 2019-11-14 - v0.2.4
+
+- `AwsDynamodbConnect`:
+  - New constants `AwsAttrTypeString`, `AwsAttrTypeNumber` and `AwsAttrTypeBinary`.
+  - New constants `AwsKeyTypePartition` and `AwsKeyTypeSort`.
+  - Add transaction-supported functions.
+- Update dependency libs.
+- Other fixes & enhancements.
+
+
 ### 2019-10-30 - v0.2.3
 
 - `MongoConnect`: fixed a bug that incorrectly creates collection index when passing `mongo.IndexModel` as parameter.

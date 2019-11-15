@@ -18,16 +18,27 @@ import (
 const (
 	// AwsDynamodbNoIndex indicates that no index will be used
 	AwsDynamodbNoIndex = ""
+
+	// AwsAttrTypeString is alias name of AWS DynamoDB attribute type "string"
+	AwsAttrTypeString = "S"
+
+	// AwsAttrTypeNumber is alias name of AWS DynamoDB attribute type "number"
+	AwsAttrTypeNumber = "N"
+
+	// AwsAttrTypeBinary is alias name of AWS DynamoDB attribute type "binary"
+	AwsAttrTypeBinary = "B"
+
+	// AwsAttrTypeBinary is alias name of AWS DynamoDB key type "partition"
+	AwsKeyTypePartition = "HASH"
+
+	// AwsKeyTypeSort is alias name of AWS DynamoDB key type "sort/range"
+	AwsKeyTypeSort = "RANGE"
 )
 
-/*
-AwsDynamodbItem defines a generic structure for DynamoDB item.
-*/
+// AwsDynamodbItem defines a generic structure for DynamoDB item.
 type AwsDynamodbItem map[string]interface{}
 
-/*
-AwsDynamodbNameAndType defines a generic name & type pair.
-*/
+// AwsDynamodbNameAndType defines a generic name & type pair.
 type AwsDynamodbNameAndType struct{ Name, Type string }
 
 /*
@@ -376,7 +387,7 @@ CreateTable create a new table without index.
 
 Parameters:
 
-  - ctx: (optional) used for request cancellation
+  - ctx     : (optional) used for request cancellation
   - table   : name of the table to be created
   - rcu     : ReadCapacityUnits (0 means PAY_PER_REQUEST)
   - wcu     : WriteCapacityUnits (0 means PAY_PER_REQUEST)
@@ -456,7 +467,7 @@ CreateGlobalSecondaryIndex creates a Global Secondary Index on a specified table
 
 Parameters:
 
-  - ctx: (optional) used for request cancellation
+  - ctx      : (optional) used for request cancellation
   - table    : name of the table
   - indexName: name of the index to be created
   - rcu      : ReadCapacityUnits (0 means PAY_PER_REQUEST)
@@ -547,7 +558,7 @@ Parameters:
 
   - ctx    : (optional) used for request cancellation
   - table  : name of the table
-  - item     : item to be inserted
+  - item   : item to be inserted
   - pkAttrs: primary key attribute names
 */
 func (adc *AwsDynamodbConnect) PutItemRawIfNotExist(ctx aws.Context, table string, item map[string]*dynamodb.AttributeValue, pkAttrs []string) (*dynamodb.PutItemOutput, error) {
@@ -559,7 +570,7 @@ PutItem inserts a new item to table or replace an existing one.
 
 Parameters:
 
-  - ctx: (optional) used for request cancellation
+  - ctx      : (optional) used for request cancellation
   - table    : name of the table
   - item     : item to be inserted (a map or struct), will be converted to map[string]*dynamodb.AttributeValue via dynamodbattribute.MarshalMap(item)
   - condition: (optional) a condition that must be satisfied before writing item
@@ -577,9 +588,9 @@ PutItemIfNotExist inserts a new item to table only if it does not exist.
 
 Parameters:
 
-  - ctx: (optional) used for request cancellation
+  - ctx    : (optional) used for request cancellation
   - table  : name of the table
-  - item     : item to be inserted (a map or struct), will be converted to map[string]*dynamodb.AttributeValue via dynamodbattribute.MarshalMap(item)
+  - item   : item to be inserted (a map or struct), will be converted to map[string]*dynamodb.AttributeValue via dynamodbattribute.MarshalMap(item)
   - pkAttrs: primary key attribute names
 */
 func (adc *AwsDynamodbConnect) PutItemIfNotExist(ctx aws.Context, table string, item interface{}, pkAttrs []string) (*dynamodb.PutItemOutput, error) {
@@ -591,7 +602,7 @@ DeleteItem removes a single item from specified table.
 
 Parameters:
 
-  - ctx: (optional) used for request cancellation
+  - ctx      : (optional) used for request cancellation
   - table    : name of the table
   - keyFilter: map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
   - condition: (optional) a condition that must be satisfied before removing item
@@ -627,7 +638,7 @@ GetItem fetches a single item from specified table.
 
 Parameters:
 
-  - ctx: (optional) used for request cancellation
+  - ctx      : (optional) used for request cancellation
   - table    : name of the table
   - keyFilter: map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
 
@@ -852,7 +863,7 @@ func (adc *AwsDynamodbConnect) AddValuesToSet(ctx aws.Context, table string, key
 }
 
 /*
-DeleteValuesFromAttributes deletes values from one or more set attributes of an item.
+DeleteValuesFromSet deletes values from one or more set attributes of an item.
 
 Parameters:
 
@@ -864,7 +875,7 @@ Parameters:
 
 See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
 */
-func (adc *AwsDynamodbConnect) DeleteValuesFromAttributes(ctx aws.Context, table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.UpdateItemOutput, error) {
+func (adc *AwsDynamodbConnect) DeleteValuesFromSet(ctx aws.Context, table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.UpdateItemOutput, error) {
 	return adc.doAddOrDeleteSetValues(ctx, table, keyFilter, condition, attrsAndValues, false)
 }
 
@@ -978,24 +989,31 @@ func (adc *AwsDynamodbConnect) QueryItemsWithCallback(ctx aws.Context, table str
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
-	builder := expression.NewBuilder().WithCondition(*keyFilter)
-	if nonKeyFilter != nil {
-		builder = builder.WithFilter(*nonKeyFilter)
-	}
-	filterExp, err := builder.Build()
-	if err != nil {
-		return err
-	}
 	input := &dynamodb.QueryInput{
-		ExpressionAttributeNames:  filterExp.Names(),
-		ExpressionAttributeValues: filterExp.Values(),
-		ExclusiveStartKey:         exclusiveStartKey,
-		ReturnConsumedCapacity:    aws.String("INDEXES"),
-		KeyConditionExpression:    filterExp.Condition(),
-		TableName:                 aws.String(table),
+		ExclusiveStartKey:      exclusiveStartKey,
+		ReturnConsumedCapacity: aws.String("INDEXES"),
+		TableName:              aws.String(table),
 	}
-	if nonKeyFilter != nil {
-		input.FilterExpression = filterExp.Filter()
+	if keyFilter != nil || nonKeyFilter != nil {
+		builder := expression.NewBuilder()
+		if keyFilter != nil {
+			builder = builder.WithCondition(*keyFilter)
+		}
+		if nonKeyFilter != nil {
+			builder = builder.WithFilter(*nonKeyFilter)
+		}
+		if filterExp, err := builder.Build(); err != nil {
+			return err
+		} else {
+			input.ExpressionAttributeNames = filterExp.Names()
+			input.ExpressionAttributeValues = filterExp.Values()
+			if keyFilter != nil {
+				input.KeyConditionExpression = filterExp.Condition()
+			}
+			if nonKeyFilter != nil {
+				input.FilterExpression = filterExp.Filter()
+			}
+		}
 	}
 	var useIndex = indexName != ""
 	if useIndex {
@@ -1050,4 +1068,288 @@ func (adc *AwsDynamodbConnect) QueryItems(ctx aws.Context, table string, keyFilt
 	}
 	err := adc.QueryItemsWithCallback(ctx, table, keyFilter, nonKeyFilter, indexName, nil, callback)
 	return result, err
+}
+
+/*----------------------------------------------------------------------*/
+
+/*
+BuildTxPut builds a 'dynamodb.TransactWriteItem' with "insert or replace" operation.
+
+Parameters: see PutItem
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxPut(table string, item interface{}, condition *expression.ConditionBuilder) (*dynamodb.TransactWriteItem, error) {
+	if av, err := dynamodbattribute.MarshalMap(item); err != nil {
+		return nil, err
+	} else {
+		return adc.BuildTxPutRaw(table, av, condition)
+	}
+}
+
+/*
+BuildTxPutRaw builds a 'dynamodb.TransactWriteItem' with "insert or replace" operation.
+
+Parameters: see PutItemRaw
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxPutRaw(table string, item map[string]*dynamodb.AttributeValue, condition *expression.ConditionBuilder) (*dynamodb.TransactWriteItem, error) {
+	put := &dynamodb.Put{
+		Item:      item,
+		TableName: aws.String(table),
+	}
+	if condition != nil {
+		if conditionExp, err := expression.NewBuilder().WithCondition(*condition).Build(); err != nil {
+			return nil, err
+		} else {
+			put.ConditionExpression = conditionExp.Condition()
+			put.ExpressionAttributeNames = conditionExp.Names()
+			put.ExpressionAttributeValues = conditionExp.Values()
+		}
+	}
+	return &dynamodb.TransactWriteItem{Put: put}, nil
+}
+
+/*
+BuildTxPutIfNotExist builds a 'dynamodb.TransactWriteItem' with "insert if not exist" operation.
+
+Parameters: see PutItemIfNotExist
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxPutIfNotExist(table string, item interface{}, pkAttrs []string) (*dynamodb.TransactWriteItem, error) {
+	return adc.BuildTxPut(table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
+}
+
+/*
+BuildTxPutRawIfNotExist builds a 'dynamodb.TransactWriteItem' with "insert if not exist" operation.
+
+Parameters: see PutItemRawIfNotExist
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxPutRawIfNotExist(table string, item map[string]*dynamodb.AttributeValue, pkAttrs []string) (*dynamodb.TransactWriteItem, error) {
+	return adc.BuildTxPutRaw(table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
+}
+
+/*
+BuildTxDelete builds a 'dynamodb.TransactWriteItem' with "delete" operation.
+
+Parameters: see DeleteItem
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxDelete(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder) (*dynamodb.TransactWriteItem, error) {
+	delete := &dynamodb.Delete{
+		Key:       awsDynamodbMakeKey(keyFilter),
+		TableName: aws.String(table),
+	}
+	if condition != nil {
+		if conditionExp, err := expression.NewBuilder().WithCondition(*condition).Build(); err != nil {
+			return nil, err
+		} else {
+			delete.ExpressionAttributeNames = conditionExp.Names()
+			delete.ExpressionAttributeValues = conditionExp.Values()
+			delete.ConditionExpression = conditionExp.Condition()
+		}
+	}
+	return &dynamodb.TransactWriteItem{Delete: delete}, nil
+}
+
+/*
+BuildTxUpdateRaw builds a 'dynamodb.TransactWriteItem' with "update" operation.
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxUpdateRaw(table string, key map[string]*dynamodb.AttributeValue, updateExpression expression.Expression) (*dynamodb.TransactWriteItem, error) {
+	return &dynamodb.TransactWriteItem{Update: &dynamodb.Update{
+		ConditionExpression:       updateExpression.Condition(),
+		ExpressionAttributeNames:  updateExpression.Names(),
+		ExpressionAttributeValues: updateExpression.Values(),
+		Key:                       key,
+		TableName:                 aws.String(table),
+		UpdateExpression:          updateExpression.Update(),
+	}}, nil
+}
+
+/*
+BuildTxUpdate builds a 'dynamodb.TransactWriteItem' with "update" operation.
+
+Parameters: see UpdateItem
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxUpdate(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder,
+	attrsToRemove []string, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete map[string]interface{}) (*dynamodb.TransactWriteItem, error) {
+	key := awsDynamodbMakeKey(keyFilter)
+
+	var updateBuilder expression.UpdateBuilder
+	if attrsToRemove != nil {
+		for _, attr := range attrsToRemove {
+			updateBuilder = updateBuilder.Remove(expression.Name(attr))
+		}
+	}
+	if attrsAndValuesToSet != nil {
+		for attr, value := range attrsAndValuesToSet {
+			updateBuilder = updateBuilder.Set(expression.Name(attr), expression.Value(value))
+		}
+	}
+	if attrsAndValuesToAdd != nil {
+		for attr, value := range attrsAndValuesToAdd {
+			updateBuilder = updateBuilder.Add(expression.Name(attr), expression.Value(value))
+		}
+	}
+	if attrsAndValuesToDelete != nil {
+		for attr, value := range attrsAndValuesToDelete {
+			updateBuilder = updateBuilder.Delete(expression.Name(attr), expression.Value(value))
+		}
+	}
+
+	builder := expression.NewBuilder().WithUpdate(updateBuilder)
+	if condition != nil {
+		builder = builder.WithCondition(*condition)
+	}
+	if updateBuilderExp, err := builder.Build(); err != nil {
+		return nil, err
+	} else {
+		return adc.BuildTxUpdateRaw(table, key, updateBuilderExp)
+	}
+}
+
+/*
+BuildTxRemoveAttributes builds a 'dynamodb.TransactWriteItem' with "remote attributes" operation.
+
+Parameters: see RemoveAttributes
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxRemoveAttributes(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrs []string) (*dynamodb.TransactWriteItem, error) {
+	return adc.BuildTxUpdate(table, keyFilter, condition, attrs, nil, nil, nil)
+}
+
+/*
+BuildTxSetAttributes builds a 'dynamodb.TransactWriteItem' with "set attributes" operation.
+
+Parameters: see SetAttributes
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxSetAttributes(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.TransactWriteItem, error) {
+	return adc.BuildTxUpdate(table, keyFilter, condition, nil, attrsAndValues, nil, nil)
+}
+
+/*
+BuildTxAddValuesToAttributes builds a 'dynamodb.TransactWriteItem' with "add values to attributes" operation.
+
+Parameters: see AddValuesToAttributes
+
+Note: currently can not add value to a set using this function. To add value to a set, use BuildTxAddValuesToSet. See: https://github.com/aws/aws-sdk-go/issues/1990
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxAddValuesToAttributes(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.TransactWriteItem, error) {
+	return adc.BuildTxUpdate(table, keyFilter, condition, nil, nil, attrsAndValues, nil)
+}
+
+func (adc *AwsDynamodbConnect) buildTxAddOrDeleteSetValues(table string, keyFilter map[string]interface{},
+	condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}, doAdd bool) (*dynamodb.TransactWriteItem, error) {
+	key := awsDynamodbMakeKey(keyFilter)
+	avs := make(map[string]*dynamodb.AttributeValue)
+	var updateBuilder expression.UpdateBuilder
+	for attr, value := range attrsAndValues {
+		if doAdd {
+			updateBuilder = updateBuilder.Add(expression.Name(attr), expression.Value(value))
+		} else {
+			updateBuilder = updateBuilder.Delete(expression.Name(attr), expression.Value(value))
+		}
+		avs[attr] = AwsDynamodbToAttributeSet(value)
+	}
+	builder := expression.NewBuilder().WithUpdate(updateBuilder)
+	if condition != nil {
+		builder = builder.WithCondition(*condition)
+	}
+	updateBuilderExp, err := builder.Build()
+	if err != nil {
+		return nil, err
+	}
+	names := updateBuilderExp.Names()
+	values := updateBuilderExp.Values()
+	for attr, value := range avs {
+		for k, v := range names {
+			if *v == attr {
+				values[":"+k[1:]] = value
+				break
+			}
+		}
+	}
+	return &dynamodb.TransactWriteItem{Update: &dynamodb.Update{
+		ConditionExpression:       updateBuilderExp.Condition(),
+		ExpressionAttributeNames:  names,
+		ExpressionAttributeValues: values,
+		Key:                       key,
+		TableName:                 aws.String(table),
+		UpdateExpression:          updateBuilderExp.Update(),
+	}}, nil
+}
+
+/*
+BuildTxAddValuesToSet builds a 'dynamodb.TransactWriteItem' with "add values to set attributes" operation.
+
+Parameters: see AddValuesToSet
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxAddValuesToSet(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.TransactWriteItem, error) {
+	return adc.buildTxAddOrDeleteSetValues(table, keyFilter, condition, attrsAndValues, true)
+}
+
+/*
+BuildTxDeleteValuesFromSet builds a 'dynamodb.TransactWriteItem' with "add values to set attributes" operation.
+
+Parameters: see DeleteValuesFromSet
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxDeleteValuesFromSet(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.TransactWriteItem, error) {
+	return adc.buildTxAddOrDeleteSetValues(table, keyFilter, condition, attrsAndValues, false)
+}
+
+/*
+BuildTxGet builds a 'dynamodb.TransactGetItem' with "get item" operation.
+
+Parameters: see GetItem
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) BuildTxGet(table string, keyFilter map[string]interface{}) (*dynamodb.TransactGetItem, error) {
+	key := awsDynamodbMakeKey(keyFilter)
+	return &dynamodb.TransactGetItem{Get: &dynamodb.Get{
+		Key:       key,
+		TableName: aws.String(table),
+	}}, nil
+}
+
+/*
+ExecTxWriteItems executes a "write-items" transaction.
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) ExecTxWriteItems(ctx aws.Context, input *dynamodb.TransactWriteItemsInput) (*dynamodb.TransactWriteItemsOutput, error) {
+	if ctx == nil {
+		ctx, _ = adc.NewContext()
+	}
+	return adc.GetDb().TransactWriteItemsWithContext(ctx, input)
+}
+
+/*
+ExecTxGetItems executes a "get-items" transaction.
+
+Available: since v0.2.4
+*/
+func (adc *AwsDynamodbConnect) ExecTxGetItems(ctx aws.Context, input *dynamodb.TransactGetItemsInput) (*dynamodb.TransactGetItemsOutput, error) {
+	if ctx == nil {
+		ctx, _ = adc.NewContext()
+	}
+	return adc.GetDb().TransactGetItemsWithContext(ctx, input)
 }

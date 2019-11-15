@@ -3,7 +3,7 @@ module github.com/btnguyen2k/prom
 go 1.12
 
 require (
-	github.com/aws/aws-sdk-go v1.25.19
+	github.com/aws/aws-sdk-go v1.25.35
 	github.com/btnguyen2k/consu/reddo v0.1.6
 	github.com/btnguyen2k/consu/semita v0.1.4
 	github.com/denisenkom/go-mssqldb v0.0.0-20191001013358-cfbb681360f0
@@ -11,13 +11,13 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/lib/pq v1.2.0
-	github.com/onsi/ginkgo v1.10.2 // indirect
-	github.com/onsi/gomega v1.7.0 // indirect
+	github.com/onsi/ginkgo v1.10.3 // indirect
+	github.com/onsi/gomega v1.7.1 // indirect
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/tidwall/pretty v1.0.0 // indirect
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
 	github.com/xdg/stringprep v1.0.0 // indirect
-	go.mongodb.org/mongo-driver v1.1.2
+	go.mongodb.org/mongo-driver v1.1.3
 	google.golang.org/appengine v1.6.5 // indirect
-	gopkg.in/goracle.v2 v2.21.4
+	gopkg.in/goracle.v2 v2.22.4
 )
