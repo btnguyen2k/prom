@@ -1,6 +1,7 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/aws/aws-sdk-go v1.25.35 h1:fe2tJnqty/v/50pyngKdNk/NP8PFphYDA1Z7N3EiiiE=
 github.com/aws/aws-sdk-go v1.25.35/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
+github.com/aws/aws-sdk-go v1.25.36 h1:4+TL/Y2G5hsR1zdfHmjNG1ou1WEqsSWk8v7m1GaDKyo=
+github.com/aws/aws-sdk-go v1.25.36/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/btnguyen2k/consu/reddo v0.1.4/go.mod h1:6L2l4rRFQlyGWlKxt9SiwYs/wB6SE70oxFcrTo/YLPY=
 github.com/btnguyen2k/consu/reddo v0.1.6 h1:NUG2Uw0HWnJjiUUzhNwpTTQheoM1JKVza+5HWd/kQtU=
 github.com/btnguyen2k/consu/reddo v0.1.6/go.mod h1:6L2l4rRFQlyGWlKxt9SiwYs/wB6SE70oxFcrTo/YLPY=

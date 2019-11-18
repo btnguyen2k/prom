@@ -3,7 +3,7 @@ module github.com/btnguyen2k/prom
 go 1.12
 
 require (
-	github.com/aws/aws-sdk-go v1.25.35
+	github.com/aws/aws-sdk-go v1.25.36
 	github.com/btnguyen2k/consu/reddo v0.1.6
 	github.com/btnguyen2k/consu/semita v0.1.4
 	github.com/denisenkom/go-mssqldb v0.0.0-20191001013358-cfbb681360f0

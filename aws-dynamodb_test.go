@@ -1,10 +1,65 @@
 package prom
 
 import (
+	"errors"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"strconv"
 	"testing"
 )
+
+func TestIsAwsError(t *testing.T) {
+	name := "TestIsAwsError"
+	if IsAwsError(nil, "0") {
+		t.Fatalf("%s failed: %#v should not be an awserr.Error", name, nil)
+	}
+	{
+		e := errors.New("dummy")
+		if IsAwsError(e, "0") {
+			t.Fatalf("%s failed: %#v should not be an awserr.Error", name, e)
+		}
+	}
+	{
+		e := awserr.New("123", "dummy", errors.New("dummy"))
+		if !IsAwsError(e, "123") {
+			t.Fatalf("%s failed: %#v", name, e)
+		}
+	}
+	{
+		e := awserr.New("123", "dummy", errors.New("dummy"))
+		if IsAwsError(e, "456") {
+			t.Fatalf("%s failed: %#v", name, e)
+		}
+	}
+}
+
+func TestAwsIgnoreErrorIfMatched(t *testing.T) {
+	name := "TestAwsIgnoreErrorIfMatched"
+	{
+		var e error = nil
+		if AwsIgnoreErrorIfMatched(e, "0") != nil {
+			t.Fatalf("%s failed: %#v", name, e)
+		}
+	}
+	{
+		e := errors.New("dummy")
+		if AwsIgnoreErrorIfMatched(e, "0") != e {
+			t.Fatalf("%s failed: %#v", name, e)
+		}
+	}
+	{
+		e := awserr.New("123", "dummy", errors.New("dummy"))
+		if AwsIgnoreErrorIfMatched(e, "123") != nil {
+			t.Fatalf("%s failed: %#v", name, e)
+		}
+	}
+	{
+		e := awserr.New("123", "dummy", errors.New("dummy"))
+		if AwsIgnoreErrorIfMatched(e, "456") != e {
+			t.Fatalf("%s failed: %#v", name, e)
+		}
+	}
+}
 
 func TestAwsDynamodbToAttributeValue_Bytes(t *testing.T) {
 	name := "TestAwsDynamodbToAttributeValue_Bytes"
@@ -12,7 +67,7 @@ func TestAwsDynamodbToAttributeValue_Bytes(t *testing.T) {
 		input := []byte{1, 2, 3}
 		v := AwsDynamodbToAttributeValue(input)
 		if v == nil || v.B == nil {
-			t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.B", name, input)
+			t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.B", name, input)
 		}
 	}
 }
@@ -23,7 +78,7 @@ func TestAwsDynamodbToAttributeValue_Bool(t *testing.T) {
 		input := true
 		v := AwsDynamodbToAttributeValue(input)
 		if v == nil || v.BOOL == nil || *v.BOOL != input {
-			t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BOOL", name, input)
+			t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BOOL", name, input)
 		}
 	}
 }
@@ -34,7 +89,7 @@ func TestAwsDynamodbToAttributeValue_String(t *testing.T) {
 		input := "a string"
 		v := AwsDynamodbToAttributeValue(input)
 		if v == nil || v.S == nil || *v.S != input {
-			t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BOOL", name, input)
+			t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BOOL", name, input)
 		}
 	}
 }
@@ -45,7 +100,7 @@ func TestAwsDynamodbToAttributeValue_List(t *testing.T) {
 		input := []interface{}{true, 0, 1.2, "3"}
 		v := AwsDynamodbToAttributeValue(input)
 		if v == nil || v.L == nil || len(v.L) != len(input) {
-			t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.L", name, input)
+			t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.L", name, input)
 		}
 	}
 }
@@ -58,7 +113,7 @@ func TestAwsDynamodbToAttributeValue_Map(t *testing.T) {
 		input := map[string]interface{}{"b": true, "n1": 0, "n2": 1.2, "s": "3", "nested_a": a, "nested_m": m}
 		v := AwsDynamodbToAttributeValue(input)
 		if v == nil || v.M == nil || len(v.M) != len(input) {
-			t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.M", name, input)
+			t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.M", name, input)
 		}
 	}
 }
@@ -92,7 +147,7 @@ func TestAwsDynamodbToAttributeValue_Struct(t *testing.T) {
 		}
 		v := AwsDynamodbToAttributeValue(input)
 		if v == nil || v.M == nil || len(v.M) != 6 {
-			t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.M", name, input)
+			t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.M", name, input)
 		}
 	}
 }
@@ -104,7 +159,7 @@ func TestAwsDynamodbToAttributeValue_Number(t *testing.T) {
 		input := int(1)
 		v := AwsDynamodbToAttributeValue(input)
 		if v == nil || v.N == nil || *v.N != strconv.FormatInt(int64(input), 10) {
-			t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.N", name, input)
+			t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.N", name, input)
 		}
 	}
 	{
@@ -112,7 +167,7 @@ func TestAwsDynamodbToAttributeValue_Number(t *testing.T) {
 		input := uint(1)
 		v := AwsDynamodbToAttributeValue(input)
 		if v == nil || v.N == nil || *v.N != strconv.FormatUint(uint64(input), 10) {
-			t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.N", name, input)
+			t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.N", name, input)
 		}
 	}
 	{
@@ -120,7 +175,7 @@ func TestAwsDynamodbToAttributeValue_Number(t *testing.T) {
 		input := float32(1.0)
 		v := AwsDynamodbToAttributeValue(input)
 		if v == nil || v.N == nil {
-			t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.N", name, input)
+			t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.N", name, input)
 		}
 	}
 	{
@@ -128,7 +183,7 @@ func TestAwsDynamodbToAttributeValue_Number(t *testing.T) {
 		input := float64(1.0)
 		v := AwsDynamodbToAttributeValue(input)
 		if v == nil || v.N == nil {
-			t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.N", name, input)
+			t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.N", name, input)
 		}
 	}
 }
@@ -141,9 +196,9 @@ func TestAwsDynamodbToAttributeSet(t *testing.T) {
 		v := AwsDynamodbToAttributeSet(input)
 		if v == nil || v.NS == nil || len(v.NS) != 1 {
 			if v == nil {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
 			} else {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
 			}
 		}
 	}
@@ -153,9 +208,9 @@ func TestAwsDynamodbToAttributeSet(t *testing.T) {
 		v := AwsDynamodbToAttributeSet(input)
 		if v == nil || v.NS == nil || len(v.NS) != 1 {
 			if v == nil {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
 			} else {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
 			}
 		}
 	}
@@ -165,9 +220,9 @@ func TestAwsDynamodbToAttributeSet(t *testing.T) {
 		v := AwsDynamodbToAttributeSet(input)
 		if v == nil || v.NS == nil || len(v.NS) != 1 {
 			if v == nil {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
 			} else {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
 			}
 		}
 	}
@@ -177,9 +232,9 @@ func TestAwsDynamodbToAttributeSet(t *testing.T) {
 		v := AwsDynamodbToAttributeSet(input)
 		if v == nil || v.SS == nil || len(v.SS) != 1 {
 			if v == nil {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.SS", name, input)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.SS", name, input)
 			} else {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.SS (result :%#v)", name, input, v.N)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.SS (result :%#v)", name, input, v.N)
 			}
 		}
 	}
@@ -189,9 +244,9 @@ func TestAwsDynamodbToAttributeSet(t *testing.T) {
 		v := AwsDynamodbToAttributeSet(input)
 		if v == nil || v.BS == nil || len(v.BS) != 1 {
 			if v == nil {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BS", name, input)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BS", name, input)
 			} else {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BS (result :%#v)", name, input, v.N)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BS (result :%#v)", name, input, v.N)
 			}
 		}
 	}
@@ -201,9 +256,9 @@ func TestAwsDynamodbToAttributeSet(t *testing.T) {
 		v := AwsDynamodbToAttributeSet(input)
 		if v == nil || v.BS == nil || len(v.BS) != len(input) {
 			if v == nil {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BS", name, input)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BS", name, input)
 			} else {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BS (result :%#v)", name, input, v.N)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.BS (result :%#v)", name, input, v.N)
 			}
 		}
 	}
@@ -213,9 +268,9 @@ func TestAwsDynamodbToAttributeSet(t *testing.T) {
 		v := AwsDynamodbToAttributeSet(input)
 		if v == nil || v.NS == nil || len(v.NS) != len(input) {
 			if v == nil {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
 			} else {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
 			}
 		}
 	}
@@ -225,9 +280,9 @@ func TestAwsDynamodbToAttributeSet(t *testing.T) {
 		v := AwsDynamodbToAttributeSet(input)
 		if v == nil || v.NS == nil || len(v.NS) != len(input) {
 			if v == nil {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
 			} else {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
 			}
 		}
 	}
@@ -237,9 +292,9 @@ func TestAwsDynamodbToAttributeSet(t *testing.T) {
 		v := AwsDynamodbToAttributeSet(input)
 		if v == nil || v.NS == nil || len(v.NS) != len(input) {
 			if v == nil {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS", name, input)
 			} else {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.NS (result :%#v)", name, input, v.N)
 			}
 		}
 	}
@@ -249,9 +304,9 @@ func TestAwsDynamodbToAttributeSet(t *testing.T) {
 		v := AwsDynamodbToAttributeSet(input)
 		if v == nil || v.SS == nil || len(v.SS) != len(input) {
 			if v == nil {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.SS", name, input)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.SS", name, input)
 			} else {
-				t.Errorf("%s failed: cannot convert %#v to dynamodb.AttributeValue.SS (result :%#v)", name, input, v.N)
+				t.Fatalf("%s failed: cannot convert %#v to dynamodb.AttributeValue.SS (result :%#v)", name, input, v.N)
 			}
 		}
 	}
@@ -263,12 +318,12 @@ func TestAwsDynamodbExistsAllBuilder(t *testing.T) {
 	conditionBuilder := AwsDynamodbExistsAllBuilder(input)
 	builder, err := expression.NewBuilder().WithCondition(*conditionBuilder).Build()
 	if err != nil {
-		t.Errorf("%s failed: %e", name, err)
+		t.Fatalf("%s failed: %e", name, err)
 	}
 	condition := builder.Condition()
 	expected := "((attribute_exists (#0)) AND (attribute_exists (#1))) AND (attribute_exists (#2))"
 	if condition == nil || *condition != expected {
-		t.Errorf("%s failed: expected [%s] but received [%s]", name, expected, *condition)
+		t.Fatalf("%s failed: expected [%s] but received [%s]", name, expected, *condition)
 	}
 }
 
@@ -278,12 +333,12 @@ func TestAwsDynamodbNotExistsAllBuilder(t *testing.T) {
 	conditionBuilder := AwsDynamodbNotExistsAllBuilder(input)
 	builder, err := expression.NewBuilder().WithCondition(*conditionBuilder).Build()
 	if err != nil {
-		t.Errorf("%s failed: %e", name, err)
+		t.Fatalf("%s failed: %e", name, err)
 	}
 	condition := builder.Condition()
 	expected := "((attribute_not_exists (#0)) AND (attribute_not_exists (#1))) AND (attribute_not_exists (#2))"
 	if condition == nil || *condition != expected {
-		t.Errorf("%s failed: expected [%s] but received [%s]", name, expected, *condition)
+		t.Fatalf("%s failed: expected [%s] but received [%s]", name, expected, *condition)
 	}
 }
 
@@ -293,11 +348,11 @@ func TestAwsDynamodbEqualsBuilder(t *testing.T) {
 	conditionBuilder := AwsDynamodbEqualsBuilder(input)
 	builder, err := expression.NewBuilder().WithCondition(*conditionBuilder).Build()
 	if err != nil {
-		t.Errorf("%s failed: %e", name, err)
+		t.Fatalf("%s failed: %e", name, err)
 	}
 	condition := builder.Condition()
 	expected := "((#0 = :0) AND (#1 = :1)) AND (#2 = :2)"
 	if condition == nil || *condition != expected {
-		t.Errorf("%s failed: expected [%s] but received [%s]", name, expected, *condition)
+		t.Fatalf("%s failed: expected [%s] but received [%s]", name, expected, *condition)
 	}
 }

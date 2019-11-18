@@ -151,12 +151,21 @@ func AwsDynamodbToAttributeSet(v interface{}) *dynamodb.AttributeValue {
 }
 
 /*
+IsAwsError returns true if err is an awserr.Error and its code equals to awsErrCode.
+
+Available: since v0.2.5
+*/
+func IsAwsError(err error, awsErrCode string) bool {
+	if aerr, ok := err.(awserr.Error); ok && aerr.Code() == awsErrCode {
+		return true
+	}
+	return false
+}
+
+/*
 AwsIgnoreErrorIfMatched returns nil if err is an awserr.Error and its code equals to excludeCode.
 */
 func AwsIgnoreErrorIfMatched(err error, excludeCode string) error {
-	if err == nil {
-		return nil
-	}
 	if aerr, ok := err.(awserr.Error); ok && aerr.Code() == excludeCode {
 		return nil
 	}
@@ -372,7 +381,10 @@ Parameters:
 
   - ctx: (optional) used for request cancellation
 
-Note: DynamoDB table is deleted asynchronously. Use GetTableStatus to check table's existence.
+Notes:
+
+	- DynamoDB table is deleted asynchronously. Use GetTableStatus to check table's existence.
+	- This function ignores error if table does not exist.
 */
 func (adc *AwsDynamodbConnect) DeleteTable(ctx aws.Context, table string) error {
 	if ctx == nil {
@@ -407,7 +419,7 @@ func (adc *AwsDynamodbConnect) CreateTable(ctx aws.Context, table string, rcu, w
 		TableName:             aws.String(table),
 	}
 	_, err := adc.db.CreateTableWithContext(ctx, input)
-	return AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException)
+	return err
 }
 
 /*
@@ -417,9 +429,7 @@ Parameters:
 
   - ctx: (optional) used for request cancellation
 
-Notes:
-
-  - If table does not exist, this function returns "", nil
+Note: If table does not exist, this function returns "", nil
 */
 func (adc *AwsDynamodbConnect) GetTableStatus(ctx aws.Context, table string) (string, error) {
 	if ctx == nil {
@@ -441,9 +451,7 @@ Parameters:
 
   - ctx: (optional) used for request cancellation
 
-Notes:
-
-  - If index does not exist, this function returns "", nil
+Note: If index does not exist, this function returns "", nil
 */
 func (adc *AwsDynamodbConnect) GetGlobalSecondaryIndexStatus(ctx aws.Context, table, indexName string) (string, error) {
 	if ctx == nil {
@@ -504,7 +512,10 @@ Parameters:
 
   - ctx: (optional) used for request cancellation
 
-Note: DynamoDB GSI is deleted asynchronously. Use GetGlobalSecondaryIndexStatus to check GSI's existence.
+Notes:
+
+	- DynamoDB GSI is deleted asynchronously. Use GetGlobalSecondaryIndexStatus to check index's existence.
+	- This function ignores error if index does not exist.
 */
 func (adc *AwsDynamodbConnect) DeleteGlobalSecondaryIndex(ctx aws.Context, table, indexName string) error {
 	if ctx == nil {
@@ -547,8 +558,7 @@ func (adc *AwsDynamodbConnect) PutItemRaw(ctx aws.Context, table string, item ma
 		input.ExpressionAttributeNames = conditionExp.Names()
 		input.ExpressionAttributeValues = conditionExp.Values()
 	}
-	dbresult, err := adc.db.PutItemWithContext(ctx, input)
-	return dbresult, AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeConditionalCheckFailedException)
+	return adc.db.PutItemWithContext(ctx, input)
 }
 
 /*
@@ -626,11 +636,7 @@ func (adc *AwsDynamodbConnect) DeleteItem(ctx aws.Context, table string, keyFilt
 		input.ExpressionAttributeValues = conditionExp.Values()
 		input.ConditionExpression = conditionExp.Condition()
 	}
-	dbresult, err := adc.db.DeleteItemWithContext(ctx, input)
-	if aerr, ok := err.(awserr.Error); ok && aerr.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
-		return dbresult, nil
-	}
-	return dbresult, err
+	return adc.db.DeleteItemWithContext(ctx, input)
 }
 
 /*
@@ -674,11 +680,7 @@ func (adc *AwsDynamodbConnect) doUpdateItem(ctx aws.Context, table string, key m
 		TableName:                 aws.String(table),
 		UpdateExpression:          updateExpression.Update(),
 	}
-	dbresult, err := adc.db.UpdateItemWithContext(ctx, input)
-	if aerr, ok := err.(awserr.Error); ok && aerr.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
-		return dbresult, nil
-	}
-	return dbresult, err
+	return adc.db.UpdateItemWithContext(ctx, input)
 }
 
 /*
@@ -695,7 +697,7 @@ Parameters:
   - attrsAndValuesToAdd   : list of attributes and values to add
   - attrsAndValuesToDelete: list of attributes and values to delete
 
-Notes: at least one of attrsToRemove, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete must be provided
+Note: at least one of attrsToRemove, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete must be provided
 
 See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
 */
@@ -838,11 +840,7 @@ func (adc *AwsDynamodbConnect) doAddOrDeleteSetValues(ctx aws.Context, table str
 		TableName:                 aws.String(table),
 		UpdateExpression:          updateBuilderExp.Update(),
 	}
-	dbresult, err := adc.db.UpdateItemWithContext(ctx, input)
-	if aerr, ok := err.(awserr.Error); ok && aerr.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
-		return dbresult, nil
-	}
-	return dbresult, err
+	return adc.db.UpdateItemWithContext(ctx, input)
 }
 
 /*
