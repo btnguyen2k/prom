@@ -9,18 +9,14 @@ import (
 	"time"
 )
 
-/*
-DbFlavor specifies the flavor or database server/vendor.
-
-Available: since v0.1.0
-*/
+// DbFlavor specifies the flavor or database server/vendor.
+//
+// Available: since v0.1.0
 type DbFlavor int
 
-/*
-Predefined db flavors.
-
-Available: since v0.1.0
-*/
+// Predefined db flavors.
+//
+// Available: since v0.1.0
 const (
 	FlavorDefault DbFlavor = iota
 	FlavorMySql
@@ -29,26 +25,18 @@ const (
 	FlavorOracle
 )
 
-/*
-SqlPoolOptions configures database connection pooling options.
-*/
+// SqlPoolOptions configures database connection pooling options.
 type SqlPoolOptions struct {
-	/*
-		Maximum amount of time a connection may be reused, default is 1 hour,
-		see https://golang.org/pkg/database/sql/#DB.SetConnMaxLifetime
-	*/
+	// Maximum amount of time a connection may be reused, default is 1 hour,
+	// see https://golang.org/pkg/database/sql/#DB.SetConnMaxLifetime
 	ConnMaxLifetime time.Duration
 
-	/*
-		Maximum number of idle connections in the pool, default is 1,
-		see https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns
-	*/
+	// Maximum number of idle connections in the pool, default is 1,
+	// see https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns
 	MaxIdleConns int
 
-	/*
-		Maximum number of open connections to the database, default is 2,
-		see https://golang.org/pkg/database/sql/#DB.SetMaxOpenConns
-	*/
+	// Maximum number of open connections to the database, default is 2,
+	// see https://golang.org/pkg/database/sql/#DB.SetMaxOpenConns
 	MaxOpenConns int
 }
 

@@ -16,12 +16,20 @@ Go version, direct and tested dependencies: see [go.mod](go.mod).
 
 ## History
 
+### 2019-11-19 - v0.2.6
+
+- `AwsDynamodbConnect`:
+  - New functions `BuildxxxInput` and `xxxWithInput`.
+  - Doc fixes and updates.
+
+
 ### 2019-11-17 - v0.2.5
 
 - `AwsDynamodbConnect`:
   - Add new function `IsAwsError(err error, code string) bool`
   - No longer ignore certain AWS errors, lets caller decide to call `AwsIgnoreErrorIfMatched` if needed.
 - Update dependency libs.
+- Other fixes & enhancements.
 
 
 ### 2019-11-14 - v0.2.4
