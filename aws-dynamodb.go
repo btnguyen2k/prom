@@ -3,6 +3,10 @@ package prom
 import (
 	"context"
 	"errors"
+	"reflect"
+	"strconv"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -10,9 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/btnguyen2k/consu/reddo"
-	"reflect"
-	"strconv"
-	"time"
 )
 
 // AwsDynamodbConsistentReadLevel specifies the level of read consistency.
@@ -53,11 +54,9 @@ type AwsDynamodbItem map[string]interface{}
 // AwsDynamodbNameAndType defines a generic name & type pair.
 type AwsDynamodbNameAndType struct{ Name, Type string }
 
-/*
-AwsDynamodbItemCallback defines callback interface for "scan"/"query" operation.
-
-If callback function returns false or error, the scan/query process will stop (even if there are still more items).
-*/
+// AwsDynamodbItemCallback defines callback interface for "scan"/"query" operation.
+//
+// If callback function returns false or error, the scan/query process will stop (even if there are still more items).
 type AwsDynamodbItemCallback func(item AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error)
 
 func awsDynamodbToProvisionedThroughput(rcu, wcu int64) *dynamodb.ProvisionedThroughput {
@@ -96,20 +95,17 @@ func awsDynamodbMakeKey(keyFilter map[string]interface{}) map[string]*dynamodb.A
 	return key
 }
 
-/*
-AwsDynamodbToAttributeValue converts a Go value to DynamoDB's attribute value.
-*/
+// AwsDynamodbToAttributeValue converts a Go value to DynamoDB's attribute value.
 func AwsDynamodbToAttributeValue(v interface{}) *dynamodb.AttributeValue {
 	if av, err := dynamodbattribute.Marshal(v); err != nil {
-		panic(err)
+		return nil
+		// panic(err)
 	} else {
 		return av
 	}
 }
 
-/*
-AwsDynamodbToAttributeSet converts a Go value to DynamoDB's set.
-*/
+// AwsDynamodbToAttributeSet converts a Go value to DynamoDB's set.
 func AwsDynamodbToAttributeSet(v interface{}) *dynamodb.AttributeValue {
 	rv := reflect.ValueOf(v)
 	for rv.Kind() == reflect.Ptr {
@@ -162,11 +158,9 @@ func AwsDynamodbToAttributeSet(v interface{}) *dynamodb.AttributeValue {
 	return nil
 }
 
-/*
-IsAwsError returns true if err is an awserr.Error and its code equals to awsErrCode.
-
-Available: since v0.2.5
-*/
+// IsAwsError returns true if err is an awserr.Error and its code equals to awsErrCode.
+//
+// Available: since v0.2.5
 func IsAwsError(err error, awsErrCode string) bool {
 	if aerr, ok := err.(awserr.Error); ok && aerr.Code() == awsErrCode {
 		return true
@@ -174,9 +168,7 @@ func IsAwsError(err error, awsErrCode string) bool {
 	return false
 }
 
-/*
-AwsIgnoreErrorIfMatched returns nil if err is an awserr.Error and its code equals to excludeCode.
-*/
+// AwsIgnoreErrorIfMatched returns nil if err is an awserr.Error and its code equals to excludeCode.
 func AwsIgnoreErrorIfMatched(err error, excludeCode string) error {
 	if aerr, ok := err.(awserr.Error); ok && aerr.Code() == excludeCode {
 		return nil
@@ -184,9 +176,7 @@ func AwsIgnoreErrorIfMatched(err error, excludeCode string) error {
 	return err
 }
 
-/*
-AwsDynamodbExistsAllBuilder builds a expression.ConditionBuilder where all attributes must exist.
-*/
+// AwsDynamodbExistsAllBuilder builds a expression.ConditionBuilder where all attributes must exist.
 func AwsDynamodbExistsAllBuilder(attrs []string) *expression.ConditionBuilder {
 	if attrs == nil || len(attrs) == 0 {
 		return nil
@@ -198,9 +188,7 @@ func AwsDynamodbExistsAllBuilder(attrs []string) *expression.ConditionBuilder {
 	return &builder
 }
 
-/*
-AwsDynamodbNotExistsAllBuilder builds a expression.ConditionBuilder where all attributes must not exist.
-*/
+// AwsDynamodbNotExistsAllBuilder builds a expression.ConditionBuilder where all attributes must not exist.
 func AwsDynamodbNotExistsAllBuilder(attrs []string) *expression.ConditionBuilder {
 	if attrs == nil || len(attrs) == 0 {
 		return nil
@@ -236,9 +224,7 @@ func AwsDynamodbEqualsBuilder(condition map[string]interface{}) *expression.Cond
 
 /*----------------------------------------------------------------------*/
 
-/*
-AwsDynamodbConnect holds a AWS DynamoDB client (https://github.com/aws/aws-sdk-go/tree/master/service/dynamodb) that can be shared within the application.
-*/
+// AwsDynamodbConnect holds a AWS DynamoDB client (https://github.com/aws/aws-sdk-go/tree/master/service/dynamodb) that can be shared within the application.
 type AwsDynamodbConnect struct {
 	config            *aws.Config        // aws config instance
 	session           *session.Session   // aws session insntance
@@ -295,24 +281,18 @@ func NewAwsDynamodbConnect(cfg *aws.Config, sess *session.Session, db *dynamodb.
 	return adc, nil
 }
 
-/*
-Close frees all resources and closes all connection associated with this AwsDynamodbConnect.
-*/
+// Close frees all resources and closes all connection associated with this AwsDynamodbConnect.
 func (adc *AwsDynamodbConnect) Close() error {
 	return nil
 }
 
-/*
-GetDb returns the underlying dynamodb.DynamoDB instance.
-*/
+// GetDb returns the underlying dynamodb.DynamoDB instance.
 func (adc *AwsDynamodbConnect) GetDb() *dynamodb.DynamoDB {
 	return adc.db
 }
 
-/*
-NewContext creates a new context with specified timeout in milliseconds.
-If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
-*/
+// NewContext creates a new context with specified timeout in milliseconds.
+// If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
 func (adc *AwsDynamodbConnect) NewContext(timeoutMs ...int) (aws.Context, context.CancelFunc) {
 	d := adc.timeoutMs
 	if len(timeoutMs) > 0 && timeoutMs[0] > 0 {
@@ -606,7 +586,12 @@ Parameters:
   - pkAttrs: primary key attribute names
 */
 func (adc *AwsDynamodbConnect) PutItemRawIfNotExist(ctx aws.Context, table string, item map[string]*dynamodb.AttributeValue, pkAttrs []string) (*dynamodb.PutItemOutput, error) {
-	return adc.PutItemRaw(ctx, table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
+	result, err := adc.PutItemRaw(ctx, table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
+	if IsAwsError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
+		return nil, nil
+	}
+	return result, err
+	// return adc.PutItemRaw(ctx, table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
 }
 
 /*
@@ -636,9 +621,22 @@ Parameters:
   - table  : name of the table
   - item   : item to be inserted (a map or struct), will be converted to map[string]*dynamodb.AttributeValue via dynamodbattribute.MarshalMap(item)
   - pkAttrs: primary key attribute names
+
+Note:
+
+  - (since v0.2.7) if item already existed, this function return (nil, nil)
 */
 func (adc *AwsDynamodbConnect) PutItemIfNotExist(ctx aws.Context, table string, item interface{}, pkAttrs []string) (*dynamodb.PutItemOutput, error) {
-	return adc.PutItem(ctx, table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
+	if av, err := dynamodbattribute.MarshalMap(item); err != nil {
+		return nil, err
+	} else {
+		return adc.PutItemRawIfNotExist(ctx, table, av, pkAttrs)
+	}
+	// result, err := adc.PutItem(ctx, table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
+	// if IsAwsError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
+	// 	return nil, nil
+	// }
+	// return result, err
 }
 
 /*
@@ -904,7 +902,11 @@ Parameters:
 
 See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
 
-Note: currently can not add value to a set using this function. To add value to a set, use AddValuesToSet. See: https://github.com/aws/aws-sdk-go/issues/1990
+Note:
+
+  - "add" is math operation in this context, hence the target attribute and the value to add must be numbers
+  - value can be added to top-level as well as nested attributes
+  - currently can not add value to a set using this function. To add value to a set, use AddValuesToSet. See: https://github.com/aws/aws-sdk-go/issues/1990
 */
 func (adc *AwsDynamodbConnect) AddValuesToAttributes(ctx aws.Context, table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.UpdateItemOutput, error) {
 	return adc.UpdateItem(ctx, table, keyFilter, condition, nil, nil, attrsAndValues, nil)
@@ -1321,7 +1323,12 @@ Parameters: see PutItemIfNotExist
 Available: since v0.2.4
 */
 func (adc *AwsDynamodbConnect) BuildTxPutIfNotExist(table string, item interface{}, pkAttrs []string) (*dynamodb.TransactWriteItem, error) {
-	return adc.BuildTxPut(table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
+	if av, err := dynamodbattribute.MarshalMap(item); err != nil {
+		return nil, err
+	} else {
+		return adc.BuildTxPutRawIfNotExist(table, av, pkAttrs)
+	}
+	// return adc.BuildTxPut(table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
 }
 
 /*
