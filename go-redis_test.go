@@ -1,28 +1,29 @@
 package prom
 
-import "testing"
-
-const (
-	_testRedisHostsAndPorts = "localhost:6379"
-	_testRedisPassword      = ""
+import (
+	"testing"
 )
 
-func _newGoRedisConnect() *GoRedisConnect {
-	return NewGoRedisConnect(_testRedisHostsAndPorts, _testRedisPassword, 3)
+func newGoRedisConnect(hostsAndPorts, password string) *GoRedisConnect {
+	return NewGoRedisConnect(hostsAndPorts, hostsAndPorts, 3)
 }
 
 func TestNewGoRedisConnect(t *testing.T) {
 	name := "TestNewGoRedisConnect"
-	rc := _newGoRedisConnect()
+	rc := newGoRedisConnect("localhost:6379", "")
 	if rc == nil {
 		t.Fatalf("%s failed", name)
+	}
+	err := rc.Close()
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
 	}
 }
 
 func TestGoRedisConnect_GetClient(t *testing.T) {
 	name := "TestGoRedisConnect_GetClient"
-	rc := _newGoRedisConnect()
-
+	rc := newGoRedisConnect("localhost:6379", "")
+	defer rc.Close()
 	client := rc.GetClient(0)
 	if client == nil {
 		t.Fatalf("%s failed", name)
@@ -31,8 +32,8 @@ func TestGoRedisConnect_GetClient(t *testing.T) {
 
 func TestGoRedisConnect_GetFailoverClient(t *testing.T) {
 	name := "TestGoRedisConnect_GetFailoverClient"
-	rc := _newGoRedisConnect()
-
+	rc := newGoRedisConnect("localhost:6379", "")
+	defer rc.Close()
 	client := rc.GetFailoverClient(0)
 	if client == nil {
 		t.Fatalf("%s failed", name)
@@ -41,8 +42,8 @@ func TestGoRedisConnect_GetFailoverClient(t *testing.T) {
 
 func TestGoRedisConnect_GetClusterClient(t *testing.T) {
 	name := "TestGoRedisConnect_GetClusterClient"
-	rc := _newGoRedisConnect()
-
+	rc := newGoRedisConnect("localhost:6379", "")
+	defer rc.Close()
 	client := rc.GetClusterClient()
 	if client == nil {
 		t.Fatalf("%s failed", name)

@@ -1,92 +1,238 @@
 package prom
 
 import (
-	"github.com/btnguyen2k/consu/reddo"
-	"github.com/btnguyen2k/consu/semita"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"os"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/btnguyen2k/consu/reddo"
+	"github.com/btnguyen2k/consu/semita"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const (
-	_testMongoUrl        = "mongodb://test:test@localhost:27017/test"
-	_testMongoDb         = "test"
-	_testMongoCollection = "test"
-)
-
-func _newMongoConnect() *MongoConnect {
-	mc, err := NewMongoConnect(_testMongoUrl, _testMongoDb, 10000)
-	if err != nil {
-		panic(err)
-	}
-	return mc
+func newMongoConnect(url, db string) (*MongoConnect, error) {
+	return NewMongoConnect(url, db, 10000)
 }
 
 func TestNewMongoConnect(t *testing.T) {
 	name := "TestNewMongoConnect"
-	mc := _newMongoConnect()
-	if mc == nil || mc.GetDatabase() == nil {
-		t.Fatalf("%s failed", name)
+	mc, err := newMongoConnect("mongodb://test:test@localhost:27017/test", "test")
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+	if mc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+	err = mc.Close(nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+}
+
+func TestMongoConnect_GetMongoClient(t *testing.T) {
+	name := "TestMongoConnect_GetMongoClient"
+	mc, err := newMongoConnect("mongodb://test:test@localhost:27017/test", "test")
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+	if mc.GetMongoClient() == nil {
+		t.Fatalf("%s failed: nil", name)
 	}
 }
 
 func TestMongoConnect_GetDatabase(t *testing.T) {
 	name := "TestMongoConnect_GetDatabase"
-	mc := _newMongoConnect()
-	db := mc.GetDatabase()
-	if db == nil || mc.GetDatabase().Name() != _testMongoDb {
-		t.Fatalf("%s failed", name)
+	mc, err := newMongoConnect("mongodb://test:test@localhost:27017/test", "test")
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+	db := mc.GetDatabase(nil)
+	if db == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+}
+
+const (
+	envMongoUrl = "MONGO_URL"
+	envMongoDb  = "MONGO_DB"
+)
+
+func TestMongoConnect_Ping(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
+	name := "TestMongoConnect_Ping"
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+	err = mc.Ping(nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+}
+
+func TestMongoConnect_IsConnected(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
+	name := "TestMongoConnect_IsConnected"
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+	if !mc.IsConnected() {
+		t.Fatalf("%s failed: not connected", name)
 	}
 }
 
 func TestMongoConnect_HasDatabase(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
 	name := "TestMongoConnect_HasDatabase"
-	mc := _newMongoConnect()
-	ok, err := mc.HasDatabase(_testMongoDb)
-	if !ok || err != nil {
-		t.Fatalf("%s failed: %v - %e", name, ok, err)
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+
+	ok, err := mc.HasDatabase(mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+	if !ok {
+		t.Fatalf("%s failed: no database [%s]", name, mongoDb)
+	}
+
+	ok, err = mc.HasDatabase("should_not_exist")
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+	if ok {
+		t.Fatalf("%s failed: database [%s]", name, "should_not_exist")
 	}
 }
 
-func TestMongoConnect_NewContext(t *testing.T) {
-	name := "TestMongoConnect_NewContext"
-	mc := _newMongoConnect()
-	now := time.Now()
-	context, _ := mc.NewContext(10000)
-	if context == nil {
-		t.Fatalf("%s failed: NewContext returns nil", name)
+const (
+	testMongoCollection = "test_user"
+)
+
+func TestMongoConnect_GetCollection(t *testing.T) {
+	name := "TestMongoConnect_GetCollection"
+	mc, err := newMongoConnect("mongodb://hehe:hehe@localhost:27017/hehe", "hehe")
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
 	}
-	deadline, ok := context.Deadline()
-	if !ok || deadline.Unix() < now.Unix()+10 {
-		t.Fatalf("%s failed - expected deadline [%#v], expected [%#v]", name, now.Add(10000).Unix(), deadline.Unix())
+	c := mc.GetCollection(testMongoCollection)
+	if c == nil {
+		t.Fatalf("%s failed: nil", name)
 	}
 }
 
-func TestMongoConnect_CreateCollection(t *testing.T) {
-	name := "TestMongoConnect_CreateCollection"
-	mc := _newMongoConnect()
-	err := mc.GetCollection(_testMongoCollection).Drop(nil)
+func TestMongoConnect_HasCollection(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
+	name := "TestMongoConnect_HasCollection"
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
 	if err != nil {
-		t.Fatalf("%s failed - error dropping collection [%s]: %e", name, _testMongoCollection, err)
+		t.Fatalf("%s failed: error [%e]", name, err)
 	}
-	ok, err := mc.HasCollection(_testMongoCollection)
-	if ok || err != nil {
-		t.Fatalf("%s failed: %v - %e", name, ok, err)
-	}
-	_, err = mc.CreateCollection(_testMongoCollection)
+
+	ok, err := mc.HasCollection(testMongoCollection)
 	if err != nil {
-		t.Fatalf("%s failed - error creating collection [%s]: %e", name, _testMongoCollection, err)
+		t.Fatalf("%s failed: error [%e]", name, err)
 	}
-	ok, err = mc.HasCollection(_testMongoCollection)
-	if !ok || err != nil {
-		t.Fatalf("%s failed: %v - %e", name, ok, err)
+	if !ok {
+		t.Fatalf("%s failed: no collection [%s]", name, mongoDb)
 	}
+
+	ok, err = mc.HasCollection("should_not_exist")
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+	if ok {
+		t.Fatalf("%s failed: collection [%s]", name, "should_not_exist")
+	}
+}
+
+func TestMongoConnect_Collection(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
+	name := "TestMongoConnect_Collection"
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+
+	ok, err := mc.HasCollection(testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/HasCollection", err)
+	} else if ok {
+		err = mc.GetCollection(testMongoCollection).Drop(nil)
+		if err != nil {
+			t.Fatalf("%s failed: error [%e]", name+"/GetCollection", err)
+		}
+	}
+
+	ok, err = mc.HasCollection(testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/HasCollection", err)
+	}
+	if ok {
+		t.Fatalf("%s failed: collection not deleted [%s]", name+"/HasCollection", testMongoCollection)
+	}
+
+	_, err = mc.CreateCollection(testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/CreateCollection", err)
+	}
+
+	ok, err = mc.HasCollection(testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/HasCollection", err)
+	}
+	if !ok {
+		t.Fatalf("%s failed: collection not created [%s]", name+"/HasCollection", testMongoCollection)
+	}
+}
+
+func prepareMongoCollection(mc *MongoConnect, collectionName string) error {
+	mc.GetCollection(collectionName).Drop(nil)
+	_, err := mc.CreateCollection(collectionName)
+	return err
 }
 
 func TestMongoConnect_CreateIndexes1(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
 	name := "TestMongoConnect_CreateIndexes1"
-	mc := _newMongoConnect()
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+
+	err = prepareMongoCollection(mc, testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/prepareMongoCollection", err)
+	}
 
 	fieldMapNamespace := "ns"
 	fieldMapFrom := "frm"
@@ -108,58 +254,57 @@ func TestMongoConnect_CreateIndexes1(t *testing.T) {
 			"name": "idx_to",
 		},
 	}
-	for i := 0; i < 10; i++ {
-		err := mc.GetCollection(_testMongoCollection).Drop(nil)
+	idxResult, err := mc.CreateCollectionIndexes(testMongoCollection, indexes)
+	if err != nil || idxResult == nil || len(idxResult) < 1 {
 		if err != nil {
-			t.Fatalf("[Loop %d] %s failed - error dropping collection [%s]: %e", i, name, _testMongoCollection, err)
+			t.Fatalf("%s failed: error creating indexes: %e", name, err)
+		} else {
+			t.Fatalf("%s failed: error creating indexes: %#v", name, idxResult)
 		}
-		colResult, err := mc.CreateCollection(_testMongoCollection)
-		if err != nil || colResult.Err() != nil {
-			if err != nil {
-				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, err)
-			} else {
-				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, colResult.Err())
-			}
+	}
+	cur, err := mc.GetCollection(testMongoCollection).Indexes().List(nil)
+	if err != nil {
+		t.Fatalf("%s failed: error listing collection index [%s]: %e", name, testMongoCollection, err)
+	}
+	var ok1, ok2 = false, false
+	for cur.Next(nil) {
+		var i map[string]interface{}
+		cur.Decode(&i)
+		s := semita.NewSemita(i)
+		name, _ := s.GetValueOfType("name", reddo.TypeString)
+		if name.(string) == "uidx_from" {
+			ok, _ := s.GetValueOfType("unique", reddo.TypeBool)
+			ok1 = ok.(bool)
 		}
-		idxResult, err := mc.CreateCollectionIndexes(_testMongoCollection, indexes)
-		if err != nil || idxResult == nil || len(idxResult) < 1 {
-			if err != nil {
-				t.Fatalf("[Loop %d] %s failed - error creating indexes: %e", i, name, err)
-			} else {
-				t.Fatalf("[Loop %d] %s failed - error creating indexes: %#v", i, name, idxResult)
-			}
+		if name.(string) == "idx_to" {
+			ok2 = true
 		}
-		cur, err := mc.GetCollection(_testMongoCollection).Indexes().List(nil)
-		if err != nil {
-			t.Fatalf("[Loop %d] %s failed - error listing collection index [%s]: %e", i, name, _testMongoCollection, err)
-		}
-		var ok1, ok2 = false, false
-		for cur.Next(nil) {
-			var i map[string]interface{}
-			cur.Decode(&i)
-			s := semita.NewSemita(i)
-			name, _ := s.GetValueOfType("name", reddo.TypeString)
-			if name.(string) == "uidx_from" {
-				ok, _ := s.GetValueOfType("unique", reddo.TypeBool)
-				ok1 = ok.(bool)
-			}
-			if name.(string) == "idx_to" {
-				ok2 = true
-			}
-		}
-		cur.Close(nil)
-		if !ok1 {
-			t.Fatalf("[Loop %d] %s failed - cannot find index [%s] or its unique attribute is not true", i, name, "uidx_from")
-		}
-		if !ok2 {
-			t.Fatalf("[Loop %d] %s failed - cannot find index [%s]", i, name, "idx_to")
-		}
+	}
+	cur.Close(nil)
+	if !ok1 {
+		t.Fatalf("%s failed: cannot find index [%s] or its unique attribute is not true", name, "uidx_from")
+	}
+	if !ok2 {
+		t.Fatalf("%s failed: cannot find index [%s]", name, "idx_to")
 	}
 }
 
 func TestMongoConnect_CreateIndexes2(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
 	name := "TestMongoConnect_CreateIndexes2"
-	mc := _newMongoConnect()
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+
+	err = prepareMongoCollection(mc, testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/prepareMongoCollection", err)
+	}
 
 	fieldMapNamespace := "ns"
 	fieldMapFrom := "frm"
@@ -182,58 +327,57 @@ func TestMongoConnect_CreateIndexes2(t *testing.T) {
 			Options: &options.IndexOptions{Name: &idxName},
 		},
 	}
-	for i := 0; i < 10; i++ {
-		err := mc.GetCollection(_testMongoCollection).Drop(nil)
+	idxResult, err := mc.CreateCollectionIndexes(testMongoCollection, indexes)
+	if err != nil || idxResult == nil || len(idxResult) < 1 {
 		if err != nil {
-			t.Fatalf("[Loop %d] %s failed - error dropping collection [%s]: %e", i, name, _testMongoCollection, err)
+			t.Fatalf("%s failed:  error creating indexes: %e", name, err)
+		} else {
+			t.Fatalf("%s failed: error creating indexes: %#v", name, idxResult)
 		}
-		colResult, err := mc.CreateCollection(_testMongoCollection)
-		if err != nil || colResult.Err() != nil {
-			if err != nil {
-				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, err)
-			} else {
-				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, colResult.Err())
-			}
+	}
+	cur, err := mc.GetCollection(testMongoCollection).Indexes().List(nil)
+	if err != nil {
+		t.Fatalf("%s failed: error listing collection index [%s]: %e", name, testMongoCollection, err)
+	}
+	var ok1, ok2 = false, false
+	for cur.Next(nil) {
+		var i map[string]interface{}
+		cur.Decode(&i)
+		s := semita.NewSemita(i)
+		name, _ := s.GetValueOfType("name", reddo.TypeString)
+		if name.(string) == "uidx_from" {
+			ok, _ := s.GetValueOfType("unique", reddo.TypeBool)
+			ok1 = ok.(bool)
 		}
-		idxResult, err := mc.CreateCollectionIndexes(_testMongoCollection, indexes)
-		if err != nil || idxResult == nil || len(idxResult) < 1 {
-			if err != nil {
-				t.Fatalf("[Loop %d] %s failed - error creating indexes: %e", i, name, err)
-			} else {
-				t.Fatalf("[Loop %d] %s failed - error creating indexes: %#v", i, name, idxResult)
-			}
+		if name.(string) == "idx_to" {
+			ok2 = true
 		}
-		cur, err := mc.GetCollection(_testMongoCollection).Indexes().List(nil)
-		if err != nil {
-			t.Fatalf("[Loop %d] %s failed - error listing collection index [%s]: %e", i, name, _testMongoCollection, err)
-		}
-		var ok1, ok2 = false, false
-		for cur.Next(nil) {
-			var i map[string]interface{}
-			cur.Decode(&i)
-			s := semita.NewSemita(i)
-			name, _ := s.GetValueOfType("name", reddo.TypeString)
-			if name.(string) == "uidx_from" {
-				ok, _ := s.GetValueOfType("unique", reddo.TypeBool)
-				ok1 = ok.(bool)
-			}
-			if name.(string) == "idx_to" {
-				ok2 = true
-			}
-		}
-		cur.Close(nil)
-		if !ok1 {
-			t.Fatalf("[Loop %d] %s failed - cannot find index [%s] or its unique attribute is not true", i, name, "uidx_from")
-		}
-		if !ok2 {
-			t.Fatalf("[Loop %d] %s failed - cannot find index [%s]", i, name, "idx_to")
-		}
+	}
+	cur.Close(nil)
+	if !ok1 {
+		t.Fatalf("%s failed: cannot find index [%s] or its unique attribute is not true", name, "uidx_from")
+	}
+	if !ok2 {
+		t.Fatalf("%s failed: cannot find index [%s]", name, "idx_to")
 	}
 }
 
 func TestMongoConnect_CreateIndexes3(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
 	name := "TestMongoConnect_CreateIndexes3"
-	mc := _newMongoConnect()
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+
+	err = prepareMongoCollection(mc, testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/prepareMongoCollection", err)
+	}
 
 	fieldMapNamespace := "ns"
 	fieldMapFrom := "frm"
@@ -257,51 +401,231 @@ func TestMongoConnect_CreateIndexes3(t *testing.T) {
 			Options: &options.IndexOptions{Name: &idxName},
 		},
 	}
+	idxResult, err := mc.CreateCollectionIndexes(testMongoCollection, indexes)
+	if err != nil || idxResult == nil || len(idxResult) < 1 {
+		if err != nil {
+			t.Fatalf("%s failed: error creating indexes: %e", name, err)
+		} else {
+			t.Fatalf("%s failed: error creating indexes: %#v", name, idxResult)
+		}
+	}
+	cur, err := mc.GetCollection(testMongoCollection).Indexes().List(nil)
+	if err != nil {
+		t.Fatalf("%s failed: error listing collection index [%s]: %e", name, testMongoCollection, err)
+	}
+	var ok1, ok2 = false, false
+	for cur.Next(nil) {
+		var i map[string]interface{}
+		cur.Decode(&i)
+		s := semita.NewSemita(i)
+		name, _ := s.GetValueOfType("name", reddo.TypeString)
+		if name.(string) == "uidx_from" {
+			ok, _ := s.GetValueOfType("unique", reddo.TypeBool)
+			ok1 = ok.(bool)
+		}
+		if name.(string) == "idx_to" {
+			ok2 = true
+		}
+	}
+	cur.Close(nil)
+	if !ok1 {
+		t.Fatalf("%s failed: cannot find index [%s] or its unique attribute is not true", name, "uidx_from")
+	}
+	if !ok2 {
+		t.Fatalf("%s failed: cannot find index [%s]", name, "idx_to")
+	}
+}
+
+func TestMongoConnect_DecodeSingleResult(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
+	name := "TestMongoConnect_DecodeSingleResult"
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+
+	err = prepareMongoCollection(mc, testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/prepareMongoCollection", err)
+	}
+
+	item := map[string]interface{}{
+		"username": "btnguyen2k",
+		"email":    "me@domain.com",
+		"version":  time.Now(),
+		"actived":  true,
+	}
+	collection := mc.GetCollection(testMongoCollection)
+	_, err = collection.InsertOne(nil, item)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/InsertOne", err)
+	}
+
+	singleResult := collection.FindOne(nil, bson.M{"username": "btnguyen2k"})
+	row, err := mc.DecodeSingleResult(singleResult)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/DecodeSingleResult", err)
+	}
+	if row == nil {
+		t.Fatalf("%s failed: nil", name+"/DecodeSingleResult")
+	}
+
+	singleResult = collection.FindOne(nil, bson.M{"username": "not-exists"})
+	row, err = mc.DecodeSingleResult(singleResult)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/DecodeSingleResult", err)
+	}
+	if row != nil {
+		t.Fatalf("%s failed: should be nil", name+"/DecodeSingleResult")
+	}
+}
+
+func TestMongoConnect_DecodeSingleResultRaw(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
+	name := "TestMongoConnect_DecodeSingleResultRaw"
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+
+	err = prepareMongoCollection(mc, testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/prepareMongoCollection", err)
+	}
+
+	item := map[string]interface{}{
+		"username": "btnguyen2k",
+		"email":    "me@domain.com",
+		"version":  time.Now(),
+		"actived":  true,
+	}
+	collection := mc.GetCollection(testMongoCollection)
+	_, err = collection.InsertOne(nil, item)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/InsertOne", err)
+	}
+
+	singleResult := collection.FindOne(nil, bson.M{"username": "btnguyen2k"})
+	row, err := mc.DecodeSingleResultRaw(singleResult)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/DecodeSingleResultRaw", err)
+	}
+	if row == nil {
+		t.Fatalf("%s failed: nil", name+"/DecodeSingleResultRaw")
+	}
+
+	singleResult = collection.FindOne(nil, bson.M{"username": "not-exists"})
+	row, err = mc.DecodeSingleResultRaw(singleResult)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/DecodeSingleResultRaw", err)
+	}
+	if row != nil {
+		t.Fatalf("%s failed: should be nil", name+"/DecodeSingleResultRaw")
+	}
+}
+
+func TestMongoConnect_DecodeResultCallback(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
+	name := "TestMongoConnect_DecodeResultCallback"
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+
+	err = prepareMongoCollection(mc, testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/prepareMongoCollection", err)
+	}
+
+	collection := mc.GetCollection(testMongoCollection)
 	for i := 0; i < 10; i++ {
-		err := mc.GetCollection(_testMongoCollection).Drop(nil)
+		item := map[string]interface{}{
+			"id":       i,
+			"username": strconv.Itoa(i),
+			"email":    strconv.Itoa(i) + "@domain.com",
+			"version":  time.Now(),
+			"actived":  i%2 == 0,
+		}
+		_, err = collection.InsertOne(nil, item)
 		if err != nil {
-			t.Fatalf("[Loop %d] %s failed - error dropping collection [%s]: %e", i, name, _testMongoCollection, err)
+			t.Fatalf("%s failed: error [%e]", name+"/InsertOne", err)
 		}
-		colResult, err := mc.CreateCollection(_testMongoCollection)
-		if err != nil || colResult.Err() != nil {
-			if err != nil {
-				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, err)
-			} else {
-				t.Fatalf("[Loop %d] %s failed - error creating collection [%s]: %e", i, name, _testMongoCollection, colResult.Err())
-			}
+	}
+
+	numDocs := 0
+	cursor, err := collection.Find(nil, bson.M{"id": bson.M{"$gt": 4}})
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/Find", err)
+	}
+	mc.DecodeResultCallback(nil, cursor, func(docNum int, doc bson.M, err error) bool {
+		if err == nil {
+			numDocs++
+			return true
 		}
-		idxResult, err := mc.CreateCollectionIndexes(_testMongoCollection, indexes)
-		if err != nil || idxResult == nil || len(idxResult) < 1 {
-			if err != nil {
-				t.Fatalf("[Loop %d] %s failed - error creating indexes: %e", i, name, err)
-			} else {
-				t.Fatalf("[Loop %d] %s failed - error creating indexes: %#v", i, name, idxResult)
-			}
+		return false
+	})
+	if numDocs != 5 {
+		t.Fatalf("%s failed: expected %d docs but received %d", name+"/DecodeResultCallback", 5, numDocs)
+	}
+}
+
+func TestMongoConnect_DecodeResultCallbackRaw(t *testing.T) {
+	mongoUrl := os.Getenv(envMongoUrl)
+	mongoDb := os.Getenv(envMongoDb)
+	if mongoUrl == "" || mongoDb == "" {
+		return
+	}
+	name := "TestMongoConnect_DecodeResultCallbackRaw"
+	mc, err := newMongoConnect(mongoUrl, mongoDb)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
+	}
+
+	err = prepareMongoCollection(mc, testMongoCollection)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/prepareMongoCollection", err)
+	}
+
+	collection := mc.GetCollection(testMongoCollection)
+	for i := 0; i < 10; i++ {
+		item := map[string]interface{}{
+			"id":       i,
+			"username": strconv.Itoa(i),
+			"email":    strconv.Itoa(i) + "@domain.com",
+			"version":  time.Now(),
+			"actived":  i%2 == 0,
 		}
-		cur, err := mc.GetCollection(_testMongoCollection).Indexes().List(nil)
+		_, err = collection.InsertOne(nil, item)
 		if err != nil {
-			t.Fatalf("[Loop %d] %s failed - error listing collection index [%s]: %e", i, name, _testMongoCollection, err)
+			t.Fatalf("%s failed: error [%e]", name+"/InsertOne", err)
 		}
-		var ok1, ok2 = false, false
-		for cur.Next(nil) {
-			var i map[string]interface{}
-			cur.Decode(&i)
-			s := semita.NewSemita(i)
-			name, _ := s.GetValueOfType("name", reddo.TypeString)
-			if name.(string) == "uidx_from" {
-				ok, _ := s.GetValueOfType("unique", reddo.TypeBool)
-				ok1 = ok.(bool)
-			}
-			if name.(string) == "idx_to" {
-				ok2 = true
-			}
+	}
+
+	numDocs := 0
+	cursor, err := collection.Find(nil, bson.M{"id": bson.M{"$lte": 4}})
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/Find", err)
+	}
+	mc.DecodeResultCallbackRaw(nil, cursor, func(docNum int, doc []byte, err error) bool {
+		if err == nil {
+			numDocs++
+			return true
 		}
-		cur.Close(nil)
-		if !ok1 {
-			t.Fatalf("[Loop %d] %s failed - cannot find index [%s] or its unique attribute is not true", i, name, "uidx_from")
-		}
-		if !ok2 {
-			t.Fatalf("[Loop %d] %s failed - cannot find index [%s]", i, name, "idx_to")
-		}
+		return false
+	})
+	if numDocs != 5 {
+		t.Fatalf("%s failed: expected %d docs but received %d", name+"/DecodeResultCallbackRaw", 5, numDocs)
 	}
 }
