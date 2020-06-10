@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/btnguyen2k/prom"
-	_ "gopkg.in/goracle.v2"
 	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	_ "github.com/godror/godror"
+
+	"github.com/btnguyen2k/prom"
 )
 
 var timezoneOracle = "Asia/Kabul"

@@ -3,13 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/btnguyen2k/prom"
-	_ "gopkg.in/goracle.v2"
 	"math/rand"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	_ "github.com/godror/godror"
+
+	"github.com/btnguyen2k/prom"
 )
 
 // construct an 'prom.SqlConnect' instance

@@ -156,15 +156,6 @@ func (sc *SqlConnect) ensureLocation() *time.Location {
 }
 
 /*
-NewBackgroundContext is alias of NewContext.
-
-Deprecated: since v0.2.0, use NewContext instead.
-*/
-func (sc *SqlConnect) NewBackgroundContext(timeoutMs ...int) (context.Context, context.CancelFunc) {
-	return sc.NewContext(timeoutMs...)
-}
-
-/*
 NewContext creates a new context with specified timeout in milliseconds.
 If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
 
@@ -336,8 +327,13 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 				return nil, err
 			}
 		} else if sc.flavor == FlavorPgSql && v.ScanType().Kind() == reflect.Interface && sc.isStringType(v) {
-			// Postgresql's CHAR(1) is loaded as []byte
-			result[v.Name()] = string(vals[k].([]byte))
+			// Postgresql's CHAR(1) is loaded as []byte old driver version
+			_v, ok := vals[k].([]byte)
+			if ok {
+				result[v.Name()] = string(_v)
+			} else {
+				result[v.Name()] = vals[k].(string)
+			}
 		} else {
 			result[v.Name()] = vals[k]
 		}

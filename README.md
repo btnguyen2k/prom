@@ -7,14 +7,29 @@ Utility library to manage shared connection in Golang.
 
 ## Documentation
 
-- ['Prom' for go-redis](go-redis.md).
-- ['Prom' for the official Go driver for MongoDB](mongo.md).
-- ['Prom' for database/sql](sql.md).
 - ['Prom' for AWS DyamoDB](aws-dynamodb.md).
+- ['Prom' for the official Go driver for MongoDB](mongo.md).
+- ['Prom' for go-redis](go-redis.md).
+- ['Prom' for database/sql](sql.md).
 
 Go version, direct and tested dependencies: see [go.mod](go.mod).
 
 ## History
+
+### 2020-06-10 - v0.2.7
+
+- `AwsDynamodbConnect`:
+  - `PutItemIfNotExist` returns `(nil, nil)` if the item being put already existed.
+- `MongoConnect`:
+  - Clean up deprecated functions.
+- `SqlConnect`:
+  - Clean up deprecated functions.
+- Migrate Oracle driver to `github.com/godror/godror` because of naming (trademark) issues.
+- Migrate PostgreSQL driver to `github.com/jackc/pgx/v4/stdlib`.
+- More unit tests.
+- Update dependency libs.
+- Other fixes & enhancements.
+
 
 ### 2019-11-19 - v0.2.6
 

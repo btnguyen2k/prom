@@ -3,7 +3,7 @@
 Drivers:
 - [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql).
 - [x] PostgreSQL: [github.com/lib/pq](https://github.com/lib/pq).
-- [x] Oracle: [gopkg.in/goracle.v2](https://github.com/go-goracle/goracle).
+- [x] Oracle: [github.com/godror/godror](https://github.com/go-goracle/goracle).
 - [ ] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb) (_experimental_).
 
 Sample usage (MySQL):
