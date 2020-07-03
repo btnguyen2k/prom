@@ -299,6 +299,95 @@ func sqlInitTable(sqlc *SqlConnect, table, dbtype string) error {
 	return nil
 }
 
+func TestSqlConnect_Unicode(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	name := "TestSqlConnect_Unicode"
+	urlMap := sqlGetUrlFromEnv()
+	for k, info := range urlMap {
+		fmt.Println(k, info)
+		var sqlc *SqlConnect
+		var err error
+		switch k {
+		case "mssql":
+			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql)
+		case "mysql":
+			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql)
+		case "oracle":
+			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql)
+		case "pgsql":
+			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql)
+		default:
+			t.Fatalf("%s failed: unknown database type [%s]", name, k)
+		}
+		if err != nil {
+			t.Fatalf("%s failed: error [%e]", name+"/"+k, err)
+		} else if sqlc == nil {
+			t.Fatalf("%s failed: nil", name+"/"+k)
+		}
+		err = sqlInitTable(sqlc, testSqlTableName, k)
+		if err != nil {
+			t.Fatalf("%s failed: error [%e]", name+"/sqlInitTable/"+k, err)
+		}
+		sqlc.GetDB().Exec("DELETE FROM " + testSqlTableName)
+		strs := []string{"Xin chào, đây là thư viện prom", "您好", "مرحبا", "हैलो", "こんにちは", "សួស្តី", "여보세요", "ສະບາຍດີ", "สวัสดี"}
+		for i, str := range strs {
+			sql := "INSERT INTO %s (%s, %s) VALUES (%s)"
+			placeholders := "?,?"
+			switch k {
+			case "mssql":
+				placeholders = "@P1,@P2"
+			case "pgsql":
+				placeholders = "$1,$2"
+			case "oracle":
+				placeholders = ":1,:2"
+			}
+			sql = fmt.Sprintf(sql, testSqlTableName, sqlTableColNames[1], sqlTableColNames[2], placeholders)
+			_, err := sqlc.GetDB().Exec(sql, strconv.Itoa(i), str)
+			if err != nil {
+				t.Fatalf("%s failed: error [%e]", name+"/insert/"+k, err)
+			}
+
+			sqlSelect := "SELECT %s FROM %s WHERE %s='%s'"
+			dbRow := sqlc.GetDB().QueryRow(fmt.Sprintf(sqlSelect, sqlTableColNames[2], testSqlTableName, sqlTableColNames[0], strconv.Itoa(i)))
+			dataRow, err := sqlc.FetchRow(dbRow, 1)
+			if err != nil {
+				t.Fatalf("%s failed: error [%e]", name+"/FetchRow/"+k, err)
+			} else if dataRow == nil {
+				t.Fatalf("%s failed: nil", name+"/FetchRow/"+k)
+			}
+			val := dataRow[0]
+			if _, ok := val.([]byte); ok {
+				val = string(val.([]byte))
+			}
+			if val != str {
+				t.Fatalf("%s failed: expected %#v but received %#v", name+"/FetchRow/"+k, str, dataRow[0])
+			}
+		}
+
+		sqlSelect := "SELECT %s FROM %s ORDER BY %s"
+		dbRows, err := sqlc.GetDB().Query(fmt.Sprintf(sqlSelect, sqlTableColNames[2], testSqlTableName, sqlTableColNames[0]))
+		if err != nil {
+			t.Fatalf("%s failed: error [%e]", name+"/Query/"+k, err)
+		} else if dbRows == nil {
+			t.Fatalf("%s failed: nil", name+"/Query/"+k)
+		}
+		dataRows, err := sqlc.FetchRows(dbRows)
+		if err != nil {
+			t.Fatalf("%s failed: error [%e]", name+"/FetchRows/"+k, err)
+		} else if dataRows == nil {
+			t.Fatalf("%s failed: nil", name+"/FetchRows/"+k)
+		}
+		for i, row := range dataRows {
+			for col, val := range row {
+				row[strings.ToLower(col)] = val
+			}
+			if row[sqlTableColNames[2]] != strs[i] {
+				t.Fatalf("%s failed: expected %#v but received %#v", name+"/FetchRow/"+k, strs[i], row)
+			}
+		}
+	}
+}
+
 func TestSqlConnect_FetchRow(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	name := "TestSqlConnect_FetchRow"
