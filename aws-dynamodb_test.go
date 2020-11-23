@@ -368,6 +368,31 @@ func TestAwsDynamodbEqualsBuilder(t *testing.T) {
 	}
 }
 
+func TestAwsDynamodbFastFailed(t *testing.T) {
+	name := "TestAwsDynamodbFastFailed"
+	cfg := &aws.Config{
+		Region:      aws.String("dummy"),
+		Credentials: credentials.NewStaticCredentials("id", "secret", "token"),
+		DisableSSL:  aws.Bool(true),
+		Endpoint:    aws.String("http://localhost:1234"),
+	}
+	timeoutMs := 100
+	adc, err := NewAwsDynamodbConnect(cfg, nil, nil, timeoutMs)
+	if err != nil {
+		t.Fatalf("%s/%s failed: %s", name, "NewAwsDynamodbConnect", err)
+	}
+	tstart := time.Now()
+	_, err = adc.HasTable(nil, "mytable")
+	if err == nil {
+		t.Fatalf("%s failed: the operation should not success", name)
+	}
+	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
+	dmax := time.Duration(float64(time.Duration(timeoutMs)*time.Millisecond) * 1.5)
+	if d > dmax {
+		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1E6, d/1E6)
+	}
+}
+
 func _createAwsDynamodbConnect(t *testing.T, testName string) *AwsDynamodbConnect {
 	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
 	awsAccessKeyId := strings.ReplaceAll(os.Getenv("AWS_ACCESS_KEY_ID"), `"`, "")
