@@ -1,7 +1,6 @@
 package prom
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -136,23 +135,23 @@ type sqlDriverAndUrl struct {
 	driver, url string
 }
 
-func sqlDriverAndUrl_new(driver, url string) sqlDriverAndUrl {
+func newSqlDriverAndUrl(driver, url string) sqlDriverAndUrl {
 	return sqlDriverAndUrl{driver: strings.Trim(driver, "\""), url: strings.Trim(url, "\"")}
 }
 
 func sqlGetUrlFromEnv() map[string]sqlDriverAndUrl {
 	urlMap := make(map[string]sqlDriverAndUrl)
 	if os.Getenv(envMssqlDriver) != "" && os.Getenv(envMssqlUrl) != "" {
-		urlMap["mssql"] = sqlDriverAndUrl_new(os.Getenv(envMssqlDriver), os.Getenv(envMssqlUrl))
+		urlMap["mssql"] = newSqlDriverAndUrl(os.Getenv(envMssqlDriver), os.Getenv(envMssqlUrl))
 	}
 	if os.Getenv(envMysqlDriver) != "" && os.Getenv(envMysqlUrl) != "" {
-		urlMap["mysql"] = sqlDriverAndUrl_new(os.Getenv(envMysqlDriver), os.Getenv(envMysqlUrl))
+		urlMap["mysql"] = newSqlDriverAndUrl(os.Getenv(envMysqlDriver), os.Getenv(envMysqlUrl))
 	}
 	if os.Getenv(envOracleDriver) != "" && os.Getenv(envOracleUrl) != "" {
-		urlMap["oracle"] = sqlDriverAndUrl_new(os.Getenv(envOracleDriver), os.Getenv(envOracleUrl))
+		urlMap["oracle"] = newSqlDriverAndUrl(os.Getenv(envOracleDriver), os.Getenv(envOracleUrl))
 	}
 	if os.Getenv(envPgsqlDriver) != "" && os.Getenv(envPgsqlUrl) != "" {
-		urlMap["pgsql"] = sqlDriverAndUrl_new(os.Getenv(envPgsqlDriver), os.Getenv(envPgsqlUrl))
+		urlMap["pgsql"] = newSqlDriverAndUrl(os.Getenv(envPgsqlDriver), os.Getenv(envPgsqlUrl))
 	}
 	return urlMap
 }
@@ -275,7 +274,7 @@ func sqlInitTable(sqlc *SqlConnect, table, dbtype string) error {
 			}
 		}
 	default:
-		return errors.New(fmt.Sprintf("unknown database type %s", dbtype))
+		return fmt.Errorf("unknown database type %s", dbtype)
 	}
 	sqlCreate = fmt.Sprintf(sqlCreate, table, partCreateCols, pkName)
 	if _, err := sqlc.GetDB().Exec(sqlCreate); err != nil {
