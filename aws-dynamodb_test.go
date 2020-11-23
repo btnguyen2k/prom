@@ -6,7 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -366,24 +368,38 @@ func TestAwsDynamodbEqualsBuilder(t *testing.T) {
 	}
 }
 
-func createAwsDynamodbConnect(region string) (*AwsDynamodbConnect, error) {
+func _createAwsDynamodbConnect(t *testing.T, testName string) *AwsDynamodbConnect {
+	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
+	awsAccessKeyId := strings.ReplaceAll(os.Getenv("AWS_ACCESS_KEY_ID"), `"`, "")
+	awsSecretAccessKey := strings.ReplaceAll(os.Getenv("AWS_SECRET_ACCESS_KEY"), `"`, "")
+	if awsRegion == "" || awsAccessKeyId == "" || awsSecretAccessKey == "" {
+		t.Skipf("%s skipped", testName)
+		return nil
+	}
 	cfg := &aws.Config{
-		Region:      aws.String(region),
+		Region:      aws.String(awsRegion),
 		Credentials: credentials.NewEnvCredentials(),
 	}
-	return NewAwsDynamodbConnect(cfg, nil, nil, 10000)
+	if awsDynamodbEndpoint := strings.ReplaceAll(os.Getenv("AWS_DYNAMODB_ENDPOINT"), `"`, ""); awsDynamodbEndpoint != "" {
+		cfg.Endpoint = aws.String(awsDynamodbEndpoint)
+		if strings.HasPrefix(awsDynamodbEndpoint, "http://") {
+			cfg.DisableSSL = aws.Bool(true)
+		}
+	}
+	adc, err := NewAwsDynamodbConnect(cfg, nil, nil, 10000)
+	if err != nil {
+		t.Fatalf("%s/%s failed: %s", testName, "NewAwsDynamodbConnect", err)
+	}
+	return adc
 }
 
 func TestNewAwsDynamodbConnect(t *testing.T) {
 	name := "TestNewAwsDynamodbConnect"
-	region := "ap-southeast-1"
-	adc, err := createAwsDynamodbConnect(region)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", name, err)
-	}
+	adc := _createAwsDynamodbConnect(t, name)
 	if adc == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
+	defer adc.Close()
 }
 
 func TestNewAwsDynamodbConnect_timeout(t *testing.T) {
@@ -400,6 +416,7 @@ func TestNewAwsDynamodbConnect_timeout(t *testing.T) {
 	if adc == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
+	defer adc.Close()
 	if adc.timeoutMs < 0 {
 		t.Fatalf("%s failed: invalid timeout value #%v", name, adc.timeoutMs)
 	}
@@ -417,7 +434,7 @@ var testRegion = "ap-southeast-1"
 
 func TestAwsDynamodbConnect_Close(t *testing.T) {
 	name := "TestAwsDynamodbConnect_Close"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
 	err := adc.Close()
 	if err != nil {
 		t.Fatalf("%s failed: error [%e]", name, err)
@@ -426,30 +443,8 @@ func TestAwsDynamodbConnect_Close(t *testing.T) {
 
 func TestAwsDynamodbConnect_GetDb(t *testing.T) {
 	name := "TestAwsDynamodbConnect_GetDb"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
 	if adc.GetDb() == nil {
-		t.Fatalf("%s failed: nil", name)
-	}
-}
-
-const (
-	dynamodbAwsAccessKeyId     = "AWS_ACCESS_KEY_ID"
-	dynamodbAwsSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
-	dynamodbTestTableName      = "DYNAMODB_TEST_TABLE_NAME"
-	dynamodbTestGsiName        = "DYNAMODB_TEST_GSI_NAME"
-)
-
-func TestAwsDynamodbConnect_ListTables(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
-	name := "TestAwsDynamodbConnect_ListTables"
-	adc, _ := createAwsDynamodbConnect(testRegion)
-	tables, err := adc.ListTables(nil)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", name, err)
-	}
-	if tables == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
 }
@@ -463,19 +458,9 @@ func inSlide(item string, slide []string) bool {
 	return false
 }
 
-func waitForTable(adc *AwsDynamodbConnect, table string, statusList []string, delay int) {
-	for status, err := adc.GetTableStatus(nil, table); !inSlide(status, statusList) && err == nil; {
-		fmt.Printf("    Table [%s] status: %v - %e\n", table, status, err)
-		if delay > 0 {
-			time.Sleep(time.Duration(delay) * time.Second)
-		}
-		status, err = adc.GetTableStatus(nil, table)
-	}
-}
-
 func waitForGsi(adc *AwsDynamodbConnect, table, index string, statusList []string, delay int) {
 	for status, err := adc.GetGlobalSecondaryIndexStatus(nil, table, index); !inSlide(status, statusList) && err == nil; {
-		fmt.Printf("    GSI [%s] on table [%s] status: %v - %e\n", index, table, status, err)
+		fmt.Printf("\tGSI [%s] on table [%s] status: %v - %e\n", index, table, status, err)
 		if delay > 0 {
 			time.Sleep(time.Duration(delay) * time.Second)
 		}
@@ -483,82 +468,13 @@ func waitForGsi(adc *AwsDynamodbConnect, table, index string, statusList []strin
 	}
 }
 
-var (
-	testDynamodbTableName = "test_prom"
-	testDynamodbGsiName   = "gsi_test_prom_email"
-)
-
-func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
-
-	name := "TestAwsDynamodbConnect_TableAndIndex"
-	adc, _ := createAwsDynamodbConnect(testRegion)
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := adc.CreateTable(nil, testDynamodbTableName, 2, 2,
-		[]AwsDynamodbNameAndType{{"username", AwsAttrTypeString}},
-		[]AwsDynamodbNameAndType{{"username", AwsKeyTypePartition}})
-	if AwsIgnoreErrorIfMatched(err, "ResourceInUseException") != nil {
-		t.Fatalf("%s failed: error [%e]", name+"/CreateTable", err)
-	}
-	ok, err := adc.HasTable(nil, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", name+"/HasTable", err)
-	}
-	if !ok {
-		t.Fatalf("%s failed: table [%s] not found", name+"/HasTable", testDynamodbTableName)
-	}
-	fmt.Printf("  Created table [%s]\n", testDynamodbTableName)
-	waitForTable(adc, testDynamodbTableName, []string{"ACTIVE"}, 1)
-
-	if os.Getenv(dynamodbTestGsiName) != "" {
-		testDynamodbGsiName = os.Getenv(dynamodbTestGsiName)
-	} else {
-		testDynamodbGsiName = "gsi_" + testDynamodbTableName + "_email"
-	}
-	{
-		err = adc.DeleteGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName)
-		if AwsIgnoreErrorIfMatched(err, "ResourceInUseException") != nil {
-			t.Fatalf("%s failed: error [%e]", name+"/DeleteGlobalSecondaryIndex", err)
+func waitForTable(adc *AwsDynamodbConnect, table string, statusList []string, delay int) {
+	for status, err := adc.GetTableStatus(nil, table); !inSlide(status, statusList) && err == nil; {
+		fmt.Printf("\tTable [%s] status: %v - %e\n", table, status, err)
+		if delay > 0 {
+			time.Sleep(time.Duration(delay) * time.Second)
 		}
-		fmt.Printf("  Deleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
-		waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 1)
-	}
-
-	err = adc.CreateGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName, 1, 1,
-		[]AwsDynamodbNameAndType{{"email", AwsAttrTypeString}},
-		[]AwsDynamodbNameAndType{{"email", AwsKeyTypePartition}})
-	if AwsIgnoreErrorIfMatched(err, "ResourceInUseException") != nil {
-		t.Fatalf("%s failed: error [%e]", name+"/CreateGlobalSecondaryIndex", err)
-	}
-	fmt.Printf("  Created GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
-	waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{"ACTIVE", "CREATING"}, 5)
-
-	time.Sleep(10 * time.Second)
-
-	err = adc.DeleteGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName)
-	if AwsIgnoreErrorIfMatched(err, "ResourceInUseException") != nil {
-		t.Fatalf("%s failed: error [%e]", name+"/DeleteGlobalSecondaryIndex", err)
-	}
-	fmt.Printf("  Deleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
-	waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 1)
-
-	err = adc.DeleteTable(nil, testDynamodbTableName)
-	if AwsIgnoreErrorIfMatched(err, "ResourceInUseException") != nil {
-		t.Fatalf("%s failed: error [%e]", name+"/DeleteTable", err)
-	}
-	fmt.Printf("  Deleted table [%s]\n", testDynamodbTableName)
-	waitForTable(adc, testDynamodbTableName, []string{""}, 1)
-	ok, err = adc.HasTable(nil, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", name+"/HasTable", err)
-	}
-	if ok {
-		t.Fatalf("%s failed: table [%s] not deleted", name+"/HasTable", testDynamodbTableName)
+		status, err = adc.GetTableStatus(nil, table)
 	}
 }
 
@@ -567,7 +483,7 @@ func prepareAwsDynamodbTable(adc *AwsDynamodbConnect, table string) error {
 	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
 		return err
 	}
-	fmt.Printf("  Deleted table [%s]\n", table)
+	fmt.Printf("\tDeleted table [%s]\n", table)
 	waitForTable(adc, table, []string{""}, 1)
 
 	err = adc.CreateTable(nil, table, 2, 2,
@@ -580,12 +496,20 @@ func prepareAwsDynamodbTable(adc *AwsDynamodbConnect, table string) error {
 	return nil
 }
 
+const (
+	dynamodbTestTableName = "DYNAMODB_TEST_TABLE_NAME"
+	dynamodbTestGsiName   = "DYNAMODB_TEST_GSI_NAME"
+)
+
+var (
+	testDynamodbTableName = "test_prom"
+	testDynamodbGsiName   = "test_prom_gsi_email"
+)
+
 func TestAwsDynamodbConnect_PutItem(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_PutItem"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -607,12 +531,93 @@ func TestAwsDynamodbConnect_PutItem(t *testing.T) {
 	}
 }
 
-func TestAwsDynamodbConnect_GetPutItem(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
+func TestAwsDynamodbConnect_ListTables(t *testing.T) {
+	name := "TestAwsDynamodbConnect_ListTables"
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
+
+	tables, err := adc.ListTables(nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name, err)
 	}
+	if tables == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+}
+
+func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
+	name := "TestAwsDynamodbConnect_TableAndIndex"
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
+
+	if os.Getenv(dynamodbTestTableName) != "" {
+		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
+	}
+	err := adc.CreateTable(nil, testDynamodbTableName, 2, 2,
+		[]AwsDynamodbNameAndType{{"username", AwsAttrTypeString}},
+		[]AwsDynamodbNameAndType{{"username", AwsKeyTypePartition}})
+	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/CreateTable", err)
+	}
+	ok, err := adc.HasTable(nil, testDynamodbTableName)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/HasTable", err)
+	}
+	if !ok {
+		t.Fatalf("%s failed: table [%s] not found", name+"/HasTable", testDynamodbTableName)
+	}
+	fmt.Printf("\tCreated table [%s]\n", testDynamodbTableName)
+	waitForTable(adc, testDynamodbTableName, []string{"ACTIVE"}, 1)
+
+	if os.Getenv(dynamodbTestGsiName) != "" {
+		testDynamodbGsiName = os.Getenv(dynamodbTestGsiName)
+	}
+	{
+		err = adc.DeleteGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName)
+		if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
+			t.Fatalf("%s failed: error [%e]", name+"/DeleteGlobalSecondaryIndex", err)
+		}
+		fmt.Printf("\tDeleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
+		waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 1)
+	}
+
+	err = adc.CreateGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName, 1, 1,
+		[]AwsDynamodbNameAndType{{"email", AwsAttrTypeString}},
+		[]AwsDynamodbNameAndType{{"email", AwsKeyTypePartition}})
+	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/CreateGlobalSecondaryIndex", err)
+	}
+	fmt.Printf("\tCreated GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
+	waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{"ACTIVE", "CREATING"}, 5)
+
+	time.Sleep(10 * time.Second)
+
+	err = adc.DeleteGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName)
+	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/DeleteGlobalSecondaryIndex", err)
+	}
+	fmt.Printf("\tDeleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
+	waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 1)
+
+	err = adc.DeleteTable(nil, testDynamodbTableName)
+	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/DeleteTable", err)
+	}
+	fmt.Printf("\tDeleted table [%s]\n", testDynamodbTableName)
+	waitForTable(adc, testDynamodbTableName, []string{""}, 1)
+	ok, err = adc.HasTable(nil, testDynamodbTableName)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/HasTable", err)
+	}
+	if ok {
+		t.Fatalf("%s failed: table [%s] not deleted", name+"/HasTable", testDynamodbTableName)
+	}
+}
+
+func TestAwsDynamodbConnect_GetPutItem(t *testing.T) {
 	name := "TestAwsDynamodbConnect_GetPutItem"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -707,11 +712,9 @@ func TestAwsDynamodbConnect_GetPutItem(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_PutItemIfNotExist(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_PutItemIfNotExist"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -797,11 +800,9 @@ func TestAwsDynamodbConnect_PutItemIfNotExist(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_DeleteItem(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_DeleteItem"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -824,8 +825,9 @@ func TestAwsDynamodbConnect_DeleteItem(t *testing.T) {
 	}
 
 	keyFilter := map[string]interface{}{"username": "btnguyen2k", "email": "me@domain.com"}
+	condition := AwsDynamodbExistsAllBuilder([]string{"version"})
 	// DeleteItem: must be successful
-	_, err = adc.DeleteItem(nil, testDynamodbTableName, keyFilter, nil)
+	_, err = adc.DeleteItem(nil, testDynamodbTableName, keyFilter, condition)
 	if err != nil {
 		t.Fatalf("%s failed: error [%e]", name+"/PutItem", err)
 	}
@@ -839,11 +841,9 @@ func TestAwsDynamodbConnect_DeleteItem(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_RemoveAttributes(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_RemoveAttributes"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -890,11 +890,9 @@ func TestAwsDynamodbConnect_RemoveAttributes(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_SetAttributes(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_SetAttributes"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -945,11 +943,9 @@ func TestAwsDynamodbConnect_SetAttributes(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_AddValuesToAttributes(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_AddValuesToAttributes"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -1013,11 +1009,9 @@ func TestAwsDynamodbConnect_AddValuesToAttributes(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_AddValuesToSet(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_AddValuesToSet"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -1059,6 +1053,8 @@ func TestAwsDynamodbConnect_AddValuesToSet(t *testing.T) {
 		"email":    "me@domain.com",
 		"m":        map[string]interface{}{},
 	}
+	sort.Float64s(item0["an"].([]float64))
+	sort.Strings(item0["as"].([]string))
 	// a[1] = a[1].(float64) + 1.1
 	fetchedItem, err := adc.GetItem(nil, testDynamodbTableName, keyFilter)
 	if err != nil {
@@ -1075,11 +1071,9 @@ func TestAwsDynamodbConnect_AddValuesToSet(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_DeleteValuesFromSet(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_DeleteValuesFromSet"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -1121,6 +1115,7 @@ func TestAwsDynamodbConnect_DeleteValuesFromSet(t *testing.T) {
 		"email":    "me@domain.com",
 		"m":        map[string]interface{}{},
 	}
+	sort.Float64s(item0["an"].([]float64))
 	// a[1] = a[1].(float64) + 1.1
 	fetchedItem, err := adc.GetItem(nil, testDynamodbTableName, keyFilter)
 	if err != nil {
@@ -1137,11 +1132,9 @@ func TestAwsDynamodbConnect_DeleteValuesFromSet(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_ScanItems(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_ScanItems"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -1187,11 +1180,9 @@ func TestAwsDynamodbConnect_ScanItems(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_ScanItemsWithCallback(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_ScanItemsWithCallback"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -1237,11 +1228,9 @@ func TestAwsDynamodbConnect_ScanItemsWithCallback(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_QueryItems(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_QueryItems"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -1288,11 +1277,9 @@ func TestAwsDynamodbConnect_QueryItems(t *testing.T) {
 }
 
 func TestAwsDynamodbConnect_QueryItemsWithCallback(t *testing.T) {
-	if os.Getenv(dynamodbAwsAccessKeyId) == "" || os.Getenv(dynamodbAwsSecretAccessKey) == "" {
-		return
-	}
 	name := "TestAwsDynamodbConnect_QueryItemsWithCallback"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
@@ -1339,7 +1326,8 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback(t *testing.T) {
 
 func TestAwsDynamodbConnect_BuildTxPut(t *testing.T) {
 	name := "TestAwsDynamodbConnect_BuildTxPut"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	item := map[string]interface{}{
 		"username": "btnguyen2k",
@@ -1357,7 +1345,8 @@ func TestAwsDynamodbConnect_BuildTxPut(t *testing.T) {
 
 func TestAwsDynamodbConnect_BuildTxPutIfNotExist(t *testing.T) {
 	name := "TestAwsDynamodbConnect_BuildTxPutIfNotExist"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	item := map[string]interface{}{
 		"username": "btnguyen2k",
@@ -1375,21 +1364,42 @@ func TestAwsDynamodbConnect_BuildTxPutIfNotExist(t *testing.T) {
 
 func TestAwsDynamodbConnect_BuildTxDelete(t *testing.T) {
 	name := "TestAwsDynamodbConnect_BuildTxDelete"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	keyFilter := map[string]interface{}{"username": "btnguyen2k"}
-	tx, err := adc.BuildTxDelete(testDynamodbTableName, keyFilter, nil)
-	if err != nil {
-		t.Fatalf("%s failed: error [%#e]", name, err)
+	{
+		tx, err := adc.BuildTxDelete(testDynamodbTableName, keyFilter, nil)
+		if err != nil {
+			t.Fatalf("%s failed: error [%#e]", name, err)
+		}
+		if tx == nil {
+			t.Fatalf("%s failed: nill", name)
+		}
+		if tx.Delete.ConditionExpression != nil {
+			t.Fatalf("%s failed: not nill", name)
+		}
 	}
-	if tx == nil {
-		t.Fatalf("%s failed: nill", name)
+
+	{
+		condition := AwsDynamodbExistsAllBuilder([]string{"version"})
+		tx, err := adc.BuildTxDelete(testDynamodbTableName, keyFilter, condition)
+		if err != nil {
+			t.Fatalf("%s failed: error [%#e]", name, err)
+		}
+		if tx == nil {
+			t.Fatalf("%s failed: nill", name)
+		}
+		if tx.Delete.ConditionExpression == nil {
+			t.Fatalf("%s failed: nill", name)
+		}
 	}
 }
 
 func TestAwsDynamodbConnect_BuildTxGet(t *testing.T) {
 	name := "TestAwsDynamodbConnect_BuildTxGet"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	keyFilter := map[string]interface{}{"username": "btnguyen2k"}
 	tx, err := adc.BuildTxGet(testDynamodbTableName, keyFilter)
@@ -1403,7 +1413,8 @@ func TestAwsDynamodbConnect_BuildTxGet(t *testing.T) {
 
 func TestAwsDynamodbConnect_BuildTxRemoveAttributes(t *testing.T) {
 	name := "TestAwsDynamodbConnect_BuildTxRemoveAttributes"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	keyFilter := map[string]interface{}{"username": "btnguyen2k"}
 	tx, err := adc.BuildTxRemoveAttributes(testDynamodbTableName, keyFilter, nil, []string{"version"})
@@ -1417,7 +1428,8 @@ func TestAwsDynamodbConnect_BuildTxRemoveAttributes(t *testing.T) {
 
 func TestAwsDynamodbConnect_BuildTxSetAttributes(t *testing.T) {
 	name := "TestAwsDynamodbConnect_BuildTxSetAttributes"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	keyFilter := map[string]interface{}{"username": "btnguyen2k"}
 	attrsAndValues := map[string]interface{}{"version": "new version", "new_field": "a value"}
@@ -1432,7 +1444,8 @@ func TestAwsDynamodbConnect_BuildTxSetAttributes(t *testing.T) {
 
 func TestAwsDynamodbConnect_BuildTxAddValuesToAttributes(t *testing.T) {
 	name := "TestAwsDynamodbConnect_BuildTxAddValuesToAttributes"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	keyFilter := map[string]interface{}{"username": "btnguyen2k"}
 	attrsAndValues := map[string]interface{}{"version": 1, "new_field": 2}
@@ -1447,7 +1460,8 @@ func TestAwsDynamodbConnect_BuildTxAddValuesToAttributes(t *testing.T) {
 
 func TestAwsDynamodbConnect_BuildTxAddValuesToSet(t *testing.T) {
 	name := "TestAwsDynamodbConnect_BuildTxAddValuesToSet"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	keyFilter := map[string]interface{}{"username": "btnguyen2k"}
 	attrsAndValues := map[string]interface{}{"version": 1}
@@ -1462,7 +1476,8 @@ func TestAwsDynamodbConnect_BuildTxAddValuesToSet(t *testing.T) {
 
 func TestAwsDynamodbConnect_BuildTxDeleteValuesFromSet(t *testing.T) {
 	name := "TestAwsDynamodbConnect_BuildTxDeleteValuesFromSet"
-	adc, _ := createAwsDynamodbConnect(testRegion)
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 
 	keyFilter := map[string]interface{}{"username": "btnguyen2k"}
 	attrsAndValues := map[string]interface{}{"version": 1}
