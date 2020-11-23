@@ -64,7 +64,7 @@ func _txTransferMoney(adc *prom.AwsDynamodbConnect, tableName, from, to string, 
 	} else {
 		panic(err)
 	}
-	fmt.Printf("Transfering [%d] from [%s] to [%s]...\n", amount, from, to)
+	fmt.Printf("Transferring [%d] from [%s] to [%s]...\n", amount, from, to)
 	result, err := adc.ExecTxWriteItems(nil, &dynamodb.TransactWriteItemsInput{
 		ReturnConsumedCapacity: aws.String("INDEXES"),
 		TransactItems:          txItems,

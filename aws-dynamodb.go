@@ -41,7 +41,7 @@ const (
 	// AwsAttrTypeBinary is alias name of AWS DynamoDB attribute type "binary"
 	AwsAttrTypeBinary = "B"
 
-	// AwsAttrTypeBinary is alias name of AWS DynamoDB key type "partition"
+	// AwsKeyTypePartition is alias name of AWS DynamoDB key type "partition"
 	AwsKeyTypePartition = "HASH"
 
 	// AwsKeyTypeSort is alias name of AWS DynamoDB key type "sort/range"
@@ -97,12 +97,11 @@ func awsDynamodbMakeKey(keyFilter map[string]interface{}) map[string]*dynamodb.A
 
 // AwsDynamodbToAttributeValue converts a Go value to DynamoDB's attribute value.
 func AwsDynamodbToAttributeValue(v interface{}) *dynamodb.AttributeValue {
-	if av, err := dynamodbattribute.Marshal(v); err != nil {
+	av, err := dynamodbattribute.Marshal(v)
+	if err != nil {
 		return nil
-		// panic(err)
-	} else {
-		return av
 	}
+	return av
 }
 
 // AwsDynamodbToAttributeSet converts a Go value to DynamoDB's set.
@@ -534,13 +533,13 @@ func (adc *AwsDynamodbConnect) BuildPutItemInput(table string, item map[string]*
 		TableName:              aws.String(table),
 	}
 	if condition != nil {
-		if conditionExp, err := expression.NewBuilder().WithCondition(*condition).Build(); err != nil {
+		conditionExp, err := expression.NewBuilder().WithCondition(*condition).Build()
+		if err != nil {
 			return nil, err
-		} else {
-			input.ConditionExpression = conditionExp.Condition()
-			input.ExpressionAttributeNames = conditionExp.Names()
-			input.ExpressionAttributeValues = conditionExp.Values()
 		}
+		input.ConditionExpression = conditionExp.Condition()
+		input.ExpressionAttributeNames = conditionExp.Names()
+		input.ExpressionAttributeValues = conditionExp.Values()
 	}
 	return input, nil
 }
@@ -568,11 +567,11 @@ Parameters:
   - condition: (optional) a condition that must be satisfied before writing item
 */
 func (adc *AwsDynamodbConnect) PutItemRaw(ctx aws.Context, table string, item map[string]*dynamodb.AttributeValue, condition *expression.ConditionBuilder) (*dynamodb.PutItemOutput, error) {
-	if input, err := adc.BuildPutItemInput(table, item, condition); err != nil {
+	input, err := adc.BuildPutItemInput(table, item, condition)
+	if err != nil {
 		return nil, err
-	} else {
-		return adc.PutItemWithInput(ctx, input)
 	}
+	return adc.PutItemWithInput(ctx, input)
 }
 
 /*
@@ -591,7 +590,6 @@ func (adc *AwsDynamodbConnect) PutItemRawIfNotExist(ctx aws.Context, table strin
 		return nil, nil
 	}
 	return result, err
-	// return adc.PutItemRaw(ctx, table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
 }
 
 /*
@@ -605,11 +603,11 @@ Parameters:
   - condition: (optional) a condition that must be satisfied before writing item
 */
 func (adc *AwsDynamodbConnect) PutItem(ctx aws.Context, table string, item interface{}, condition *expression.ConditionBuilder) (*dynamodb.PutItemOutput, error) {
-	if av, err := dynamodbattribute.MarshalMap(item); err != nil {
+	av, err := dynamodbattribute.MarshalMap(item)
+	if err != nil {
 		return nil, err
-	} else {
-		return adc.PutItemRaw(ctx, table, av, condition)
 	}
+	return adc.PutItemRaw(ctx, table, av, condition)
 }
 
 /*
@@ -627,16 +625,11 @@ Note:
   - (since v0.2.7) if item already existed, this function return (nil, nil)
 */
 func (adc *AwsDynamodbConnect) PutItemIfNotExist(ctx aws.Context, table string, item interface{}, pkAttrs []string) (*dynamodb.PutItemOutput, error) {
-	if av, err := dynamodbattribute.MarshalMap(item); err != nil {
+	av, err := dynamodbattribute.MarshalMap(item)
+	if err != nil {
 		return nil, err
-	} else {
-		return adc.PutItemRawIfNotExist(ctx, table, av, pkAttrs)
 	}
-	// result, err := adc.PutItem(ctx, table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
-	// if IsAwsError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
-	// 	return nil, nil
-	// }
-	// return result, err
+	return adc.PutItemRawIfNotExist(ctx, table, av, pkAttrs)
 }
 
 /*
@@ -652,13 +645,13 @@ func (adc *AwsDynamodbConnect) BuildDeleteItemInput(table string, keyFilter map[
 		TableName:              aws.String(table),
 	}
 	if condition != nil {
-		if conditionExp, err := expression.NewBuilder().WithCondition(*condition).Build(); err != nil {
+		conditionExp, err := expression.NewBuilder().WithCondition(*condition).Build()
+		if err != nil {
 			return nil, err
-		} else {
-			input.ExpressionAttributeNames = conditionExp.Names()
-			input.ExpressionAttributeValues = conditionExp.Values()
-			input.ConditionExpression = conditionExp.Condition()
 		}
+		input.ExpressionAttributeNames = conditionExp.Names()
+		input.ExpressionAttributeValues = conditionExp.Values()
+		input.ConditionExpression = conditionExp.Condition()
 	}
 	return input, nil
 }
@@ -686,11 +679,11 @@ Parameters:
   - condition: (optional) a condition that must be satisfied before removing item
 */
 func (adc *AwsDynamodbConnect) DeleteItem(ctx aws.Context, table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder) (*dynamodb.DeleteItemOutput, error) {
-	if input, err := adc.BuildDeleteItemInput(table, keyFilter, condition); err != nil {
+	input, err := adc.BuildDeleteItemInput(table, keyFilter, condition)
+	if err != nil {
 		return nil, err
-	} else {
-		return adc.DeleteItemWithInput(ctx, input)
 	}
+	return adc.DeleteItemWithInput(ctx, input)
 }
 
 /*
@@ -739,15 +732,15 @@ Notes:
   - ConsistentRead is not set.
 */
 func (adc *AwsDynamodbConnect) GetItem(ctx aws.Context, table string, keyFilter map[string]interface{}) (AwsDynamodbItem, error) {
-	if input, err := adc.BuildGetItemInput(table, keyFilter); err != nil {
+	input, err := adc.BuildGetItemInput(table, keyFilter)
+	if err != nil {
 		return nil, err
-	} else {
-		if dbresult, err := adc.GetItemWithInput(ctx, input); err != nil || dbresult.Item == nil {
-			return nil, AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceNotFoundException)
-		} else {
-			return awsDynamodbToItem(dbresult.Item)
-		}
 	}
+	dbresult, err := adc.GetItemWithInput(ctx, input)
+	if err != nil || dbresult.Item == nil {
+		return nil, AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceNotFoundException)
+	}
+	return awsDynamodbToItem(dbresult.Item)
 }
 
 /*
@@ -848,11 +841,11 @@ See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateIte
 func (adc *AwsDynamodbConnect) UpdateItem(ctx aws.Context, table string,
 	keyFilter map[string]interface{}, condition *expression.ConditionBuilder,
 	attrsToRemove []string, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete map[string]interface{}) (*dynamodb.UpdateItemOutput, error) {
-	if input, err := adc.BuildUpdateItemInput(table, keyFilter, condition, attrsToRemove, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete); err != nil {
+	input, err := adc.BuildUpdateItemInput(table, keyFilter, condition, attrsToRemove, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete)
+	if err != nil {
 		return nil, err
-	} else {
-		return adc.UpdateItemWithInput(ctx, input)
 	}
+	return adc.UpdateItemWithInput(ctx, input)
 }
 
 /*
@@ -1011,13 +1004,13 @@ func (adc *AwsDynamodbConnect) BuildScanInput(table string, filter *expression.C
 		TableName:              aws.String(table),
 	}
 	if filter != nil {
-		if filterExp, err := expression.NewBuilder().WithFilter(*filter).Build(); err != nil {
+		filterExp, err := expression.NewBuilder().WithFilter(*filter).Build()
+		if err != nil {
 			return nil, err
-		} else {
-			input.ExpressionAttributeNames = filterExp.Names()
-			input.ExpressionAttributeValues = filterExp.Values()
-			input.FilterExpression = filterExp.Filter()
 		}
+		input.ExpressionAttributeNames = filterExp.Names()
+		input.ExpressionAttributeValues = filterExp.Values()
+		input.FilterExpression = filterExp.Filter()
 	}
 	var useIndex = indexName != ""
 	if useIndex {
@@ -1096,11 +1089,11 @@ Notes:
   - ConsistentRead is not set.
 */
 func (adc *AwsDynamodbConnect) ScanItemsWithCallback(ctx aws.Context, table string, filter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue, callback AwsDynamodbItemCallback) error {
-	if input, err := adc.BuildScanInput(table, filter, indexName, exclusiveStartKey); err != nil {
+	input, err := adc.BuildScanInput(table, filter, indexName, exclusiveStartKey)
+	if err != nil {
 		return err
-	} else {
-		return adc.ScanWithInputCallback(ctx, input, callback)
 	}
+	return adc.ScanWithInputCallback(ctx, input, callback)
 }
 
 /*
@@ -1120,11 +1113,11 @@ Notes:
   - ConsistentRead is not set.
 */
 func (adc *AwsDynamodbConnect) ScanItems(ctx aws.Context, table string, filter *expression.ConditionBuilder, indexName string) ([]AwsDynamodbItem, error) {
-	if input, err := adc.BuildScanInput(table, filter, indexName, nil); err != nil {
+	input, err := adc.BuildScanInput(table, filter, indexName, nil)
+	if err != nil {
 		return nil, err
-	} else {
-		return adc.ScanWithInput(ctx, input)
 	}
+	return adc.ScanWithInput(ctx, input)
 }
 
 /*
@@ -1151,17 +1144,17 @@ func (adc *AwsDynamodbConnect) BuildQueryInput(table string, keyFilter, nonKeyFi
 		if nonKeyFilter != nil {
 			builder = builder.WithFilter(*nonKeyFilter)
 		}
-		if filterExp, err := builder.Build(); err != nil {
+		filterExp, err := builder.Build()
+		if err != nil {
 			return nil, err
-		} else {
-			input.ExpressionAttributeNames = filterExp.Names()
-			input.ExpressionAttributeValues = filterExp.Values()
-			if keyFilter != nil {
-				input.KeyConditionExpression = filterExp.Condition()
-			}
-			if nonKeyFilter != nil {
-				input.FilterExpression = filterExp.Filter()
-			}
+		}
+		input.ExpressionAttributeNames = filterExp.Names()
+		input.ExpressionAttributeValues = filterExp.Values()
+		if keyFilter != nil {
+			input.KeyConditionExpression = filterExp.Condition()
+		}
+		if nonKeyFilter != nil {
+			input.FilterExpression = filterExp.Filter()
 		}
 	}
 	var useIndex = indexName != ""
@@ -1242,11 +1235,11 @@ Notes:
   - ConsistentRead is not set.
 */
 func (adc *AwsDynamodbConnect) QueryItemsWithCallback(ctx aws.Context, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue, callback AwsDynamodbItemCallback) error {
-	if input, err := adc.BuildQueryInput(table, keyFilter, nonKeyFilter, indexName, exclusiveStartKey); err != nil {
+	input, err := adc.BuildQueryInput(table, keyFilter, nonKeyFilter, indexName, exclusiveStartKey)
+	if err != nil {
 		return err
-	} else {
-		return adc.QueryWithInputCallback(ctx, input, callback)
 	}
+	return adc.QueryWithInputCallback(ctx, input, callback)
 }
 
 /*
@@ -1267,11 +1260,11 @@ Notes:
   - ConsistentRead is not set.
 */
 func (adc *AwsDynamodbConnect) QueryItems(ctx aws.Context, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string) ([]AwsDynamodbItem, error) {
-	if input, err := adc.BuildQueryInput(table, keyFilter, nonKeyFilter, indexName, nil); err != nil {
+	input, err := adc.BuildQueryInput(table, keyFilter, nonKeyFilter, indexName, nil)
+	if err != nil {
 		return nil, err
-	} else {
-		return adc.QueryWithInput(ctx, input)
 	}
+	return adc.QueryWithInput(ctx, input)
 }
 
 /*----------------------------------------------------------------------*/
@@ -1284,11 +1277,11 @@ Parameters: see PutItem
 Available: since v0.2.4
 */
 func (adc *AwsDynamodbConnect) BuildTxPut(table string, item interface{}, condition *expression.ConditionBuilder) (*dynamodb.TransactWriteItem, error) {
-	if av, err := dynamodbattribute.MarshalMap(item); err != nil {
+	av, err := dynamodbattribute.MarshalMap(item)
+	if err != nil {
 		return nil, err
-	} else {
-		return adc.BuildTxPutRaw(table, av, condition)
 	}
+	return adc.BuildTxPutRaw(table, av, condition)
 }
 
 /*
@@ -1304,13 +1297,13 @@ func (adc *AwsDynamodbConnect) BuildTxPutRaw(table string, item map[string]*dyna
 		TableName: aws.String(table),
 	}
 	if condition != nil {
-		if conditionExp, err := expression.NewBuilder().WithCondition(*condition).Build(); err != nil {
+		conditionExp, err := expression.NewBuilder().WithCondition(*condition).Build()
+		if err != nil {
 			return nil, err
-		} else {
-			put.ConditionExpression = conditionExp.Condition()
-			put.ExpressionAttributeNames = conditionExp.Names()
-			put.ExpressionAttributeValues = conditionExp.Values()
 		}
+		put.ConditionExpression = conditionExp.Condition()
+		put.ExpressionAttributeNames = conditionExp.Names()
+		put.ExpressionAttributeValues = conditionExp.Values()
 	}
 	return &dynamodb.TransactWriteItem{Put: put}, nil
 }
@@ -1355,13 +1348,13 @@ func (adc *AwsDynamodbConnect) BuildTxDelete(table string, keyFilter map[string]
 		TableName: aws.String(table),
 	}
 	if condition != nil {
-		if conditionExp, err := expression.NewBuilder().WithCondition(*condition).Build(); err != nil {
+		conditionExp, err := expression.NewBuilder().WithCondition(*condition).Build()
+		if err != nil {
 			return nil, err
-		} else {
-			delete.ExpressionAttributeNames = conditionExp.Names()
-			delete.ExpressionAttributeValues = conditionExp.Values()
-			delete.ConditionExpression = conditionExp.Condition()
 		}
+		delete.ExpressionAttributeNames = conditionExp.Names()
+		delete.ExpressionAttributeValues = conditionExp.Values()
+		delete.ConditionExpression = conditionExp.Condition()
 	}
 	return &dynamodb.TransactWriteItem{Delete: delete}, nil
 }
@@ -1419,11 +1412,11 @@ func (adc *AwsDynamodbConnect) BuildTxUpdate(table string, keyFilter map[string]
 	if condition != nil {
 		builder = builder.WithCondition(*condition)
 	}
-	if updateBuilderExp, err := builder.Build(); err != nil {
+	updateBuilderExp, err := builder.Build()
+	if err != nil {
 		return nil, err
-	} else {
-		return adc.BuildTxUpdateRaw(table, key, updateBuilderExp)
 	}
+	return adc.BuildTxUpdateRaw(table, key, updateBuilderExp)
 }
 
 /*

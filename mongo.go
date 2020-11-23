@@ -48,13 +48,13 @@ func NewMongoConnect(url, db string, defaultTimeoutMs int) (*MongoConnect, error
 		db:        db,
 		timeoutMs: defaultTimeoutMs,
 	}
-	if client, err := mongo.NewClient(options.Client().ApplyURI(m.url)); err != nil {
+	client, err := mongo.NewClient(options.Client().ApplyURI(m.url))
+	if err != nil {
 		return nil, err
-	} else {
-		m.client = client
-		ctx, _ := m.NewContext()
-		return m, m.client.Connect(ctx)
 	}
+	m.client = client
+	ctx, _ := m.NewContext()
+	return m, m.client.Connect(ctx)
 }
 
 /*
@@ -186,11 +186,11 @@ HasDatabase checks if a database exists on MongoDB server.
 */
 func (m *MongoConnect) HasDatabase(dbName string, opts ...*options.ListDatabasesOptions) (bool, error) {
 	ctx, _ := m.NewContext()
-	if dbList, err := m.client.ListDatabaseNames(ctx, bson.M{"name": dbName}, opts...); err != nil {
+	dbList, err := m.client.ListDatabaseNames(ctx, bson.M{"name": dbName}, opts...)
+	if err != nil {
 		return false, err
-	} else {
-		return len(dbList) > 0, nil
 	}
+	return len(dbList) > 0, nil
 }
 
 /*
@@ -255,11 +255,11 @@ Available: since v0.2.1
 func (m *MongoConnect) CreateCollectionIndexes(collectionName string, indexes []interface{}) ([]string, error) {
 	indexModels := make([]mongo.IndexModel, 0)
 	for _, index := range indexes {
-		if indexModel := toIndexModel(index); indexModel == nil {
+		indexModel := toIndexModel(index)
+		if indexModel == nil {
 			return nil, errors.New("cannot convert index definition to mongo.IndexModel")
-		} else {
-			indexModels = append(indexModels, *indexModel)
 		}
+		indexModels = append(indexModels, *indexModel)
 	}
 	ctx, _ := m.NewContext()
 	return m.GetCollection(collectionName).Indexes().CreateMany(ctx, indexModels)
