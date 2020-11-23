@@ -106,11 +106,11 @@ DecodeSingleResultRaw transforms 'mongo.SingleResult' to raw JSON data.
 Available: since v0.0.3.1
 */
 func (m *MongoConnect) DecodeSingleResultRaw(dbResult *mongo.SingleResult) ([]byte, error) {
-	if doc, err := m.DecodeSingleResult(dbResult); doc == nil || err != nil {
+	doc, err := m.DecodeSingleResult(dbResult)
+	if doc == nil || err != nil {
 		return nil, err
-	} else {
-		return json.Marshal(doc)
 	}
+	return json.Marshal(doc)
 }
 
 /*

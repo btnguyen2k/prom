@@ -1316,12 +1316,11 @@ Parameters: see PutItemIfNotExist
 Available: since v0.2.4
 */
 func (adc *AwsDynamodbConnect) BuildTxPutIfNotExist(table string, item interface{}, pkAttrs []string) (*dynamodb.TransactWriteItem, error) {
-	if av, err := dynamodbattribute.MarshalMap(item); err != nil {
+	av, err := dynamodbattribute.MarshalMap(item)
+	if err != nil {
 		return nil, err
-	} else {
-		return adc.BuildTxPutRawIfNotExist(table, av, pkAttrs)
 	}
-	// return adc.BuildTxPut(table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
+	return adc.BuildTxPutRawIfNotExist(table, av, pkAttrs)
 }
 
 /*

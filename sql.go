@@ -348,19 +348,19 @@ If no row matches the query, FetchRow returns (<empty slice>,nil).
 Note: FetchRows does NOT call 'rows.close()' when done!
 */
 func (sc *SqlConnect) FetchRows(rows *sql.Rows) ([]map[string]interface{}, error) {
-	if colTypes, err := rows.ColumnTypes(); err != nil {
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
 		return nil, err
-	} else {
-		result := make([]map[string]interface{}, 0)
-		for rows.Next() {
-			rowData, err := sc.fetchOneRow(rows, colTypes)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, rowData)
-		}
-		return result, rows.Err()
 	}
+	result := make([]map[string]interface{}, 0)
+	for rows.Next() {
+		rowData, err := sc.fetchOneRow(rows, colTypes)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, rowData)
+	}
+	return result, rows.Err()
 }
 
 /*
