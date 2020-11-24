@@ -125,6 +125,10 @@ func _createMongoConnect(t *testing.T, testName string) *MongoConnect {
 	if err != nil {
 		t.Fatalf("%s/%s failed: %s", testName, "NewMongoConnect", err)
 	}
+
+	// HACK to force database creation
+	mc.CreateCollection("__prom")
+
 	return mc
 }
 
