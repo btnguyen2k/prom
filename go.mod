@@ -12,6 +12,7 @@ require (
 	github.com/godror/godror v0.20.9
 	github.com/jackc/pgx/v4 v4.9.2
 	github.com/lib/pq v1.8.0
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/onsi/ginkgo v1.14.2 // indirect
 	github.com/onsi/gomega v1.10.3 // indirect
 	go.mongodb.org/mongo-driver v1.4.3

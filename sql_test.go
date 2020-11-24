@@ -14,10 +14,12 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/godror/godror"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-func newSqlConnectMssql(driver, url, timezone string) (*SqlConnect, error) {
-	sqlc, err := NewSqlConnectWithFlavor(driver, url, 10000, nil, FlavorMsSql)
+func newSqlConnectSqlite(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+	os.Remove(url)
+	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorSqlite)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
@@ -25,8 +27,8 @@ func newSqlConnectMssql(driver, url, timezone string) (*SqlConnect, error) {
 	return sqlc, err
 }
 
-func newSqlConnectMysql(driver, url, timezone string) (*SqlConnect, error) {
-	sqlc, err := NewSqlConnectWithFlavor(driver, url, 10000, nil, FlavorMySql)
+func newSqlConnectMssql(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorMsSql)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
@@ -34,8 +36,8 @@ func newSqlConnectMysql(driver, url, timezone string) (*SqlConnect, error) {
 	return sqlc, err
 }
 
-func newSqlConnectOracle(driver, url, timezone string) (*SqlConnect, error) {
-	sqlc, err := NewSqlConnectWithFlavor(driver, url, 10000, nil, FlavorOracle)
+func newSqlConnectMysql(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorMySql)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
@@ -43,8 +45,17 @@ func newSqlConnectOracle(driver, url, timezone string) (*SqlConnect, error) {
 	return sqlc, err
 }
 
-func newSqlConnectPgsql(driver, url, timezone string) (*SqlConnect, error) {
-	sqlc, err := NewSqlConnectWithFlavor(driver, url, 10000, nil, FlavorPgSql)
+func newSqlConnectOracle(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorOracle)
+	if err == nil && sqlc != nil {
+		loc, _ := time.LoadLocation(timezone)
+		sqlc.SetLocation(loc)
+	}
+	return sqlc, err
+}
+
+func newSqlConnectPgsql(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorPgSql)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
@@ -78,24 +89,26 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 		dbFlavor    DbFlavor
 	}
 	testDataMap := map[string]testInfo{
+		"sqlite": {driver: "sqlite3", dsn: "./temp/temp.db", dbFlavor: FlavorSqlite},
 		"mssql":  {driver: "sqlserver", dsn: "sqlserver://sa:secret@localhost:1433?database=tempdb", dbFlavor: FlavorMsSql},
 		"mysql":  {driver: "mysql", dsn: "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false", dbFlavor: FlavorMySql},
 		"oracle": {driver: "godror", dsn: "test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521)))(CONNECT_DATA=(SID=ORCLCDB)))", dbFlavor: FlavorOracle},
 		"pgsql":  {driver: "pgx", dsn: "postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom", dbFlavor: FlavorPgSql},
 	}
 	for k, info := range testDataMap {
-		fmt.Println(k, info)
 		var sqlc *SqlConnect
 		var err error
 		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, err = newSqlConnectSqlite(info.driver, info.dsn, timezoneSql, -1, nil)
 		case "mssql":
-			sqlc, err = newSqlConnectMssql(info.driver, info.dsn, timezoneSql)
+			sqlc, err = newSqlConnectMssql(info.driver, info.dsn, timezoneSql, -1, nil)
 		case "mysql":
-			sqlc, err = newSqlConnectMysql(info.driver, info.dsn, timezoneSql)
+			sqlc, err = newSqlConnectMysql(info.driver, info.dsn, timezoneSql, -1, nil)
 		case "oracle":
-			sqlc, err = newSqlConnectOracle(info.driver, info.dsn, timezoneSql)
+			sqlc, err = newSqlConnectOracle(info.driver, info.dsn, timezoneSql, -1, nil)
 		case "pgsql":
-			sqlc, err = newSqlConnectPgsql(info.driver, info.dsn, timezoneSql)
+			sqlc, err = newSqlConnectPgsql(info.driver, info.dsn, timezoneSql, -1, nil)
 		default:
 			t.Fatalf("%s failed: unknown database type [%s]", name, k)
 		}
@@ -120,7 +133,54 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 	}
 }
 
+// func TestSqlConnect_FastFailed(t *testing.T) {
+// 	name := "TestSqlConnect_FastFailed"
+//
+// 	type testInfo struct {
+// 		driver, dsn string
+// 		dbFlavor    DbFlavor
+// 	}
+// 	testDataMap := map[string]testInfo{
+// 		"sqlite": {driver: "sqlite3", dsn: "./should_not_exist/temp.db", dbFlavor: FlavorSqlite},
+// 		"mssql":  {driver: "sqlserver", dsn: "sqlserver://sa:secret@localhost:1234?database=tempdb&connection+timeout=1&dial+timeout=1", dbFlavor: FlavorMsSql},
+// 		"mysql":  {driver: "mysql", dsn: "test:test@tcp(localhost:1234)/test?charset=utf8mb4,utf8&parseTime=false", dbFlavor: FlavorMySql},
+// 		"oracle": {driver: "godror", dsn: "test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1234)))(CONNECT_DATA=(SID=ORCLCDB)))", dbFlavor: FlavorOracle},
+// 		"pgsql":  {driver: "pgx", dsn: "postgres://test:test@localhost:1234/test?sslmode=disable&client_encoding=UTF-8&application_name=prom&connect_timeout=1", dbFlavor: FlavorPgSql},
+// 	}
+// 	timeoutMs := 1024
+// 	for k, info := range testDataMap {
+// 		var sqlc *SqlConnect
+// 		switch k {
+// 		case "sqlite", "sqlite3":
+// 			sqlc, _ = newSqlConnectSqlite(info.driver, info.dsn, timezoneSql, timeoutMs, nil)
+// 		case "mssql":
+// 			sqlc, _ = newSqlConnectMssql(info.driver, info.dsn, timezoneSql, timeoutMs, nil)
+// 		case "mysql":
+// 			sqlc, _ = newSqlConnectMysql(info.driver, info.dsn, timezoneSql, timeoutMs, nil)
+// 		case "oracle":
+// 			sqlc, _ = newSqlConnectOracle(info.driver, info.dsn, timezoneSql, timeoutMs, nil)
+// 		case "pgsql":
+// 			sqlc, _ = newSqlConnectPgsql(info.driver, info.dsn, timezoneSql, timeoutMs, nil)
+// 		default:
+// 			t.Fatalf("%s failed: unknown database type [%s]", name, k)
+// 		}
+//
+// 		tstart := time.Now()
+// 		err := sqlc.Ping(nil)
+// 		if err == nil {
+// 			t.Fatalf("%s/%s failed: the operation should not success", name, k)
+// 		}
+// 		d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
+// 		dmax := time.Duration(float64(time.Duration(timeoutMs)*time.Millisecond) * 1.5)
+// 		if d > dmax {
+// 			t.Fatalf("%s/%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, k, dmax/1E6, d/1E6)
+// 		}
+// 	}
+// }
+
 const (
+	envSqliteDriver = "SQLITE_DRIVER"
+	envSqliteUrl    = "SQLITE_URL"
 	envMssqlDriver  = "MSSQL_DRIVER"
 	envMssqlUrl     = "MSSQL_URL"
 	envMysqlDriver  = "MYSQL_DRIVER"
@@ -136,11 +196,14 @@ type sqlDriverAndUrl struct {
 }
 
 func newSqlDriverAndUrl(driver, url string) sqlDriverAndUrl {
-	return sqlDriverAndUrl{driver: strings.Trim(driver, "\""), url: strings.Trim(url, "\"")}
+	return sqlDriverAndUrl{driver: strings.Trim(driver, `"`), url: strings.Trim(url, `"`)}
 }
 
 func sqlGetUrlFromEnv() map[string]sqlDriverAndUrl {
 	urlMap := make(map[string]sqlDriverAndUrl)
+	if os.Getenv(envSqliteDriver) != "" && os.Getenv(envSqliteUrl) != "" {
+		urlMap["sqlite"] = newSqlDriverAndUrl(os.Getenv(envSqliteDriver), os.Getenv(envSqliteUrl))
+	}
 	if os.Getenv(envMssqlDriver) != "" && os.Getenv(envMssqlUrl) != "" {
 		urlMap["mssql"] = newSqlDriverAndUrl(os.Getenv(envMssqlDriver), os.Getenv(envMssqlUrl))
 	}
@@ -159,19 +222,23 @@ func sqlGetUrlFromEnv() map[string]sqlDriverAndUrl {
 func TestSqlConnect_Connection(t *testing.T) {
 	name := "TestSqlConnect_Connection"
 	urlMap := sqlGetUrlFromEnv()
+	if len(urlMap) == 0 {
+		t.Skipf("%s skipped", name)
+	}
 	for k, info := range urlMap {
-		fmt.Println(k, info)
 		var sqlc *SqlConnect
 		var err error
 		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mssql":
-			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mysql":
-			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "oracle":
-			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
 		case "pgsql":
-			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
 		default:
 			t.Fatalf("%s failed: unknown database type [%s]", name, k)
 		}
@@ -184,7 +251,6 @@ func TestSqlConnect_Connection(t *testing.T) {
 			t.Fatalf("%s failed: GetDB returns nil", name+"/"+k)
 		}
 		if err = sqlc.Ping(nil); err != nil {
-			fmt.Println(err)
 			t.Fatalf("%s failed: %e", name+"/Ping/"+k, err)
 		}
 		if !sqlc.IsConnected() {
@@ -212,6 +278,7 @@ var (
 		"userid", "userid", "uname", "is_actived", "col_int", "col_real",
 		"col_time", "col_date", "col_datetime", "col_timestamp"}
 	sqlTableColTypes = map[string][]string{
+		"sqlite": {"VARCHAR(16)", "VARCHAR(64)", "CHAR(1)", "INT", "DOUBLE", "TIME", "DATE", "DATETIME", "TIMESTAMP"},
 		"mssql":  {"VARCHAR(16)", "NVARCHAR(64)", "CHAR(1)", "INT", "REAL", "TIME", "DATE", "DATETIME2", "DATETIMEOFFSET"},
 		"mysql":  {"VARCHAR(16)", "VARCHAR(64)", "CHAR(1)", "INT", "DOUBLE", "TIME", "DATE", "DATETIME", "TIMESTAMP"},
 		"oracle": {"NVARCHAR2(16)", "NVARCHAR2(64)", "NCHAR(1)", "INT", "BINARY_DOUBLE", "DATE", "DATE", "DATE", "TIMESTAMP WITH TIME ZONE"},
@@ -229,9 +296,20 @@ func sqlInitTable(sqlc *SqlConnect, table, dbtype string) error {
 	partInsertValues := ""
 	pkName := sqlTableColNames[0]
 	switch dbtype {
+	case "sqlite", "sqlite3":
+		for i, n := 1, len(sqlTableColNames); i < n; i++ {
+			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes[dbtype][i-1]
+			partInsertCols += sqlTableColNames[i]
+			partInsertValues += "?"
+			if i < n-1 {
+				partCreateCols += ","
+				partInsertCols += ","
+				partInsertValues += ","
+			}
+		}
 	case "mssql":
 		for i, n := 1, len(sqlTableColNames); i < n; i++ {
-			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes["mssql"][i-1]
+			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes[dbtype][i-1]
 			partInsertCols += sqlTableColNames[i]
 			partInsertValues += "@p" + strconv.Itoa(i)
 			if i < n-1 {
@@ -242,7 +320,7 @@ func sqlInitTable(sqlc *SqlConnect, table, dbtype string) error {
 		}
 	case "mysql":
 		for i, n := 1, len(sqlTableColNames); i < n; i++ {
-			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes["mysql"][i-1]
+			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes[dbtype][i-1]
 			partInsertCols += sqlTableColNames[i]
 			partInsertValues += "?"
 			if i < n-1 {
@@ -253,7 +331,7 @@ func sqlInitTable(sqlc *SqlConnect, table, dbtype string) error {
 		}
 	case "oracle":
 		for i, n := 1, len(sqlTableColNames); i < n; i++ {
-			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes["oracle"][i-1]
+			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes[dbtype][i-1]
 			partInsertCols += sqlTableColNames[i]
 			partInsertValues += ":" + strconv.Itoa(i)
 			if i < n-1 {
@@ -264,7 +342,7 @@ func sqlInitTable(sqlc *SqlConnect, table, dbtype string) error {
 		}
 	case "pgsql":
 		for i, n := 1, len(sqlTableColNames); i < n; i++ {
-			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes["pgsql"][i-1]
+			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes[dbtype][i-1]
 			partInsertCols += sqlTableColNames[i]
 			partInsertValues += "$" + strconv.Itoa(i)
 			if i < n-1 {
@@ -303,18 +381,19 @@ func TestSqlConnect_Unicode(t *testing.T) {
 	name := "TestSqlConnect_Unicode"
 	urlMap := sqlGetUrlFromEnv()
 	for k, info := range urlMap {
-		fmt.Println(k, info)
 		var sqlc *SqlConnect
 		var err error
 		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mssql":
-			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mysql":
-			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "oracle":
-			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
 		case "pgsql":
-			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
 		default:
 			t.Fatalf("%s failed: unknown database type [%s]", name, k)
 		}
@@ -392,18 +471,19 @@ func TestSqlConnect_FetchRow(t *testing.T) {
 	name := "TestSqlConnect_FetchRow"
 	urlMap := sqlGetUrlFromEnv()
 	for k, info := range urlMap {
-		fmt.Println(k, info)
 		var sqlc *SqlConnect
 		var err error
 		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mssql":
-			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mysql":
-			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "oracle":
-			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
 		case "pgsql":
-			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
 		default:
 			t.Fatalf("%s failed: unknown database type [%s]", name, k)
 		}
@@ -435,18 +515,19 @@ func TestSqlConnect_FetchRows(t *testing.T) {
 	name := "TestSqlConnect_FetchRows"
 	urlMap := sqlGetUrlFromEnv()
 	for k, info := range urlMap {
-		fmt.Println(k, info)
 		var sqlc *SqlConnect
 		var err error
 		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mssql":
-			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mysql":
-			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "oracle":
-			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
 		case "pgsql":
-			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
 		default:
 			t.Fatalf("%s failed: unknown database type [%s]", name, k)
 		}
@@ -484,18 +565,19 @@ func TestSqlConnect_FetchRowsCallback(t *testing.T) {
 	name := "TestSqlConnect_FetchRowsCallback"
 	urlMap := sqlGetUrlFromEnv()
 	for k, info := range urlMap {
-		fmt.Println(k, info)
 		var sqlc *SqlConnect
 		var err error
 		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mssql":
-			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mysql":
-			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "oracle":
-			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
 		case "pgsql":
-			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql)
+			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
 		default:
 			t.Fatalf("%s failed: unknown database type [%s]", name, k)
 		}

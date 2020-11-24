@@ -157,7 +157,6 @@ func (m *MongoConnect) GetTimeoutMs() int {
 }
 
 // SetTimeoutMs sets default timeout value (in milliseconds).
-// Note: the change does not take effect if called after Init has been called.
 //
 // Available since v0.2.8
 func (m *MongoConnect) SetTimeoutMs(timeoutMs int) *MongoConnect {

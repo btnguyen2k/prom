@@ -23,6 +23,7 @@ const (
 	FlavorPgSql
 	FlavorMsSql
 	FlavorOracle
+	FlavorSqlite
 )
 
 // SqlPoolOptions configures database connection pooling options.
@@ -40,11 +41,9 @@ type SqlPoolOptions struct {
 	MaxOpenConns int
 }
 
-var defaultSqlPoolOptions = SqlPoolOptions{ConnMaxLifetime: 3600 * time.Second, MaxIdleConns: 1, MaxOpenConns: 2}
+var defaultSqlPoolOptions = &SqlPoolOptions{ConnMaxLifetime: 1 * time.Hour, MaxIdleConns: 1, MaxOpenConns: 2}
 
-/*
-SqlConnect holds a database/sql DB instance (https://golang.org/pkg/database/sql/#DB) that can be shared within the application.
-*/
+// SqlConnect holds a database/sql DB instance (https://golang.org/pkg/database/sql/#DB) that can be shared within the application.
 type SqlConnect struct {
 	driver, dsn string          // driver and data source name (DSN)
 	poolOptions *SqlPoolOptions // connection pool options
@@ -54,39 +53,33 @@ type SqlConnect struct {
 	loc         *time.Location  // timezone location to parse date/time data, new since v0.1.2
 }
 
-/*
-NewSqlConnect constructs a new SqlConnect instance.
-
-Parameters: see #NewSqlConnectWithFlavor.
-*/
+// NewSqlConnect constructs a new SqlConnect instance.
+//
+// Parameters: see #NewSqlConnectWithFlavor.
 func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
 	return NewSqlConnectWithFlavor(driver, dsn, defaultTimeoutMs, poolOptions, FlavorDefault)
 }
 
-/*
-NewSqlConnectWithFlavor constructs a new SqlConnect instance.
-
-Parameters:
-
-	- driver          : database driver name
-	- dsn             : data source name (format [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN])
-	- defaultTimeoutMs: default timeout for db operations, in milliseconds
-	- poolOptions     : connection pool options. If nil, default value is used
-	- flavor          : database flavor associated with the SqlConnect instance.
-
-Return: the SqlConnect instance and error (if any). Note:
-
-  - In case of connection error: this function returns the SqlConnect instance and the error.
-  - Other error: this function returns (nil, error)
-
-Available: since v0.1.0
-*/
+// NewSqlConnectWithFlavor constructs a new SqlConnect instance.
+//
+// Parameters:
+// 	- driver          : database driver name
+// 	- dsn             : data source name (sample format [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN])
+// 	- defaultTimeoutMs: default timeout for db operations, in milliseconds
+// 	- poolOptions     : connection pool options. If nil, default value is used
+// 	- flavor          : database flavor associated with the SqlConnect instance.
+//
+// Return: the SqlConnect instance and error (if any). Note:
+//   - In case of connection error: this function returns the SqlConnect instance and the error.
+//   - Other error: this function returns (nil, error)
+//
+// Available: since v0.1.0
 func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions, flavor DbFlavor) (*SqlConnect, error) {
 	if defaultTimeoutMs < 0 {
 		defaultTimeoutMs = 0
 	}
 	if poolOptions == nil {
-		poolOptions = &defaultSqlPoolOptions
+		poolOptions = defaultSqlPoolOptions
 	}
 	sc := &SqlConnect{
 		driver:      driver,
@@ -96,49 +89,123 @@ func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOptio
 		flavor:      flavor,
 		loc:         time.UTC,
 	}
-	db, err := sql.Open(driver, dsn)
-	if poolOptions != nil {
-		db.SetConnMaxLifetime(poolOptions.ConnMaxLifetime)
-		db.SetMaxIdleConns(poolOptions.MaxIdleConns)
-		db.SetMaxOpenConns(poolOptions.MaxOpenConns)
-	}
-	sc.db = db
-	return sc, err
+	return sc, sc.Init()
 }
 
-/*
-GetDbFlavor returns the current database flavor associated with this SqlConnect.
+// Init should be called to initialize the SqlConnect instance before use.
+//
+// Available since v0.2.8
+func (sc *SqlConnect) Init() error {
+	if sc.db != nil {
+		return nil
+	}
+	db, err := sql.Open(sc.driver, sc.dsn)
+	if err != nil {
+		return err
+	}
+	if sc.poolOptions != nil {
+		if sc.poolOptions.MaxOpenConns > 0 {
+			db.SetMaxOpenConns(sc.poolOptions.MaxOpenConns)
+		}
+		if sc.poolOptions.MaxIdleConns > 0 {
+			db.SetMaxIdleConns(sc.poolOptions.MaxIdleConns)
+		}
+		if sc.poolOptions.ConnMaxLifetime > 0 {
+			db.SetConnMaxLifetime(sc.poolOptions.ConnMaxLifetime)
+		}
+	}
+	sc.db = db
+	return err
+}
 
-Available: since v0.1.0
-*/
+// GetDriver returns the database driver setting.
+//
+// Available: since v0.2.8
+func (sc *SqlConnect) GetDriver() string {
+	return sc.driver
+}
+
+// SetDriver sets the database driver setting.
+// Note: the change does not take effect if called after Init has been called.
+//
+// Available: since v0.2.8
+func (sc *SqlConnect) SetDriver(driver string) *SqlConnect {
+	sc.driver = driver
+	return sc
+}
+
+// GetDsn returns the database dsn setting.
+//
+// Available: since v0.2.8
+func (sc *SqlConnect) GetDsn() string {
+	return sc.dsn
+}
+
+// SetDsn sets the database dsn setting.
+// Note: the change does not take effect if called after Init has been called.
+//
+// Available: since v0.2.8
+func (sc *SqlConnect) SetDsn(dsn string) *SqlConnect {
+	sc.dsn = dsn
+	return sc
+}
+
+// GetTimeoutMs returns default timeout value (in milliseconds).
+//
+// Available since v0.2.8
+func (sc *SqlConnect) GetTimeoutMs() int {
+	return sc.timeoutMs
+}
+
+// SetTimeoutMs sets default timeout value (in milliseconds).
+//
+// Available since v0.2.8
+func (sc *SqlConnect) SetTimeoutMs(timeoutMs int) *SqlConnect {
+	sc.timeoutMs = timeoutMs
+	return sc
+}
+
+// GetSqlPoolOptions returns the database connection pool configurations.
+//
+// Available: since v0.2.8
+func (sc *SqlConnect) GetSqlPoolOptions() *SqlPoolOptions {
+	return sc.poolOptions
+}
+
+// SetSqlPoolOptions sets the database connection pool configurations.
+// Note: the change does not take effect if called after Init has been called.
+//
+// Available: since v0.2.8
+func (sc *SqlConnect) SetSqlPoolOptions(poolOptions *SqlPoolOptions) *SqlConnect {
+	sc.poolOptions = poolOptions
+	return sc
+}
+
+// GetDbFlavor returns the current database flavor associated with this SqlConnect.
+//
+// Available: since v0.1.0
 func (sc *SqlConnect) GetDbFlavor() DbFlavor {
 	return sc.flavor
 }
 
-/*
-SetDbFlavor associates a database flavor with this SqlConnect.
-
-Available: since v0.1.0
-*/
+// SetDbFlavor associates a database flavor with this SqlConnect.
+//
+// Available: since v0.1.0
 func (sc *SqlConnect) SetDbFlavor(flavor DbFlavor) *SqlConnect {
 	sc.flavor = flavor
 	return sc
 }
 
-/*
-GetLocation returns the timezone location associated with this SqlConnect.
-
-Available: since v0.1.2
-*/
+// GetLocation returns the timezone location associated with this SqlConnect.
+//
+// Available: since v0.1.2
 func (sc *SqlConnect) GetLocation() *time.Location {
 	return sc.loc
 }
 
-/*
-SetLocation associates a timezone location with this SqlConnect, used when parsing date/time data. Default value is time.UTC.
-
-Available: since v0.1.2
-*/
+// SetLocation associates a timezone location with this SqlConnect, used when parsing date/time data. Default value is time.UTC.
+//
+// Available: since v0.1.2
 func (sc *SqlConnect) SetLocation(loc *time.Location) *SqlConnect {
 	if loc == nil {
 		sc.loc = time.UTC
@@ -155,13 +222,33 @@ func (sc *SqlConnect) ensureLocation() *time.Location {
 	return sc.loc
 }
 
-/*
-NewContext creates a new context with specified timeout in milliseconds.
-If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
+// NewContext creates a new context with specified timeout in milliseconds.
+// If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
+//
+// Available: since v0.2.0
+// (since v0.2.8) this function return only context.Context. Use NewContextWithCancel if context.CancelFunc is needed.
+func (sc *SqlConnect) NewContext(timeoutMs ...int) context.Context {
+	ctx, _ := sc.NewContextWithCancel(timeoutMs...)
+	return ctx
+}
 
-Available: since v0.2.0
-*/
-func (sc *SqlConnect) NewContext(timeoutMs ...int) (context.Context, context.CancelFunc) {
+// NewContext creates a new context with specified timeout in milliseconds if the supplied ctx is nil. Otherwise,
+// ctx is returned as-is.
+//
+// If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
+//
+// Available: since v0.2.8
+func (sc *SqlConnect) NewContextIfNil(ctx context.Context, timeoutMs ...int) context.Context {
+	if ctx == nil {
+		ctx = sc.NewContext(timeoutMs...)
+	}
+	return ctx
+}
+
+// NewContextWithCancel is similar to NewContext, but it returns a pair (context.Context, context.CancelFunc).
+//
+// Available: since v0.2.8
+func (sc *SqlConnect) NewContextWithCancel(timeoutMs ...int) (context.Context, context.CancelFunc) {
 	d := sc.timeoutMs
 	if len(timeoutMs) > 0 && timeoutMs[0] > 0 {
 		d = timeoutMs[0]
@@ -169,55 +256,38 @@ func (sc *SqlConnect) NewContext(timeoutMs ...int) (context.Context, context.Can
 	return context.WithTimeout(context.Background(), time.Duration(d)*time.Millisecond)
 }
 
-/*
-GetDB returns the underlying 'sql.DB' instance.
-*/
+// GetDB returns the underlying 'sql.DB' instance.
 func (sc *SqlConnect) GetDB() *sql.DB {
 	return sc.db
 }
 
-/*
-Close closes the underlying 'sql.DB' instance.
-*/
+// Close closes the underlying 'sql.DB' instance.
 func (sc *SqlConnect) Close() error {
 	return sc.db.Close()
 }
 
-/*
-Ping verifies a connection to the database is still alive, establishing a connection if necessary.
-*/
+// Ping verifies a connection to the database is still alive, establishing a connection if necessary.
 func (sc *SqlConnect) Ping(ctx context.Context) error {
-	if ctx == nil {
-		ctx, _ = sc.NewContext()
-	}
-	return sc.db.PingContext(ctx)
+	return sc.db.PingContext(sc.NewContextIfNil(ctx))
 }
 
-/*
-IsConnected returns true if the connection to the database is alive.
-*/
+// IsConnected returns true if the connection to the database is alive.
 func (sc *SqlConnect) IsConnected() bool {
 	return sc.Ping(nil) == nil
 }
 
-/*
-Conn returns a single connection by either opening a new connection or returning an existing connection from the connection pool.
-Conn will block until either a connection is returned or ctx is canceled/timed-out.
-
-Every 'Conn' must be returned to the database pool after use by calling 'Conn.Close'.
-*/
+// Conn returns a single connection by either opening a new connection or returning an existing connection from the connection pool.
+// Conn will block until either a connection is returned or ctx is canceled/timed-out.
+//
+// Every leased connection must be returned to the pool after use by calling sql.Conn.Close
 func (sc *SqlConnect) Conn(ctx context.Context) (*sql.Conn, error) {
-	if ctx == nil {
-		ctx, _ = sc.NewContext()
-	}
-	return sc.db.Conn(ctx)
+	return sc.db.Conn(sc.NewContextIfNil(ctx))
 }
 
-/*
-FetchRow copies the columns from the matched row into a slice and return it.
-If more than one row matches the query, FetchRow uses only the first row and discards the rest.
-If no row matches the query, FetchRow returns (nil,nil).
-*/
+// FetchRow copies the columns from the matched row into a slice and return it.
+//
+// If more than one row matches the query, FetchRow uses only the first row and discards the rest.
+// If no row matches the query, FetchRow returns (nil,nil).
 func (sc *SqlConnect) FetchRow(row *sql.Row, numCols int) ([]interface{}, error) {
 	if numCols <= 0 {
 		return nil, errors.New("number of columns must be larger than 0")
@@ -341,12 +411,10 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 	return result, nil
 }
 
-/*
-FetchRows loads rows from database and transform to a slice of 'map[string]interface{}' where each column's name & value is a map entry.
-If no row matches the query, FetchRow returns (<empty slice>,nil).
-
-Note: FetchRows does NOT call 'rows.close()' when done!
-*/
+// FetchRows loads rows from database and transform to a slice of 'map[string]interface{}' where each column's name & value is a map entry.
+// If no row matches the query, FetchRow returns (<empty slice>, nil).
+//
+// Note: FetchRows does NOT call 'rows.close()' when done!
 func (sc *SqlConnect) FetchRows(rows *sql.Rows) ([]map[string]interface{}, error) {
 	colTypes, err := rows.ColumnTypes()
 	if err != nil {
@@ -363,12 +431,10 @@ func (sc *SqlConnect) FetchRows(rows *sql.Rows) ([]map[string]interface{}, error
 	return result, rows.Err()
 }
 
-/*
-FetchRowsCallback loads rows from database. For each row, FetchRowsCallback transforms it to 'map[string]interface{}', where each column's name & value is a map entry, and passes the map to the callback function.
-FetchRowsCallback stops the loop when there is no more row to load or 'callback' function returns 'false'.
-
-Note: FetchRowsCallback does NOT call 'rows.close()' when done!
-*/
+// FetchRowsCallback loads rows from database. For each row, FetchRowsCallback transforms it to 'map[string]interface{}', where each column's name & value is a map entry, and passes the map to the callback function.
+// FetchRowsCallback stops the loop when there is no more row to load or 'callback' function returns 'false'.
+//
+// Note: FetchRowsCallback does NOT call 'rows.close()' when done!
 func (sc *SqlConnect) FetchRowsCallback(rows *sql.Rows, callback func(row map[string]interface{}, err error) bool) error {
 	colTypes, err := rows.ColumnTypes()
 	if err != nil {

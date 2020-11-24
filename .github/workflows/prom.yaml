@@ -11,37 +11,37 @@ jobs:
     name: General test
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go env
-        uses: actions/setup-go@v2
-        with:
-          go-version: ^1.13
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-      - name: Start AWS DynamoDB local server
-        run: docker run -d --name dynamodb -p 8000:8000 amazon/dynamodb-local -jar DynamoDBLocal.jar -inMemory -sharedDb
-      - name: Test
-        run: |
-          go test -cover -v -run .
+    - name: Set up Go env
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Start AWS DynamoDB local server
+      run: docker run -d --name dynamodb -p 8000:8000 amazon/dynamodb-local -jar DynamoDBLocal.jar -inMemory -sharedDb
+    - name: Test
+      run: |
+        go test -cover -v -run .
 
   testWithAwsDynamoDB:
     name: Test with AWS DynamoDB
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go env
-        uses: actions/setup-go@v2
-        with:
-          go-version: ^1.13
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-      - name: Start AWS DynamoDB local server
-        run: docker run -d --name dynamodb -p 8000:8000 amazon/dynamodb-local -jar DynamoDBLocal.jar -inMemory -sharedDb
-      - name: Test
-        run: |
-          export AWS_REGION="us-west-2"
-          export AWS_ACCESS_KEY_ID="DUMMYIDEXAMPLE"
-          export AWS_SECRET_ACCESS_KEY="DUMMYEXAMPLEKEY"
-          export AWS_DYNAMODB_ENDPOINT="http://localhost:8000"
-          go test -cover -v -run ".*Dynamodb.*" .
+    - name: Set up Go env
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Start AWS DynamoDB local server
+      run: docker run -d --name dynamodb -p 8000:8000 amazon/dynamodb-local -jar DynamoDBLocal.jar -inMemory -sharedDb
+    - name: Test
+      run: |
+        export AWS_REGION="us-west-2"
+        export AWS_ACCESS_KEY_ID="DUMMYIDEXAMPLE"
+        export AWS_SECRET_ACCESS_KEY="DUMMYEXAMPLEKEY"
+        export AWS_DYNAMODB_ENDPOINT="http://localhost:8000"
+        go test -cover -v -run ".*Dynamodb.*" .
 
   testWithMongoStandalone:
     name: Test with MongoDB (Standalone)
@@ -79,38 +79,77 @@ jobs:
         export MONGO_URL="mongodb://root:test@localhost:27017/?authSource=admin&replicaSet=replicaset"
         go test -cover -v -run ".*Mongo.*" .
 
-#  testWithMySQL:
-#    name: Test with MySQL
-#    runs-on: ubuntu-latest
-#    steps:
-#    - name: Set up Go env
-#      uses: actions/setup-go@v2
-#      with:
-#        go-version: ^1.13
-#    - name: Check out code into the Go module directory
-#      uses: actions/checkout@v2
-#    - name: Start MySQL server
-#      run: docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_USER=test -e MYSQL_PASSWORD=test -p 3306:3306 mysql:8
-#    - name: Test
-#      run: |
-#        export TIMEZONE="Asia/Ho_Chi_Minh"
-#        export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=Asia%2fHo_Chi_Minh"
-#        go test -cover -v .
-#
-#  testWithPostgreSQL:
-#    name: Test with PostgreSQL
-#    runs-on: ubuntu-latest
-#    steps:
-#    - name: Set up Go env
-#      uses: actions/setup-go@v2
-#      with:
-#        go-version: ^1.13
-#    - name: Check out code into the Go module directory
-#      uses: actions/checkout@v2
-#    - name: Start PostgreSQL server
-#      run: docker run -d --name postgres -e POSTGRES_DB=test -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -p 5432:5432 postgres:11
-#    - name: Test
-#      run: |
-#        export TIMEZONE="Asia/Ho_Chi_Minh"
-#        export PGSQL_URL="postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=henge"
-#        go test -cover -v .
+  testWithSqlite:
+    name: Test with SQLite
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go env
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Test
+      run: |
+        export TIMEZONE="Asia/Ho_Chi_Minh"
+        mkdir ./temp
+        export SQLITE_DRIVER="sqlite3"
+        export SQLITE_URL="./temp/temp.db"
+        go test -cover -v -run ".*Sql.*" .
+
+  testWithMySQL:
+    name: Test with MySQL
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go env
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Start MySQL server
+      run: docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_USER=test -e MYSQL_PASSWORD=test -p 3306:3306 mysql:8
+    - name: Test
+      run: |
+        export TIMEZONE="Asia/Ho_Chi_Minh"
+        export MYSQL_DRIVER="mysql"
+        export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=Asia%2fHo_Chi_Minh"
+        go test -cover -v -run ".*Sql.*" .
+
+  testWithPostgreSQL:
+    name: Test with PostgreSQL
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go env
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Start PostgreSQL server
+      run: docker run -d --name postgres -e POSTGRES_DB=test -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -p 5432:5432 postgres:11
+    - name: Test
+      run: |
+        export TIMEZONE="Asia/Ho_Chi_Minh"
+        export PGSQL_DRIVER="pgx"
+        export PGSQL_URL="postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
+        go test -cover -v -run ".*Sql.*" .
+
+  testWithMSSQL:
+    name: Test with MSSQL
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go env
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Start MSSQL server
+      run: docker run -d --name mssql-express -e ACCEPT_EULA=Y -e SA_PASSWORD=SecretPassword1 -e MSSQL_PID=Express -p 1433:1433 mcr.microsoft.com/mssql/server:2019-latest
+    - name: Test
+      run: |
+        export TIMEZONE="Asia/Ho_Chi_Minh"
+        export PGSQL_DRIVER="sqlserver"
+        export PGSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
+        go test -cover -v -run ".*Sql.*" .
