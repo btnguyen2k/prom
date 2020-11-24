@@ -150,6 +150,6 @@ jobs:
     - name: Test
       run: |
         export TIMEZONE="Asia/Ho_Chi_Minh"
-        export PGSQL_DRIVER="sqlserver"
-        export PGSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
+        export MSSQL_DRIVER="sqlserver"
+        export MSSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
         go test -cover -v -run ".*Sql.*" .
