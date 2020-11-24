@@ -199,13 +199,10 @@ func AwsDynamodbNotExistsAllBuilder(attrs []string) *expression.ConditionBuilder
 	return &builder
 }
 
-/*
-AwsDynamodbEqualsBuilder builds a expression.ConditionBuilder with condition attr1=value1 AND attr1=value1 AND...
-
-Parameters:
-
-  - condition: format {attribute-name:attribute-value}
-*/
+// AwsDynamodbEqualsBuilder builds a expression.ConditionBuilder with condition attr1=value1 AND attr1=value1 AND...
+//
+// Parameters:
+//   - condition: format {attribute-name:attribute-value}
 func AwsDynamodbEqualsBuilder(condition map[string]interface{}) *expression.ConditionBuilder {
 	if condition == nil || len(condition) == 0 {
 		return nil
@@ -232,22 +229,18 @@ type AwsDynamodbConnect struct {
 	ownDb, ownSession bool
 }
 
-/*
-NewAwsDynamodbConnect constructs a new AwsDynamodbConnect instance.
-
-Parameters:
-
-  - cfg             : aws.Config instance
-  - sess            : session.Session instance
-  - db              :  dynamodb.DynamoDB instance
-  - defaultTimeoutMs: default timeout for db operations, in milliseconds
-
-Return: the AwsDynamodbConnect instance and error (if any). Note:
-
-  - if db is nil, it will be built from session
-  - if session is nil, it sill be built from config
-  - at least one of {config, session, db} must not be nil
-*/
+// NewAwsDynamodbConnect constructs a new AwsDynamodbConnect instance.
+//
+// Parameters:
+//   - cfg             : aws.Config instance
+//   - sess            : session.Session instance
+//   - db              :  dynamodb.DynamoDB instance
+//   - defaultTimeoutMs: default timeout for db operations, in milliseconds
+//
+// Return: the AwsDynamodbConnect instance and error (if any). Note:
+//   - if db is nil, it will be built from session
+//   - if session is nil, it sill be built from config
+//   - at least one of {config, session, db} must not be nil
 func NewAwsDynamodbConnect(cfg *aws.Config, sess *session.Session, db *dynamodb.DynamoDB, defaultTimeoutMs int) (*AwsDynamodbConnect, error) {
 	if cfg == nil && sess == nil && db == nil {
 		return nil, errors.New("at least one of {config, session, db} must not be nil")
@@ -300,13 +293,10 @@ func (adc *AwsDynamodbConnect) NewContext(timeoutMs ...int) (aws.Context, contex
 	return context.WithTimeout(context.Background(), time.Duration(d)*time.Millisecond)
 }
 
-/*
-ListTables returns all visible tables.
-
-Parameters:
-
-  - ctx: (optional) used for request cancellation
-*/
+// ListTables returns all visible tables.
+//
+// Parameters:
+//   - ctx: (optional) used for request cancellation
 func (adc *AwsDynamodbConnect) ListTables(ctx aws.Context) ([]string, error) {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -332,13 +322,10 @@ func (adc *AwsDynamodbConnect) ListTables(ctx aws.Context) ([]string, error) {
 	return result, nil
 }
 
-/*
-HasTable checks if a table exists.
-
-Parameters:
-
-  - ctx: (optional) used for request cancellation
-*/
+// HasTable checks if a table exists.
+//
+// Parameters:
+//   - ctx: (optional) used for request cancellation
 func (adc *AwsDynamodbConnect) HasTable(ctx aws.Context, table string) (bool, error) {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -365,18 +352,14 @@ func (adc *AwsDynamodbConnect) HasTable(ctx aws.Context, table string) (bool, er
 	return false, nil
 }
 
-/*
-DeleteTable deletes an existing table.
-
-Parameters:
-
-  - ctx: (optional) used for request cancellation
-
-Notes:
-
-	- DynamoDB table is deleted asynchronously. Use GetTableStatus to check table's existence.
-	- This function ignores error if table does not exist.
-*/
+// DeleteTable deletes an existing table.
+//
+// Parameters:
+//   - ctx: (optional) used for request cancellation
+//
+// Notes:
+// 	- DynamoDB table is deleted asynchronously. Use GetTableStatus to check table's existence.
+// 	- This function ignores error if table does not exist.
 func (adc *AwsDynamodbConnect) DeleteTable(ctx aws.Context, table string) error {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -385,20 +368,17 @@ func (adc *AwsDynamodbConnect) DeleteTable(ctx aws.Context, table string) error 
 	return AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceNotFoundException)
 }
 
-/*
-CreateTable create a new table without index.
-
-Parameters:
-
-  - ctx     : (optional) used for request cancellation
-  - table   : name of the table to be created
-  - rcu     : ReadCapacityUnits (0 means PAY_PER_REQUEST)
-  - wcu     : WriteCapacityUnits (0 means PAY_PER_REQUEST)
-  - attrDefs: table attributes, where attribute-type is either "S", "N" or "B"
-  - pkDefs  : primary key definitions, where key-type is either "HASH" or "RANGE"
-
-Note: DynamoDB table is created asynchronously. Use GetTableStatus to check table's existence.
-*/
+// CreateTable create a new table without index.
+//
+// Parameters:
+//   - ctx     : (optional) used for request cancellation
+//   - table   : name of the table to be created
+//   - rcu     : ReadCapacityUnits (0 means PAY_PER_REQUEST)
+//   - wcu     : WriteCapacityUnits (0 means PAY_PER_REQUEST)
+//   - attrDefs: table attributes, where attribute-type is either "S", "N" or "B"
+//   - pkDefs  : primary key definitions, where key-type is either "HASH" or "RANGE"
+//
+// Note: DynamoDB table is created asynchronously. Use GetTableStatus to check table's existence.
 func (adc *AwsDynamodbConnect) CreateTable(ctx aws.Context, table string, rcu, wcu int64, attrDefs, pkDefs []AwsDynamodbNameAndType) error {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -413,15 +393,12 @@ func (adc *AwsDynamodbConnect) CreateTable(ctx aws.Context, table string, rcu, w
 	return err
 }
 
-/*
-GetTableStatus fetches and returns table status.
-
-Parameters:
-
-  - ctx: (optional) used for request cancellation
-
-Note: If table does not exist, this function returns "", nil
-*/
+// GetTableStatus fetches and returns table status.
+//
+// Parameters:
+//   - ctx: (optional) used for request cancellation
+//
+// Note: If table does not exist, this function returns "", nil
 func (adc *AwsDynamodbConnect) GetTableStatus(ctx aws.Context, table string) (string, error) {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -435,15 +412,12 @@ func (adc *AwsDynamodbConnect) GetTableStatus(ctx aws.Context, table string) (st
 	return "", err
 }
 
-/*
-GetGlobalSecondaryIndexStatus fetches and returns a table's GSI status.
-
-Parameters:
-
-  - ctx: (optional) used for request cancellation
-
-Note: If index does not exist, this function returns "", nil
-*/
+// GetGlobalSecondaryIndexStatus fetches and returns a table's GSI status.
+//
+// Parameters:
+//   - ctx: (optional) used for request cancellation
+//
+// Note: If index does not exist, this function returns "", nil
 func (adc *AwsDynamodbConnect) GetGlobalSecondaryIndexStatus(ctx aws.Context, table, indexName string) (string, error) {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -461,21 +435,18 @@ func (adc *AwsDynamodbConnect) GetGlobalSecondaryIndexStatus(ctx aws.Context, ta
 	return "", err
 }
 
-/*
-CreateGlobalSecondaryIndex creates a Global Secondary Index on a specified table.
-
-Parameters:
-
-  - ctx      : (optional) used for request cancellation
-  - table    : name of the table
-  - indexName: name of the index to be created
-  - rcu      : ReadCapacityUnits (0 means PAY_PER_REQUEST)
-  - wcu      : WriteCapacityUnits (0 means PAY_PER_REQUEST)
-  - attrDefs : GSI attributes, where attribute-type is either "S", "N" or "B"
-  - keyAttrs : GSI key schema, where key-type is either "HASH" or "RANGE"
-
-Note: DynamoDB GSI is created asynchronously. Use GetGlobalSecondaryIndexStatus to check GSI's existence.
-*/
+// CreateGlobalSecondaryIndex creates a Global Secondary Index on a specified table.
+//
+// Parameters:
+//   - ctx      : (optional) used for request cancellation
+//   - table    : name of the table
+//   - indexName: name of the index to be created
+//   - rcu      : ReadCapacityUnits (0 means PAY_PER_REQUEST)
+//   - wcu      : WriteCapacityUnits (0 means PAY_PER_REQUEST)
+//   - attrDefs : GSI attributes, where attribute-type is either "S", "N" or "B"
+//   - keyAttrs : GSI key schema, where key-type is either "HASH" or "RANGE"
+//
+// Note: DynamoDB GSI is created asynchronously. Use GetGlobalSecondaryIndexStatus to check GSI's existence.
 func (adc *AwsDynamodbConnect) CreateGlobalSecondaryIndex(ctx aws.Context, table, indexName string, rcu, wcu int64, attrDefs, keyAttrs []AwsDynamodbNameAndType) error {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -496,18 +467,14 @@ func (adc *AwsDynamodbConnect) CreateGlobalSecondaryIndex(ctx aws.Context, table
 	return err
 }
 
-/*
-DeleteGlobalSecondaryIndex deletes a Global Secondary Index on a specified table.
-
-Parameters:
-
-  - ctx: (optional) used for request cancellation
-
-Notes:
-
-	- DynamoDB GSI is deleted asynchronously. Use GetGlobalSecondaryIndexStatus to check index's existence.
-	- This function ignores error if index does not exist.
-*/
+// DeleteGlobalSecondaryIndex deletes a Global Secondary Index on a specified table.
+//
+// Parameters:
+//   - ctx: (optional) used for request cancellation
+//
+// Notes:
+// 	- DynamoDB GSI is deleted asynchronously. Use GetGlobalSecondaryIndexStatus to check index's existence.
+// 	- This function ignores error if index does not exist.
 func (adc *AwsDynamodbConnect) DeleteGlobalSecondaryIndex(ctx aws.Context, table, indexName string) error {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -521,11 +488,9 @@ func (adc *AwsDynamodbConnect) DeleteGlobalSecondaryIndex(ctx aws.Context, table
 	return AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceNotFoundException)
 }
 
-/*
-BuildPutItemInput is a helper function to build dynamodb.PutItemInput.
-
-Available: since v0.2.6
-*/
+// BuildPutItemInput is a helper function to build dynamodb.PutItemInput.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) BuildPutItemInput(table string, item map[string]*dynamodb.AttributeValue, condition *expression.ConditionBuilder) (*dynamodb.PutItemInput, error) {
 	input := &dynamodb.PutItemInput{
 		Item:                   item,
@@ -544,11 +509,9 @@ func (adc *AwsDynamodbConnect) BuildPutItemInput(table string, item map[string]*
 	return input, nil
 }
 
-/*
-PutItemWithInput executes DynamoDB "put-item" operation.
-
-Available: since v0.2.6
-*/
+// PutItemWithInput executes DynamoDB "put-item" operation.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) PutItemWithInput(ctx aws.Context, input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -556,16 +519,13 @@ func (adc *AwsDynamodbConnect) PutItemWithInput(ctx aws.Context, input *dynamodb
 	return adc.db.PutItemWithContext(ctx, input)
 }
 
-/*
-PutItemRaw inserts a new item to table or replace an existing one.
-
-Parameters:
-
-  - ctx      : (optional) used for request cancellation
-  - table    : name of the table
-  - item     : item to be inserted
-  - condition: (optional) a condition that must be satisfied before writing item
-*/
+// PutItemRaw inserts a new item to table or replace an existing one.
+//
+// Parameters:
+//   - ctx      : (optional) used for request cancellation
+//   - table    : name of the table
+//   - item     : item to be inserted
+//   - condition: (optional) a condition that must be satisfied before writing item
 func (adc *AwsDynamodbConnect) PutItemRaw(ctx aws.Context, table string, item map[string]*dynamodb.AttributeValue, condition *expression.ConditionBuilder) (*dynamodb.PutItemOutput, error) {
 	input, err := adc.BuildPutItemInput(table, item, condition)
 	if err != nil {
@@ -574,16 +534,13 @@ func (adc *AwsDynamodbConnect) PutItemRaw(ctx aws.Context, table string, item ma
 	return adc.PutItemWithInput(ctx, input)
 }
 
-/*
-PutItemRawIfNotExist inserts a new item to table only if it does not exist.
-
-Parameters:
-
-  - ctx    : (optional) used for request cancellation
-  - table  : name of the table
-  - item   : item to be inserted
-  - pkAttrs: primary key attribute names
-*/
+// PutItemRawIfNotExist inserts a new item to table only if it does not exist.
+//
+// Parameters:
+//   - ctx    : (optional) used for request cancellation
+//   - table  : name of the table
+//   - item   : item to be inserted
+//   - pkAttrs: primary key attribute names
 func (adc *AwsDynamodbConnect) PutItemRawIfNotExist(ctx aws.Context, table string, item map[string]*dynamodb.AttributeValue, pkAttrs []string) (*dynamodb.PutItemOutput, error) {
 	result, err := adc.PutItemRaw(ctx, table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
 	if IsAwsError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
@@ -592,16 +549,13 @@ func (adc *AwsDynamodbConnect) PutItemRawIfNotExist(ctx aws.Context, table strin
 	return result, err
 }
 
-/*
-PutItem inserts a new item to table or replace an existing one.
-
-Parameters:
-
-  - ctx      : (optional) used for request cancellation
-  - table    : name of the table
-  - item     : item to be inserted (a map or struct), will be converted to map[string]*dynamodb.AttributeValue via dynamodbattribute.MarshalMap(item)
-  - condition: (optional) a condition that must be satisfied before writing item
-*/
+// PutItem inserts a new item to table or replace an existing one.
+//
+// Parameters:
+//   - ctx      : (optional) used for request cancellation
+//   - table    : name of the table
+//   - item     : item to be inserted (a map or struct), will be converted to map[string]*dynamodb.AttributeValue via dynamodbattribute.MarshalMap(item)
+//   - condition: (optional) a condition that must be satisfied before writing item
 func (adc *AwsDynamodbConnect) PutItem(ctx aws.Context, table string, item interface{}, condition *expression.ConditionBuilder) (*dynamodb.PutItemOutput, error) {
 	av, err := dynamodbattribute.MarshalMap(item)
 	if err != nil {
@@ -610,20 +564,16 @@ func (adc *AwsDynamodbConnect) PutItem(ctx aws.Context, table string, item inter
 	return adc.PutItemRaw(ctx, table, av, condition)
 }
 
-/*
-PutItemIfNotExist inserts a new item to table only if it does not exist.
-
-Parameters:
-
-  - ctx    : (optional) used for request cancellation
-  - table  : name of the table
-  - item   : item to be inserted (a map or struct), will be converted to map[string]*dynamodb.AttributeValue via dynamodbattribute.MarshalMap(item)
-  - pkAttrs: primary key attribute names
-
-Note:
-
-  - (since v0.2.7) if item already existed, this function return (nil, nil)
-*/
+// PutItemIfNotExist inserts a new item to table only if it does not exist.
+//
+// Parameters:
+//   - ctx    : (optional) used for request cancellation
+//   - table  : name of the table
+//   - item   : item to be inserted (a map or struct), will be converted to map[string]*dynamodb.AttributeValue via dynamodbattribute.MarshalMap(item)
+//   - pkAttrs: primary key attribute names
+//
+// Note:
+//   - (since v0.2.7) if item already existed, this function return (nil, nil)
 func (adc *AwsDynamodbConnect) PutItemIfNotExist(ctx aws.Context, table string, item interface{}, pkAttrs []string) (*dynamodb.PutItemOutput, error) {
 	av, err := dynamodbattribute.MarshalMap(item)
 	if err != nil {
@@ -632,11 +582,9 @@ func (adc *AwsDynamodbConnect) PutItemIfNotExist(ctx aws.Context, table string, 
 	return adc.PutItemRawIfNotExist(ctx, table, av, pkAttrs)
 }
 
-/*
-BuildDeleteItemInput is a helper function to build dynamodb.DeleteItemInput.
-
-Available: since v0.2.6
-*/
+// BuildDeleteItemInput is a helper function to build dynamodb.DeleteItemInput.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) BuildDeleteItemInput(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder) (*dynamodb.DeleteItemInput, error) {
 	key := awsDynamodbMakeKey(keyFilter)
 	input := &dynamodb.DeleteItemInput{
@@ -656,11 +604,9 @@ func (adc *AwsDynamodbConnect) BuildDeleteItemInput(table string, keyFilter map[
 	return input, nil
 }
 
-/*
-DeleteItemWithInput executes DynamoDB "delete-item" operation.
-
-Available: since v0.2.6
-*/
+// DeleteItemWithInput executes DynamoDB "delete-item" operation.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) DeleteItemWithInput(ctx aws.Context, input *dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error) {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -668,16 +614,13 @@ func (adc *AwsDynamodbConnect) DeleteItemWithInput(ctx aws.Context, input *dynam
 	return adc.db.DeleteItemWithContext(ctx, input)
 }
 
-/*
-DeleteItem removes a single item from specified table.
-
-Parameters:
-
-  - ctx      : (optional) used for request cancellation
-  - table    : name of the table
-  - keyFilter: map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
-  - condition: (optional) a condition that must be satisfied before removing item
-*/
+// DeleteItem removes a single item from specified table.
+//
+// Parameters:
+//   - ctx      : (optional) used for request cancellation
+//   - table    : name of the table
+//   - keyFilter: map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
+//   - condition: (optional) a condition that must be satisfied before removing item
 func (adc *AwsDynamodbConnect) DeleteItem(ctx aws.Context, table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder) (*dynamodb.DeleteItemOutput, error) {
 	input, err := adc.BuildDeleteItemInput(table, keyFilter, condition)
 	if err != nil {
@@ -686,16 +629,13 @@ func (adc *AwsDynamodbConnect) DeleteItem(ctx aws.Context, table string, keyFilt
 	return adc.DeleteItemWithInput(ctx, input)
 }
 
-/*
-BuildGetItemInput is a helper function to build dynamodb.GetItemInput.
-
-Notes:
-
-  - All projected attributes will be fetched.
-  - ConsistentRead is not set.
-
-Available: since v0.2.6
-*/
+// BuildGetItemInput is a helper function to build dynamodb.GetItemInput.
+//
+// Notes:
+//   - All projected attributes will be fetched.
+//   - ConsistentRead is not set.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) BuildGetItemInput(table string, keyFilter map[string]interface{}) (*dynamodb.GetItemInput, error) {
 	return &dynamodb.GetItemInput{
 		Key:                    awsDynamodbMakeKey(keyFilter),
@@ -704,11 +644,9 @@ func (adc *AwsDynamodbConnect) BuildGetItemInput(table string, keyFilter map[str
 	}, nil
 }
 
-/*
-GetItemWithInput executes DynamoDB "get-item" operation.
-
-Available: since v0.2.6
-*/
+// GetItemWithInput executes DynamoDB "get-item" operation.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) GetItemWithInput(ctx aws.Context, input *dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error) {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -716,21 +654,17 @@ func (adc *AwsDynamodbConnect) GetItemWithInput(ctx aws.Context, input *dynamodb
 	return adc.db.GetItemWithContext(ctx, input)
 }
 
-/*
-GetItem fetches a single item from specified table.
-
-Parameters:
-
-  - ctx      : (optional) used for request cancellation
-  - table    : name of the table
-  - keyFilter: map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
-
-Notes:
-
-  - If item does not exist, this function returns (nil, nil).
-  - All projected attributes will be fetched.
-  - ConsistentRead is not set.
-*/
+// GetItem fetches a single item from specified table.
+//
+// Parameters:
+//   - ctx      : (optional) used for request cancellation
+//   - table    : name of the table
+//   - keyFilter: map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
+//
+// Notes:
+//   - If item does not exist, this function returns (nil, nil).
+//   - All projected attributes will be fetched.
+//   - ConsistentRead is not set.
 func (adc *AwsDynamodbConnect) GetItem(ctx aws.Context, table string, keyFilter map[string]interface{}) (AwsDynamodbItem, error) {
 	input, err := adc.BuildGetItemInput(table, keyFilter)
 	if err != nil {
@@ -743,25 +677,22 @@ func (adc *AwsDynamodbConnect) GetItem(ctx aws.Context, table string, keyFilter 
 	return awsDynamodbToItem(dbresult.Item)
 }
 
-/*
-BuildUpdateItemInput is a helper function to build dynamodb.UpdateItemInput.
-
-Parameters:
-
-  - table                 : name of the table
-  - keyFilter             : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
-  - condition             : (optional) a condition that must be satisfied before updating item
-  - attrsToRemove         : list of attributes to remove
-  - attrsAndValuesToSet   : list of attributes and values to set
-  - attrsAndValuesToAdd   : list of attributes and values to add
-  - attrsAndValuesToDelete: list of attributes and values to delete
-
-Note: at least one of attrsToRemove, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete must be provided
-
-See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
-
-Available: since v0.2.6
-*/
+// BuildUpdateItemInput is a helper function to build dynamodb.UpdateItemInput.
+//
+// Parameters:
+//   - table                 : name of the table
+//   - keyFilter             : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
+//   - condition             : (optional) a condition that must be satisfied before updating item
+//   - attrsToRemove         : list of attributes to remove
+//   - attrsAndValuesToSet   : list of attributes and values to set
+//   - attrsAndValuesToAdd   : list of attributes and values to add
+//   - attrsAndValuesToDelete: list of attributes and values to delete
+//
+// Note: at least one of attrsToRemove, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete must be provided
+//
+// See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) BuildUpdateItemInput(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder,
 	attrsToRemove []string, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete map[string]interface{}) (*dynamodb.UpdateItemInput, error) {
 	key := awsDynamodbMakeKey(keyFilter)
@@ -808,11 +739,9 @@ func (adc *AwsDynamodbConnect) BuildUpdateItemInput(table string, keyFilter map[
 	}, nil
 }
 
-/*
-UpdateItemWithInput executes DynamoDB "update-item" operation.
-
-Available: since v0.2.6
-*/
+// UpdateItemWithInput executes DynamoDB "update-item" operation.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) UpdateItemWithInput(ctx aws.Context, input *dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error) {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -820,24 +749,21 @@ func (adc *AwsDynamodbConnect) UpdateItemWithInput(ctx aws.Context, input *dynam
 	return adc.db.UpdateItemWithContext(ctx, input)
 }
 
-/*
-UpdateItem performs operation remove/set/add value/delete values from item's attributes.
-
-Parameters:
-
-  - ctx                   : (optional) used for request cancellation
-  - table                 : name of the table
-  - keyFilter             : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
-  - condition             : (optional) a condition that must be satisfied before updating item
-  - attrsToRemove         : list of attributes to remove
-  - attrsAndValuesToSet   : list of attributes and values to set
-  - attrsAndValuesToAdd   : list of attributes and values to add
-  - attrsAndValuesToDelete: list of attributes and values to delete
-
-Note: at least one of attrsToRemove, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete must be provided
-
-See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
-*/
+// UpdateItem performs operation remove/set/add value/delete values from item's attributes.
+//
+// Parameters:
+//   - ctx                   : (optional) used for request cancellation
+//   - table                 : name of the table
+//   - keyFilter             : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
+//   - condition             : (optional) a condition that must be satisfied before updating item
+//   - attrsToRemove         : list of attributes to remove
+//   - attrsAndValuesToSet   : list of attributes and values to set
+//   - attrsAndValuesToAdd   : list of attributes and values to add
+//   - attrsAndValuesToDelete: list of attributes and values to delete
+//
+// Note: at least one of attrsToRemove, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete must be provided
+//
+// See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
 func (adc *AwsDynamodbConnect) UpdateItem(ctx aws.Context, table string,
 	keyFilter map[string]interface{}, condition *expression.ConditionBuilder,
 	attrsToRemove []string, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete map[string]interface{}) (*dynamodb.UpdateItemOutput, error) {
@@ -848,59 +774,49 @@ func (adc *AwsDynamodbConnect) UpdateItem(ctx aws.Context, table string,
 	return adc.UpdateItemWithInput(ctx, input)
 }
 
-/*
-RemoveAttributes removes one or more attributes from an item.
-
-Parameters:
-
-  - ctx      : (optional) used for request cancellation
-  - table    : name of the table
-  - keyFilter: map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
-  - condition: (optional) a condition that must be satisfied before updating item
-  - attrs    : list of attributes to remove
-
-See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
-*/
+// RemoveAttributes removes one or more attributes from an item.
+//
+// Parameters:
+//   - ctx      : (optional) used for request cancellation
+//   - table    : name of the table
+//   - keyFilter: map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
+//   - condition: (optional) a condition that must be satisfied before updating item
+//   - attrs    : list of attributes to remove
+//
+// See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
 func (adc *AwsDynamodbConnect) RemoveAttributes(ctx aws.Context, table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrs []string) (*dynamodb.UpdateItemOutput, error) {
 	return adc.UpdateItem(ctx, table, keyFilter, condition, attrs, nil, nil, nil)
 }
 
-/*
-SetAttributes sets one or more attributes of an item.
-
-Parameters:
-
-  - ctx           : (optional) used for request cancellation
-  - table         : name of the table
-  - keyFilter     : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
-  - condition     : (optional) a condition that must be satisfied before updating item
-  - attrsAndValues: list of attributes and values to set
-
-See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
-*/
+// SetAttributes sets one or more attributes of an item.
+//
+// Parameters:
+//   - ctx           : (optional) used for request cancellation
+//   - table         : name of the table
+//   - keyFilter     : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
+//   - condition     : (optional) a condition that must be satisfied before updating item
+//   - attrsAndValues: list of attributes and values to set
+//
+// See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
 func (adc *AwsDynamodbConnect) SetAttributes(ctx aws.Context, table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.UpdateItemOutput, error) {
 	return adc.UpdateItem(ctx, table, keyFilter, condition, nil, attrsAndValues, nil, nil)
 }
 
-/*
-AddValuesToAttributes adds values to one or more attributes of an item.
-
-Parameters:
-
-  - ctx           : (optional) used for request cancellation
-  - table         : name of the table
-  - keyFilter     : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
-  - condition     : (optional) a condition that must be satisfied before updating item
-  - attrsAndValues: list of attributes and values to add
-
-See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
-
-Note:
-
-  - "add" is math operation in this context, hence the target attribute and the value to add must be numbers
-  - value can be added to top-level as well as nested attributes
-  - currently can not add value to a set using this function. To add value to a set, use AddValuesToSet. See: https://github.com/aws/aws-sdk-go/issues/1990
-*/
+// AddValuesToAttributes adds values to one or more attributes of an item.
+//
+// Parameters:
+//   - ctx           : (optional) used for request cancellation
+//   - table         : name of the table
+//   - keyFilter     : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
+//   - condition     : (optional) a condition that must be satisfied before updating item
+//   - attrsAndValues: list of attributes and values to add
+//
+// See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
+//
+// Note:
+//   - "add" is math operation in this context, hence the target attribute and the value to add must be numbers
+//   - value can be added to top-level as well as nested attributes
+//   - currently can not add value to a set using this function. To add value to a set, use AddValuesToSet. See: https://github.com/aws/aws-sdk-go/issues/1990
 func (adc *AwsDynamodbConnect) AddValuesToAttributes(ctx aws.Context, table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.UpdateItemOutput, error) {
 	return adc.UpdateItem(ctx, table, keyFilter, condition, nil, nil, attrsAndValues, nil)
 }
@@ -953,50 +869,41 @@ func (adc *AwsDynamodbConnect) doAddOrDeleteSetValues(ctx aws.Context, table str
 	return adc.db.UpdateItemWithContext(ctx, input)
 }
 
-/*
-AddValuesToSet adds values to set attributes of an item.
-
-Parameters:
-
-  - ctx           : (optional) used for request cancellation
-  - table         : name of the table
-  - keyFilter     : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
-  - condition     : (optional) a condition that must be satisfied before updating item
-  - attrsAndValues: list of attributes and values to add
-
-See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
-*/
+// AddValuesToSet adds values to set attributes of an item.
+//
+// Parameters:
+//   - ctx           : (optional) used for request cancellation
+//   - table         : name of the table
+//   - keyFilter     : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
+//   - condition     : (optional) a condition that must be satisfied before updating item
+//   - attrsAndValues: list of attributes and values to add
+//
+// See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
 func (adc *AwsDynamodbConnect) AddValuesToSet(ctx aws.Context, table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.UpdateItemOutput, error) {
 	return adc.doAddOrDeleteSetValues(ctx, table, keyFilter, condition, attrsAndValues, true)
 }
 
-/*
-DeleteValuesFromSet deletes values from one or more set attributes of an item.
-
-Parameters:
-
-  - ctx           : (optional) used for request cancellation
-  - table         : name of the table
-  - keyFilter     : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
-  - condition     : (optional) a condition that must be satisfied before updating item
-  - attrsAndValues: list of attributes and values to delete
-
-See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
-*/
+// DeleteValuesFromSet deletes values from one or more set attributes of an item.
+//
+// Parameters:
+//   - ctx           : (optional) used for request cancellation
+//   - table         : name of the table
+//   - keyFilter     : map of {primary-key-attribute-name:attribute-value}, must include all primary key's attributes
+//   - condition     : (optional) a condition that must be satisfied before updating item
+//   - attrsAndValues: list of attributes and values to delete
+//
+// See https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateItem.html
 func (adc *AwsDynamodbConnect) DeleteValuesFromSet(ctx aws.Context, table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.UpdateItemOutput, error) {
 	return adc.doAddOrDeleteSetValues(ctx, table, keyFilter, condition, attrsAndValues, false)
 }
 
-/*
-BuildScanInput is a helper function to build dynamodb.ScanInput.
-
-Notes:
-
-  - All projected attributes will be fetched.
-  - ConsistentRead is not set.
-
-Available: since v0.2.6
-*/
+// BuildScanInput is a helper function to build dynamodb.ScanInput.
+//
+// Notes:
+//   - All projected attributes will be fetched.
+//   - ConsistentRead is not set.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) BuildScanInput(table string, filter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue) (*dynamodb.ScanInput, error) {
 	input := &dynamodb.ScanInput{
 		ExclusiveStartKey:      exclusiveStartKey,
@@ -1019,13 +926,11 @@ func (adc *AwsDynamodbConnect) BuildScanInput(table string, filter *expression.C
 	return input, nil
 }
 
-/*
-ScanWithInputCallback executes DynamoDB "scan" operation.
-
-Note: This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
-
-Available: since v0.2.6
-*/
+// ScanWithInputCallback executes DynamoDB "scan" operation.
+//
+// Note: This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) ScanWithInputCallback(ctx aws.Context, input *dynamodb.ScanInput, callback AwsDynamodbItemCallback) error {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -1052,13 +957,11 @@ func (adc *AwsDynamodbConnect) ScanWithInputCallback(ctx aws.Context, input *dyn
 	}
 }
 
-/*
-ScanWithInput executes DynamoDB "scan" operation.
-
-Note: This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
-
-Available: since v0.2.6
-*/
+// ScanWithInput executes DynamoDB "scan" operation.
+//
+// Note: This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) ScanWithInput(ctx aws.Context, input *dynamodb.ScanInput) ([]AwsDynamodbItem, error) {
 	result := make([]AwsDynamodbItem, 0)
 	var callback AwsDynamodbItemCallback = func(item AwsDynamodbItem, _ map[string]*dynamodb.AttributeValue) (bool, error) {
@@ -1070,24 +973,20 @@ func (adc *AwsDynamodbConnect) ScanWithInput(ctx aws.Context, input *dynamodb.Sc
 	return result, adc.ScanWithInputCallback(ctx, input, callback)
 }
 
-/*
-ScanItemsWithCallback fetches multiple items from specified table using "scan" operation.
-
-Parameters:
-
-  - ctx              : (optional) used for request cancellation
-  - table            : name of the table to be scanned
-  - filter           : (optional) used to filter scanned items
-  - indexName        : if non-empty, use this secondary index to scan (local or global)
-  - exclusiveStartKey: (optional) skip items till this key (used for paging)
-  - callback         : callback function
-
-Notes:
-
-  - This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
-  - All projected attributes will be fetched.
-  - ConsistentRead is not set.
-*/
+// ScanItemsWithCallback fetches multiple items from specified table using "scan" operation.
+//
+// Parameters:
+//   - ctx              : (optional) used for request cancellation
+//   - table            : name of the table to be scanned
+//   - filter           : (optional) used to filter scanned items
+//   - indexName        : if non-empty, use this secondary index to scan (local or global)
+//   - exclusiveStartKey: (optional) skip items till this key (used for paging)
+//   - callback         : callback function
+//
+// Notes:
+//   - This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
+//   - All projected attributes will be fetched.
+//   - ConsistentRead is not set.
 func (adc *AwsDynamodbConnect) ScanItemsWithCallback(ctx aws.Context, table string, filter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue, callback AwsDynamodbItemCallback) error {
 	input, err := adc.BuildScanInput(table, filter, indexName, exclusiveStartKey)
 	if err != nil {
@@ -1096,22 +995,18 @@ func (adc *AwsDynamodbConnect) ScanItemsWithCallback(ctx aws.Context, table stri
 	return adc.ScanWithInputCallback(ctx, input, callback)
 }
 
-/*
-ScanItems fetches multiple items from specified table using "scan" operation.
-
-Parameters:
-
-  - ctx              : (optional) used for request cancellation
-  - table            : name of the table to be scanned
-  - filter           : (optional) used to filter scanned items
-  - indexName        : if non-empty, use this secondary index to scan (local or global)
-
-Notes:
-
-  - This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
-  - All projected attributes will be fetched.
-  - ConsistentRead is not set.
-*/
+// ScanItems fetches multiple items from specified table using "scan" operation.
+//
+// Parameters:
+//   - ctx              : (optional) used for request cancellation
+//   - table            : name of the table to be scanned
+//   - filter           : (optional) used to filter scanned items
+//   - indexName        : if non-empty, use this secondary index to scan (local or global)
+//
+// Notes:
+//   - This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
+//   - All projected attributes will be fetched.
+//   - ConsistentRead is not set.
 func (adc *AwsDynamodbConnect) ScanItems(ctx aws.Context, table string, filter *expression.ConditionBuilder, indexName string) ([]AwsDynamodbItem, error) {
 	input, err := adc.BuildScanInput(table, filter, indexName, nil)
 	if err != nil {
@@ -1120,16 +1015,13 @@ func (adc *AwsDynamodbConnect) ScanItems(ctx aws.Context, table string, filter *
 	return adc.ScanWithInput(ctx, input)
 }
 
-/*
-BuildQueryInput is a helper function to build dynamodb.QueryInput.
-
-Notes:
-
-  - All projected attributes will be fetched.
-  - ConsistentRead is not set.
-
-Available: since v0.2.6
-*/
+// BuildQueryInput is a helper function to build dynamodb.QueryInput.
+//
+// Notes:
+//   - All projected attributes will be fetched.
+//   - ConsistentRead is not set.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) BuildQueryInput(table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue) (*dynamodb.QueryInput, error) {
 	input := &dynamodb.QueryInput{
 		ExclusiveStartKey:      exclusiveStartKey,
@@ -1164,13 +1056,11 @@ func (adc *AwsDynamodbConnect) BuildQueryInput(table string, keyFilter, nonKeyFi
 	return input, nil
 }
 
-/*
-QueryWithInputCallback executes DynamoDB "query" operation.
-
-Note: This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
-
-Available: since v0.2.6
-*/
+// QueryWithInputCallback executes DynamoDB "query" operation.
+//
+// Note: This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) QueryWithInputCallback(ctx aws.Context, input *dynamodb.QueryInput, callback AwsDynamodbItemCallback) error {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -1197,13 +1087,11 @@ func (adc *AwsDynamodbConnect) QueryWithInputCallback(ctx aws.Context, input *dy
 	}
 }
 
-/*
-QueryWithInput executes DynamoDB "query" operation.
-
-Note: This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
-
-Available: since v0.2.6
-*/
+// QueryWithInput executes DynamoDB "query" operation.
+//
+// Note: This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
+//
+// Available: since v0.2.6
 func (adc *AwsDynamodbConnect) QueryWithInput(ctx aws.Context, input *dynamodb.QueryInput) ([]AwsDynamodbItem, error) {
 	result := make([]AwsDynamodbItem, 0)
 	var callback AwsDynamodbItemCallback = func(item AwsDynamodbItem, _ map[string]*dynamodb.AttributeValue) (bool, error) {
@@ -1215,25 +1103,21 @@ func (adc *AwsDynamodbConnect) QueryWithInput(ctx aws.Context, input *dynamodb.Q
 	return result, adc.QueryWithInputCallback(ctx, input, callback)
 }
 
-/*
-QueryItemsWithCallback fetches multiple items from specified table using "query" operation.
-
-Parameters:
-
-  - ctx              : (optional) used for request cancellation
-  - table            : name of the table to be queried
-  - keyFilter        : used to filter items on primary key attributes
-  - nonKeyFilter     : used to filter items on non-primary key attributes before returning result
-  - indexName        : if non-empty, use this secondary index to query (local or global)
-  - exclusiveStartKey: (optional) skip items till this key (used for paging)
-  - callback         : callback function
-
-Notes:
-
-  - This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
-  - All projected attributes will be fetched.
-  - ConsistentRead is not set.
-*/
+// QueryItemsWithCallback fetches multiple items from specified table using "query" operation.
+//
+// Parameters:
+//   - ctx              : (optional) used for request cancellation
+//   - table            : name of the table to be queried
+//   - keyFilter        : used to filter items on primary key attributes
+//   - nonKeyFilter     : used to filter items on non-primary key attributes before returning result
+//   - indexName        : if non-empty, use this secondary index to query (local or global)
+//   - exclusiveStartKey: (optional) skip items till this key (used for paging)
+//   - callback         : callback function
+//
+// Notes:
+//   - This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
+//   - All projected attributes will be fetched.
+//   - ConsistentRead is not set.
 func (adc *AwsDynamodbConnect) QueryItemsWithCallback(ctx aws.Context, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue, callback AwsDynamodbItemCallback) error {
 	input, err := adc.BuildQueryInput(table, keyFilter, nonKeyFilter, indexName, exclusiveStartKey)
 	if err != nil {
@@ -1242,23 +1126,19 @@ func (adc *AwsDynamodbConnect) QueryItemsWithCallback(ctx aws.Context, table str
 	return adc.QueryWithInputCallback(ctx, input, callback)
 }
 
-/*
-QueryItems fetches multiple items from specified table using "query" operation.
-
-Parameters:
-
-  - ctx              : (optional) used for request cancellation
-  - table            : name of the table to be scanned
-  - keyFilter        : used to filter items on primary key attributes
-  - nonKeyFilter     : used to filter items on non-primary key attributes before returning result
-  - indexName        : if non-empty, use this secondary index to scan (local or global)
-
-Notes:
-
-  - This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
-  - All projected attributes will be fetched.
-  - ConsistentRead is not set.
-*/
+// QueryItems fetches multiple items from specified table using "query" operation.
+//
+// Parameters:
+//   - ctx              : (optional) used for request cancellation
+//   - table            : name of the table to be scanned
+//   - keyFilter        : used to filter items on primary key attributes
+//   - nonKeyFilter     : used to filter items on non-primary key attributes before returning result
+//   - indexName        : if non-empty, use this secondary index to scan (local or global)
+//
+// Notes:
+//   - This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
+//   - All projected attributes will be fetched.
+//   - ConsistentRead is not set.
 func (adc *AwsDynamodbConnect) QueryItems(ctx aws.Context, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string) ([]AwsDynamodbItem, error) {
 	input, err := adc.BuildQueryInput(table, keyFilter, nonKeyFilter, indexName, nil)
 	if err != nil {
@@ -1269,13 +1149,11 @@ func (adc *AwsDynamodbConnect) QueryItems(ctx aws.Context, table string, keyFilt
 
 /*----------------------------------------------------------------------*/
 
-/*
-BuildTxPut builds a 'dynamodb.TransactWriteItem' with "insert or replace" operation.
-
-Parameters: see PutItem
-
-Available: since v0.2.4
-*/
+// BuildTxPut builds a 'dynamodb.TransactWriteItem' with "insert or replace" operation.
+//
+// Parameters: see PutItem
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxPut(table string, item interface{}, condition *expression.ConditionBuilder) (*dynamodb.TransactWriteItem, error) {
 	av, err := dynamodbattribute.MarshalMap(item)
 	if err != nil {
@@ -1284,13 +1162,11 @@ func (adc *AwsDynamodbConnect) BuildTxPut(table string, item interface{}, condit
 	return adc.BuildTxPutRaw(table, av, condition)
 }
 
-/*
-BuildTxPutRaw builds a 'dynamodb.TransactWriteItem' with "insert or replace" operation.
-
-Parameters: see PutItemRaw
-
-Available: since v0.2.4
-*/
+// BuildTxPutRaw builds a 'dynamodb.TransactWriteItem' with "insert or replace" operation.
+//
+// Parameters: see PutItemRaw
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxPutRaw(table string, item map[string]*dynamodb.AttributeValue, condition *expression.ConditionBuilder) (*dynamodb.TransactWriteItem, error) {
 	put := &dynamodb.Put{
 		Item:      item,
@@ -1308,13 +1184,11 @@ func (adc *AwsDynamodbConnect) BuildTxPutRaw(table string, item map[string]*dyna
 	return &dynamodb.TransactWriteItem{Put: put}, nil
 }
 
-/*
-BuildTxPutIfNotExist builds a 'dynamodb.TransactWriteItem' with "insert if not exist" operation.
-
-Parameters: see PutItemIfNotExist
-
-Available: since v0.2.4
-*/
+// BuildTxPutIfNotExist builds a 'dynamodb.TransactWriteItem' with "insert if not exist" operation.
+//
+// Parameters: see PutItemIfNotExist
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxPutIfNotExist(table string, item interface{}, pkAttrs []string) (*dynamodb.TransactWriteItem, error) {
 	av, err := dynamodbattribute.MarshalMap(item)
 	if err != nil {
@@ -1323,24 +1197,20 @@ func (adc *AwsDynamodbConnect) BuildTxPutIfNotExist(table string, item interface
 	return adc.BuildTxPutRawIfNotExist(table, av, pkAttrs)
 }
 
-/*
-BuildTxPutRawIfNotExist builds a 'dynamodb.TransactWriteItem' with "insert if not exist" operation.
-
-Parameters: see PutItemRawIfNotExist
-
-Available: since v0.2.4
-*/
+// BuildTxPutRawIfNotExist builds a 'dynamodb.TransactWriteItem' with "insert if not exist" operation.
+//
+// Parameters: see PutItemRawIfNotExist
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxPutRawIfNotExist(table string, item map[string]*dynamodb.AttributeValue, pkAttrs []string) (*dynamodb.TransactWriteItem, error) {
 	return adc.BuildTxPutRaw(table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
 }
 
-/*
-BuildTxDelete builds a 'dynamodb.TransactWriteItem' with "delete" operation.
-
-Parameters: see DeleteItem
-
-Available: since v0.2.4
-*/
+// BuildTxDelete builds a 'dynamodb.TransactWriteItem' with "delete" operation.
+//
+// Parameters: see DeleteItem
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxDelete(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder) (*dynamodb.TransactWriteItem, error) {
 	delete := &dynamodb.Delete{
 		Key:       awsDynamodbMakeKey(keyFilter),
@@ -1358,11 +1228,9 @@ func (adc *AwsDynamodbConnect) BuildTxDelete(table string, keyFilter map[string]
 	return &dynamodb.TransactWriteItem{Delete: delete}, nil
 }
 
-/*
-BuildTxUpdateRaw builds a 'dynamodb.TransactWriteItem' with "update" operation.
-
-Available: since v0.2.4
-*/
+// BuildTxUpdateRaw builds a 'dynamodb.TransactWriteItem' with "update" operation.
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxUpdateRaw(table string, key map[string]*dynamodb.AttributeValue, updateExpression expression.Expression) (*dynamodb.TransactWriteItem, error) {
 	return &dynamodb.TransactWriteItem{Update: &dynamodb.Update{
 		ConditionExpression:       updateExpression.Condition(),
@@ -1374,13 +1242,11 @@ func (adc *AwsDynamodbConnect) BuildTxUpdateRaw(table string, key map[string]*dy
 	}}, nil
 }
 
-/*
-BuildTxUpdate builds a 'dynamodb.TransactWriteItem' with "update" operation.
-
-Parameters: see UpdateItem
-
-Available: since v0.2.4
-*/
+// BuildTxUpdate builds a 'dynamodb.TransactWriteItem' with "update" operation.
+//
+// Parameters: see UpdateItem
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxUpdate(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder,
 	attrsToRemove []string, attrsAndValuesToSet, attrsAndValuesToAdd, attrsAndValuesToDelete map[string]interface{}) (*dynamodb.TransactWriteItem, error) {
 	key := awsDynamodbMakeKey(keyFilter)
@@ -1418,37 +1284,31 @@ func (adc *AwsDynamodbConnect) BuildTxUpdate(table string, keyFilter map[string]
 	return adc.BuildTxUpdateRaw(table, key, updateBuilderExp)
 }
 
-/*
-BuildTxRemoveAttributes builds a 'dynamodb.TransactWriteItem' with "remote attributes" operation.
-
-Parameters: see RemoveAttributes
-
-Available: since v0.2.4
-*/
+// BuildTxRemoveAttributes builds a 'dynamodb.TransactWriteItem' with "remote attributes" operation.
+//
+// Parameters: see RemoveAttributes
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxRemoveAttributes(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrs []string) (*dynamodb.TransactWriteItem, error) {
 	return adc.BuildTxUpdate(table, keyFilter, condition, attrs, nil, nil, nil)
 }
 
-/*
-BuildTxSetAttributes builds a 'dynamodb.TransactWriteItem' with "set attributes" operation.
-
-Parameters: see SetAttributes
-
-Available: since v0.2.4
-*/
+// BuildTxSetAttributes builds a 'dynamodb.TransactWriteItem' with "set attributes" operation.
+//
+// Parameters: see SetAttributes
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxSetAttributes(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.TransactWriteItem, error) {
 	return adc.BuildTxUpdate(table, keyFilter, condition, nil, attrsAndValues, nil, nil)
 }
 
-/*
-BuildTxAddValuesToAttributes builds a 'dynamodb.TransactWriteItem' with "add values to attributes" operation.
-
-Parameters: see AddValuesToAttributes
-
-Note: currently can not add value to a set using this function. To add value to a set, use BuildTxAddValuesToSet. See: https://github.com/aws/aws-sdk-go/issues/1990
-
-Available: since v0.2.4
-*/
+// BuildTxAddValuesToAttributes builds a 'dynamodb.TransactWriteItem' with "add values to attributes" operation.
+//
+// Parameters: see AddValuesToAttributes
+//
+// Note: currently can not add value to a set using this function. To add value to a set, use BuildTxAddValuesToSet. See: https://github.com/aws/aws-sdk-go/issues/1990
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxAddValuesToAttributes(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.TransactWriteItem, error) {
 	return adc.BuildTxUpdate(table, keyFilter, condition, nil, nil, attrsAndValues, nil)
 }
@@ -1494,35 +1354,29 @@ func (adc *AwsDynamodbConnect) buildTxAddOrDeleteSetValues(table string, keyFilt
 	}}, nil
 }
 
-/*
-BuildTxAddValuesToSet builds a 'dynamodb.TransactWriteItem' with "add values to set attributes" operation.
-
-Parameters: see AddValuesToSet
-
-Available: since v0.2.4
-*/
+// BuildTxAddValuesToSet builds a 'dynamodb.TransactWriteItem' with "add values to set attributes" operation.
+//
+// Parameters: see AddValuesToSet
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxAddValuesToSet(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.TransactWriteItem, error) {
 	return adc.buildTxAddOrDeleteSetValues(table, keyFilter, condition, attrsAndValues, true)
 }
 
-/*
-BuildTxDeleteValuesFromSet builds a 'dynamodb.TransactWriteItem' with "add values to set attributes" operation.
-
-Parameters: see DeleteValuesFromSet
-
-Available: since v0.2.4
-*/
+// BuildTxDeleteValuesFromSet builds a 'dynamodb.TransactWriteItem' with "add values to set attributes" operation.
+//
+// Parameters: see DeleteValuesFromSet
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxDeleteValuesFromSet(table string, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) (*dynamodb.TransactWriteItem, error) {
 	return adc.buildTxAddOrDeleteSetValues(table, keyFilter, condition, attrsAndValues, false)
 }
 
-/*
-BuildTxGet builds a 'dynamodb.TransactGetItem' with "get item" operation.
-
-Parameters: see GetItem
-
-Available: since v0.2.4
-*/
+// BuildTxGet builds a 'dynamodb.TransactGetItem' with "get item" operation.
+//
+// Parameters: see GetItem
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) BuildTxGet(table string, keyFilter map[string]interface{}) (*dynamodb.TransactGetItem, error) {
 	key := awsDynamodbMakeKey(keyFilter)
 	return &dynamodb.TransactGetItem{Get: &dynamodb.Get{
@@ -1531,11 +1385,9 @@ func (adc *AwsDynamodbConnect) BuildTxGet(table string, keyFilter map[string]int
 	}}, nil
 }
 
-/*
-ExecTxWriteItems executes a "write-items" transaction.
-
-Available: since v0.2.4
-*/
+// ExecTxWriteItems executes a "write-items" transaction.
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) ExecTxWriteItems(ctx aws.Context, input *dynamodb.TransactWriteItemsInput) (*dynamodb.TransactWriteItemsOutput, error) {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
@@ -1543,11 +1395,9 @@ func (adc *AwsDynamodbConnect) ExecTxWriteItems(ctx aws.Context, input *dynamodb
 	return adc.GetDb().TransactWriteItemsWithContext(ctx, input)
 }
 
-/*
-ExecTxGetItems executes a "get-items" transaction.
-
-Available: since v0.2.4
-*/
+// ExecTxGetItems executes a "get-items" transaction.
+//
+// Available: since v0.2.4
 func (adc *AwsDynamodbConnect) ExecTxGetItems(ctx aws.Context, input *dynamodb.TransactGetItemsInput) (*dynamodb.TransactGetItemsOutput, error) {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()

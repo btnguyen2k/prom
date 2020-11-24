@@ -1,7 +1,6 @@
 package prom
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -121,7 +120,6 @@ func TestGoRedis_FastFailed_Client(t *testing.T) {
 	if d > dmax {
 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1E6, d/1E6)
 	}
-	fmt.Println(d)
 }
 
 func TestGoRedis_FastFailed_FailoverClient(t *testing.T) {
@@ -147,7 +145,6 @@ func TestGoRedis_FastFailed_FailoverClient(t *testing.T) {
 	if d > dmax {
 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1E6, d/1E6)
 	}
-	fmt.Println(d)
 }
 
 func TestGoRedis_FastFailed_GetClusterClient(t *testing.T) {
@@ -173,5 +170,4 @@ func TestGoRedis_FastFailed_GetClusterClient(t *testing.T) {
 	if d > dmax {
 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1E6, d/1E6)
 	}
-	fmt.Println(d)
 }

@@ -26,7 +26,7 @@ type GoRedisConnect struct {
 
 // RedisPoolOpts holds options to configure Redis connection pool.
 //
-// @available since v0.2.8
+// Available: since v0.2.8
 type RedisPoolOpts struct {
 	// Dial timeout for establishing new connections.
 	// Set zero or negative value to use go-redis' default value.
@@ -57,9 +57,9 @@ var (
 // NewGoRedisConnect constructs a new GoRedisConnect instance with supplied options and default Redis pool options.
 //
 // Parameters:
-//   - hostsAndPorts : list of Redis servers (example: "host1:6379,host2;host3:6380")
-//   - password      : password to authenticate against Redis server
-//   - maxRetries    : max number of retries for failed operations
+//   - hostsAndPorts: list of Redis servers (example: "host1:6379,host2;host3:6380")
+//   - password     : password to authenticate against Redis server
+//   - maxRetries   : max number of retries for failed operations
 func NewGoRedisConnect(hostsAndPorts, password string, maxRetries int) *GoRedisConnect {
 	if maxRetries < 0 {
 		maxRetries = 0
@@ -78,7 +78,7 @@ func NewGoRedisConnect(hostsAndPorts, password string, maxRetries int) *GoRedisC
 
 // GetSlaveReadOnly returns the current value of 'slaveReadOnly' setting.
 //
-// @available since v0.2.8
+// Available: since v0.2.8
 func (r *GoRedisConnect) GetSlaveReadOnly() bool {
 	return r.slaveReadOnly
 }
@@ -94,7 +94,7 @@ func (r *GoRedisConnect) SetSlaveReadOnly(readOnly bool) *GoRedisConnect {
 
 // GetSentinelMasterName returns the current sentinel master name.
 //
-// @available since v0.2.8
+// Available: since v0.2.8
 func (r *GoRedisConnect) GetSentinelMasterName() string {
 	return r.masterName
 }
@@ -110,7 +110,7 @@ func (r *GoRedisConnect) SetSentinelMasterName(masterName string) *GoRedisConnec
 
 // GetRedisPoolOpts returns Redis connection pool configurations.
 //
-// @available since v0.2.8
+// Available: since v0.2.8
 func (r *GoRedisConnect) GetRedisPoolOpts() *RedisPoolOpts {
 	return r.poolOpts
 }
@@ -119,7 +119,8 @@ func (r *GoRedisConnect) GetRedisPoolOpts() *RedisPoolOpts {
 //
 // The change will apply to newly created clients, existing one will NOT be effected!
 // This function returns the current GoRedisConnect instance so that function calls can be chained.
-// @available since v0.2.8
+//
+// Available: since v0.2.8
 func (r *GoRedisConnect) SetRedisPoolOpts(opts *RedisPoolOpts) *GoRedisConnect {
 	r.poolOpts = opts
 	return r
@@ -152,11 +153,9 @@ func (r *GoRedisConnect) closeClusterClient() {
 	r.clusterClient = nil
 }
 
-/*
-Close closes all underlying Redis connections associated with this GoRedisConnect.
-
-Available: since v0.2.0
-*/
+// Close closes all underlying Redis connections associated with this GoRedisConnect.
+//
+// Available: since v0.2.0
 func (r *GoRedisConnect) Close() error {
 	go r.closeClients()
 	go r.closeFailoverClients()

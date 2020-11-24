@@ -1,10 +1,15 @@
 # prom release notes
 
-## 2020-10-23 - v0.2.8
+## 2020-10-2x - v0.2.8
 
 - `GoRedisConnect`:
   - Add `RedisPoolOpts`
   - `GetClient`, `GetFailoverClient` and `GetClusterClient` adhere to Redis connection pool settings.
+- `MongoConnect`:
+  - Add `MongoPoolOpts`
+  - New getter/setter & `Init` functions
+  - `NewContext` now returns single `context.Context` result
+  - New functions `NewContextIfNil` and `NewContextWithCancel`
 - More unit tests.
 - Update dependency libs.
 - Other fixes & enhancements.
