@@ -651,7 +651,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 	timeLayoutDate := "2006-01-02"
 	loc, _ := time.LoadLocation(timezoneSql)
 	now := time.Now().Round(time.Second).In(loc)
-	fmt.Printf("Now: %s / %s\n", time.Now().Format(timeLayoutFull), now.Format(timeLayoutFull))
+	// fmt.Printf("Now: %s / %s\n", time.Now().Format(timeLayoutFull), now.Format(timeLayoutFull))
 	type Row struct {
 		id             int
 		dataStr        string
