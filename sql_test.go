@@ -526,7 +526,7 @@ func TestSqlConnect_FetchRows(t *testing.T) {
 		var err error
 		switch k {
 		case "sqlite", "sqlite3":
-			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
+			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mssql":
 			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mysql":
@@ -576,7 +576,7 @@ func TestSqlConnect_FetchRowsCallback(t *testing.T) {
 		var err error
 		switch k {
 		case "sqlite", "sqlite3":
-			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
+			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mssql":
 			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mysql":
