@@ -113,7 +113,7 @@ jobs:
       run: |
         export TIMEZONE="Asia/Ho_Chi_Minh"
         export MYSQL_DRIVER="mysql"
-        export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=Asia%2fHo_Chi_Minh"
+        export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=${loc}"
         go test -cover -v -run ".*Sql.*" .
 
   testWithPostgreSQL:
