@@ -16,8 +16,8 @@ import (
 
 // construct an 'prom.SqlConnect' instance
 func createSqlConnectOracleJson() *prom.SqlConnect {
-	driver := "goracle"
-	dsn := "test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521)))(CONNECT_DATA=(SID=ORCLCDB)))"
+	driver := "godror"
+	dsn := "c##test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521)))(CONNECT_DATA=(SID=ORCLCDB)))"
 	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorOracle)
 	if sqlConnect == nil || err != nil {
 		if err != nil {

@@ -2,17 +2,18 @@ package main
 
 import (
 	"fmt"
-	"github.com/btnguyen2k/prom"
 	"math/rand"
 	"strconv"
 	"time"
+
+	"github.com/btnguyen2k/prom"
 )
 
 func awsDynamodbGetItem(adc *prom.AwsDynamodbConnect, table string, filter map[string]interface{}) {
 	fmt.Printf("  Loading an item from table [%s] with filter: %v\n", table, filter)
 	result, err := adc.GetItem(nil, table, filter)
 	if err != nil {
-		fmt.Printf("    Error: %e\n", err)
+		fmt.Printf("    Error: %s\n", err)
 	} else if result == nil {
 		fmt.Printf("    Item not found with filter: %v\n", filter)
 	} else {

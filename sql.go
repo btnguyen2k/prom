@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -63,11 +65,11 @@ func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoo
 // NewSqlConnectWithFlavor constructs a new SqlConnect instance.
 //
 // Parameters:
-// 	- driver          : database driver name
-// 	- dsn             : data source name (sample format [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN])
-// 	- defaultTimeoutMs: default timeout for db operations, in milliseconds
-// 	- poolOptions     : connection pool options. If nil, default value is used
-// 	- flavor          : database flavor associated with the SqlConnect instance.
+// 	 - driver          : database driver name
+// 	 - dsn             : data source name (sample format [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN])
+// 	 - defaultTimeoutMs: default timeout for db operations, in milliseconds
+// 	 - poolOptions     : connection pool options. If nil, default value is used
+// 	 - flavor          : database flavor associated with the SqlConnect instance.
 //
 // Return: the SqlConnect instance and error (if any). Note:
 //   - In case of connection error: this function returns the SqlConnect instance and the error.
@@ -198,12 +200,22 @@ func (sc *SqlConnect) SetDbFlavor(flavor DbFlavor) *SqlConnect {
 
 // GetLocation returns the timezone location associated with this SqlConnect.
 //
+// Timezone/Location rules:
+//   - If the database's underlying data type does not support timezone: read date/time is treated as "in-location".
+//   - If the database's underlying data type support timezone: read date/time is converted to the target timezone/location.
+//   - In any case, the returned date/time is attached with the specified timezone/location.
+//
 // Available: since v0.1.2
 func (sc *SqlConnect) GetLocation() *time.Location {
 	return sc.loc
 }
 
 // SetLocation associates a timezone location with this SqlConnect, used when parsing date/time data. Default value is time.UTC.
+//
+// Timezone/Location rules:
+//   - If the database's underlying data type does not support timezone: read date/time is treated as "in-location".
+//   - If the database's underlying data type support timezone: read date/time is converted to the target timezone/location.
+//   - In any case, the returned date/time is attached with the specified timezone/location.
 //
 // Available: since v0.1.2
 func (sc *SqlConnect) SetLocation(loc *time.Location) *SqlConnect {
@@ -307,12 +319,35 @@ func (sc *SqlConnect) FetchRow(row *sql.Row, numCols int) ([]interface{}, error)
 var rawBytesType = reflect.TypeOf(sql.RawBytes{})
 var bytesArrType = reflect.TypeOf([]byte{})
 var uint8ArrType = reflect.TypeOf([]uint8{})
+var timeType = reflect.TypeOf(time.Time{})
+var sqlNulTime = reflect.TypeOf(sql.NullTime{})
+var dbIntTypes = map[string]map[DbFlavor]bool{
+	"TINYINT":   {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true},
+	"SMALLINT":  {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true},
+	"MEDIUMINT": {FlavorDefault: true, FlavorMySql: true},
+	"INT":       {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"INTEGER":   {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"BIGINT":    {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"INT2":      {FlavorDefault: true, FlavorPgSql: true},
+	"INT4":      {FlavorDefault: true, FlavorPgSql: true},
+	"INT8":      {FlavorDefault: true, FlavorPgSql: true},
+}
+var dbFloatTypes = map[string]map[DbFlavor]bool{
+	"FLOAT":            {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"REAL":             {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"NUMERIC":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"DECIMAL":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"DOUBLE":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"DOUBLE PRECISION": {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"BINARY_FLOAT":     {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"BINARY_DOUBLE":    {FlavorDefault: true, FlavorOracle: true},
+}
 var dbStringTypes = map[string]map[DbFlavor]bool{
 	"CHAR":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
 	"VARCHAR":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"TEXT":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true},
-	"CHARACTER":         {FlavorDefault: true, FlavorPgSql: true},
-	"CHARACTER VARYING": {FlavorDefault: true, FlavorPgSql: true},
+	"TEXT":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"CHARACTER":         {FlavorDefault: true, FlavorPgSql: true, FlavorOracle: true},
+	"CHARACTER VARYING": {FlavorDefault: true, FlavorPgSql: true, FlavorOracle: true},
 	"NCHAR":             {FlavorDefault: true, FlavorMsSql: true, FlavorOracle: true},
 	"NVARCHAR":          {FlavorDefault: true, FlavorMsSql: true},
 	"NTEXT":             {FlavorDefault: true, FlavorMsSql: true},
@@ -324,14 +359,37 @@ var dbStringTypes = map[string]map[DbFlavor]bool{
 	"BPCHAR":            {FlavorDefault: true, FlavorPgSql: true},
 }
 var dbDateTimeTypes = map[string]map[DbFlavor]bool{
-	"TIME":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true},
-	"DATE":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"YEAR":           {FlavorDefault: true, FlavorMySql: true},
-	"DATETIME":       {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true},
-	"DATETIME2":      {FlavorDefault: true, FlavorMsSql: true},
-	"DATETIMEOFFSET": {FlavorDefault: true, FlavorMsSql: true},
-	"SMALLDATETIME":  {FlavorDefault: true, FlavorMsSql: true},
-	"TIMESTAMP":      {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true},
+	"1266":                           {FlavorDefault: true, FlavorPgSql: true},
+	"TIME":                           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"DATE":                           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"YEAR":                           {FlavorDefault: true, FlavorMySql: true},
+	"DATETIME":                       {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true},
+	"DATETIME2":                      {FlavorDefault: true, FlavorMsSql: true},
+	"DATETIMEOFFSET":                 {FlavorDefault: true, FlavorMsSql: true},
+	"SMALLDATETIME":                  {FlavorDefault: true, FlavorMsSql: true},
+	"TIMESTAMP":                      {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true},
+	"TIMESTAMP WITH TIME ZONE":       {FlavorDefault: true, FlavorOracle: true},
+	"TIMESTAMP WITH LOCAL TIME ZONE": {FlavorDefault: true, FlavorOracle: true},
+}
+
+func (sc *SqlConnect) isIntType(col *sql.ColumnType) bool {
+	name := strings.ToUpper(col.DatabaseTypeName())
+	m, ok := dbIntTypes[name]
+	if !ok {
+		return false
+	}
+	_, ok = m[sc.flavor]
+	return ok
+}
+
+func (sc *SqlConnect) isFloatType(col *sql.ColumnType) bool {
+	name := strings.ToUpper(col.DatabaseTypeName())
+	m, ok := dbFloatTypes[name]
+	if !ok {
+		return false
+	}
+	_, ok = m[sc.flavor]
+	return ok
 }
 
 func (sc *SqlConnect) isStringType(col *sql.ColumnType) bool {
@@ -359,6 +417,112 @@ func isRawBytesType(v interface{}) bool {
 	return t == rawBytesType || t == bytesArrType || t == uint8ArrType
 }
 
+const (
+	dtlayout     = "2006-01-02 15:04:05"
+	dtlayoutTz   = "2006-01-02 15:04:05-07"
+	dtlayoutTzz  = "2006-01-02 15:04:05-07:00"
+	dtlayoutNano = "2006-01-02 15:04:05.999999999"
+)
+
+func (sc *SqlConnect) _scanMysqlDateTimeFromRawBytes(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	// MySQL's date/time types do not support timezone, treat the value as "in-location"
+	loc := sc.ensureLocation()
+	var err error
+	switch strings.ToUpper(v.DatabaseTypeName()) {
+	case "TIME":
+		result[v.Name()], err = time.ParseInLocation(dtlayout, fmt.Sprintf("2006-01-02 %s", val), loc)
+	case "DATE":
+		result[v.Name()], err = time.ParseInLocation("2006-01-02", string(val.([]byte)), loc)
+	case "DATETIME":
+		result[v.Name()], err = time.ParseInLocation(dtlayout, string(val.([]byte)), loc)
+	case "TIMESTAMP":
+		result[v.Name()], err = time.ParseInLocation(dtlayout, string(val.([]byte)), loc)
+	default:
+		err = errors.New("unknown date/time column type " + v.DatabaseTypeName())
+	}
+	return err
+}
+
+func (sc *SqlConnect) _scanPgsqlDateTimeFromString(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	loc := sc.ensureLocation()
+	var err error
+	switch strings.ToUpper(v.DatabaseTypeName()) {
+	case "TIME":
+		// TIME does not support timezone, treated the value as "in-location"
+		result[v.Name()], err = time.ParseInLocation(dtlayout, fmt.Sprintf("2006-01-02 %s", val), loc)
+	case "1266":
+		// 1266 is TIME WITH TIMEZONE, convert to the target timezone/location
+		result[v.Name()], err = time.Parse(dtlayoutTz, fmt.Sprintf("2006-01-02 %s", val))
+		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+	default:
+		err = errors.New("unknown date/time column type " + v.DatabaseTypeName())
+	}
+	return err
+}
+
+func (sc *SqlConnect) _transformPgsqlDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	loc := sc.ensureLocation()
+	result[v.Name()] = val.(time.Time)
+	var err error
+	switch strings.ToUpper(v.DatabaseTypeName()) {
+	case "DATE", "TIMESTAMP":
+		// DATE/TIMESTAMP does not support timezone, treated the value as "in-location"
+		result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), loc)
+	default:
+		// assume other types support timezone,convert to the target timezone/location
+		result[v.Name()] = val.(time.Time).In(loc)
+	}
+	return err
+}
+
+func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	loc := sc.ensureLocation()
+	result[v.Name()] = val.(time.Time)
+	var err error
+	switch strings.ToUpper(v.DatabaseTypeName()) {
+	case "TIME":
+		// TIME does not support timezone, treated the value as "in-location"
+		temp := val.(time.Time).Format("15:04:05")
+		result[v.Name()], err = time.ParseInLocation(dtlayout, fmt.Sprintf("2006-01-02 %s", temp), loc)
+	case "DATE", "DATETIME", "DATETIME2":
+		// DATE/DATETIME/DATETIME2 does not support timezone, treated the value as "in-location"
+		result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), loc)
+	default:
+		// assume other types support timezone,convert to the target timezone/location
+		result[v.Name()] = val.(time.Time).In(loc)
+	}
+	return err
+}
+
+func (sc *SqlConnect) _scanSqliteDateTimeFromString(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	// SQLite store date/time as string, with timezone info
+	loc := sc.ensureLocation()
+	var err error
+	result[v.Name()], err = time.Parse(dtlayoutTzz, val.(string))
+	result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+	return err
+}
+
+func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	loc := sc.ensureLocation()
+	result[v.Name()] = val.(time.Time)
+	var err error
+	switch strings.ToUpper(v.DatabaseTypeName()) {
+	case "DATE":
+		// FIXME: not sure if it's behavior of Oracle or godror but this seems wrong!
+		// DATE does not support timezone, but Oracle converts DATE to UTC before storing.
+		// Hence, we just need to convert it back to correct timezone/location
+		result[v.Name()] = val.(time.Time).In(loc)
+	default:
+		// FIXME: not sure if it's behavior of Oracle or godror but this seems wrong!
+		// first "parse in UTC" and then convert to the target timezone/location
+		// assume other types support timezone,convert to the target timezone/location
+		result[v.Name()], err = time.Parse(dtlayoutNano, val.(time.Time).Format(dtlayoutNano))
+		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+	}
+	return err
+}
+
 func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType) (map[string]interface{}, error) {
 	numCols := len(colsAndTypes)
 	vals := make([]interface{}, numCols)
@@ -373,39 +537,61 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 		return nil, err
 	}
 	result := map[string]interface{}{}
-	for k, v := range colsAndTypes {
-		if sc.isStringType(v) && isRawBytesType(vals[k]) {
+	for i, v := range colsAndTypes {
+		// if strings.ToLower(v.Name()) == "data_time" {
+		// 	fmt.Printf("%s/%s/%s/%v - %s\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
+		// 	// t, e := time.ParseInLocation("15:04:05", fmt.Sprintf("%s", vals[i]), loc)
+		// 	// fmt.Println(t, e)
+		// }
+		if sc.isIntType(v) && isRawBytesType(vals[i]) {
+			// when number is loaded as []byte
+			result[v.Name()], _ = strconv.ParseInt(string(vals[i].([]byte)), 10, 64)
+		} else if sc.isFloatType(v) && isRawBytesType(vals[i]) {
+			// when number is loaded as []byte
+			result[v.Name()], _ = strconv.ParseFloat(string(vals[i].([]byte)), 64)
+		} else if sc.isStringType(v) && isRawBytesType(vals[i]) {
 			// when string is loaded as []byte
-			result[v.Name()] = string(vals[k].([]byte))
-		} else if sc.flavor == FlavorMySql && sc.isDateTimeType(v) && isRawBytesType(vals[k]) {
-			// Mysql's TIME/DATE/DATETIME/TIMESTAMP is loaded as []byte
-			loc := sc.ensureLocation()
-			var err error
-			switch strings.ToUpper(v.DatabaseTypeName()) {
-			case "TIME":
-				result[v.Name()], err = time.ParseInLocation("15:04:05", string(vals[k].([]byte)), loc)
-			case "DATE":
-				result[v.Name()], err = time.ParseInLocation("2006-01-02", string(vals[k].([]byte)), loc)
-			case "DATETIME":
-				result[v.Name()], err = time.ParseInLocation("2006-01-02 15:04:05", string(vals[k].([]byte)), loc)
-			case "TIMESTAMP":
-				result[v.Name()], err = time.ParseInLocation("2006-01-02 15:04:05", string(vals[k].([]byte)), loc)
-			default:
-				err = errors.New("unknown date/time column type " + v.DatabaseTypeName())
+			result[v.Name()] = string(vals[i].([]byte))
+		} else if sc.flavor == FlavorSqlite && sc.isDateTimeType(v) {
+			// special care for SQLite's date/time types
+			if err := sc._scanSqliteDateTimeFromString(result, v, vals[i]); err != nil {
+				return nil, err
 			}
-			if err != nil {
+		} else if sc.flavor == FlavorMySql && sc.isDateTimeType(v) && isRawBytesType(vals[i]) {
+			// MySQL's TIME/DATE/DATETIME/TIMESTAMP is loaded as []byte
+			if err := sc._scanMysqlDateTimeFromRawBytes(result, v, vals[i]); err != nil {
+				return nil, err
+			}
+		} else if sc.flavor == FlavorPgSql && sc.isDateTimeType(v) && v.ScanType().Kind() == reflect.String {
+			// PostgreSQL's TIME is loaded as string
+			if err := sc._scanPgsqlDateTimeFromString(result, v, vals[i]); err != nil {
+				return nil, err
+			}
+		} else if sc.flavor == FlavorPgSql && v.ScanType().Kind() == timeType.Kind() {
+			// special care for PostgreSQL's date/time types
+			if err := sc._transformPgsqlDateTime(result, v, vals[i]); err != nil {
+				return nil, err
+			}
+		} else if sc.flavor == FlavorMsSql && v.ScanType().Kind() == timeType.Kind() {
+			// special care for MSSQL's date/time types
+			if err := sc._transformMssqlDateTime(result, v, vals[i]); err != nil {
+				return nil, err
+			}
+		} else if sc.flavor == FlavorOracle && v.ScanType().Kind() == sqlNulTime.Kind() {
+			// special care for Oracle's date/time types
+			if err := sc._transformOracleDateTime(result, v, vals[i]); err != nil {
 				return nil, err
 			}
 		} else if sc.flavor == FlavorPgSql && v.ScanType().Kind() == reflect.Interface && sc.isStringType(v) {
-			// Postgresql's CHAR(1) is loaded as []byte old driver version
-			_v, ok := vals[k].([]byte)
+			// PostgreSQL's CHAR(1) is loaded as []byte old driver version
+			_v, ok := vals[i].([]byte)
 			if ok {
 				result[v.Name()] = string(_v)
 			} else {
-				result[v.Name()] = vals[k].(string)
+				result[v.Name()] = vals[i].(string)
 			}
 		} else {
-			result[v.Name()] = vals[k]
+			result[v.Name()] = vals[i]
 		}
 	}
 	return result, nil
@@ -444,6 +630,9 @@ func (sc *SqlConnect) FetchRowsCallback(rows *sql.Rows, callback func(row map[st
 	for next && rows.Next() {
 		if rowData, err := sc.fetchOneRow(rows, colTypes); err != nil {
 			next = callback(nil, err)
+			// if !next {
+			// 	return err
+			// }
 		} else {
 			next = callback(rowData, nil)
 		}

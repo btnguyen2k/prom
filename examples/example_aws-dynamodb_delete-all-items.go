@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/btnguyen2k/prom"
 	"math/rand"
 	"time"
+
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+
+	"github.com/btnguyen2k/prom"
 )
 
 func awsDynamodbDeleteAll(adc *prom.AwsDynamodbConnect, table string, pkAttrs []string) {
@@ -17,7 +19,7 @@ func awsDynamodbDeleteAll(adc *prom.AwsDynamodbConnect, table string, pkAttrs []
 			keyFilter[v] = item[v]
 		}
 		result, err := adc.DeleteItem(nil, table, keyFilter, nil)
-		fmt.Printf("    Delete item from table [%s] with key %s: %v - %e\n", table, toJsonDynamodb(keyFilter), result, err)
+		fmt.Printf("    Delete item from table [%s] with key %s: %v - %s\n", table, toJsonDynamodb(keyFilter), result, err)
 		return true, err
 	})
 }

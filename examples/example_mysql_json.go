@@ -3,19 +3,25 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/btnguyen2k/prom"
-	_ "github.com/go-sql-driver/mysql"
 	"math/rand"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+
+	"github.com/btnguyen2k/prom"
 )
 
 // construct an 'prom.SqlConnect' instance
 func createSqlConnectMysqlJson() *prom.SqlConnect {
 	driver := "mysql"
 	dsn := "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&loc=Asia%2FHo_Chi_Minh&parseTime=true"
+	if os.Getenv("MYSQL_URL") != "" {
+		dsn = strings.ReplaceAll(os.Getenv("MYSQL_URL"), `"`, "")
+	}
 	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorMySql)
 	if sqlConnect == nil || err != nil {
 		if err != nil {

@@ -3,19 +3,25 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/btnguyen2k/prom"
-	_ "github.com/denisenkom/go-mssqldb"
 	"math/rand"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	_ "github.com/denisenkom/go-mssqldb"
+
+	"github.com/btnguyen2k/prom"
 )
 
 // construct an 'prom.SqlConnect' instance
 func createSqlConnectMssqlJson() *prom.SqlConnect {
 	driver := "sqlserver"
 	dsn := "sqlserver://sa:Password1@localhost:1433?database=tempdb"
+	if os.Getenv("MSSQL_URL") != "" {
+		dsn = strings.ReplaceAll(os.Getenv("MSSQL_URL"), `"`, "")
+	}
 	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorMsSql)
 	if sqlConnect == nil || err != nil {
 		if err != nil {

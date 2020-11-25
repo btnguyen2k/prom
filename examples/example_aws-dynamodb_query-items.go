@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
-	"github.com/btnguyen2k/prom"
 	"math/rand"
 	"time"
+
+	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+
+	"github.com/btnguyen2k/prom"
 )
 
 func awsDynamodbQueryItems(adc *prom.AwsDynamodbConnect, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string) {
@@ -17,7 +19,7 @@ func awsDynamodbQueryItems(adc *prom.AwsDynamodbConnect, table string, keyFilter
 
 	result, err := adc.QueryItems(nil, table, keyFilter, nonKeyFilter, indexName)
 	if err != nil {
-		fmt.Printf("    Error: %e\n", err)
+		fmt.Printf("    Error: %s\n", err)
 	} else {
 		fmt.Printf("    Items:\n")
 		for _, item := range result {

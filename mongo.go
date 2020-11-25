@@ -56,6 +56,15 @@ var (
 
 // NewMongoConnect constructs a new MongoConnect instance.
 //
+// Parameters: see NewMongoConnectWithPoolOptions
+//
+// Return: see NewMongoConnectWithPoolOptions
+func NewMongoConnect(url, db string, defaultTimeoutMs int) (*MongoConnect, error) {
+	return NewMongoConnectWithPoolOptions(url, db, defaultTimeoutMs, defaultMongoPoolOpts)
+}
+
+// NewMongoConnectWithPoolOptions constructs a new MongoConnect instance.
+//
 // Parameters:
 //   - url             : connection url, including authentication credentials
 //   - db              : name of database to connect to
@@ -65,7 +74,9 @@ var (
 // Return: the MongoConnect instance and error (if any). Note:
 //   - In case of connection error: this function returns the MongoConnect instance and the error.
 //   - Other error: this function returns (nil, error)
-func NewMongoConnect(url, db string, defaultTimeoutMs int, poolOpts *MongoPoolOpts) (*MongoConnect, error) {
+//
+// Available since v0.2.8
+func NewMongoConnectWithPoolOptions(url, db string, defaultTimeoutMs int, poolOpts *MongoPoolOpts) (*MongoConnect, error) {
 	if defaultTimeoutMs < 0 {
 		defaultTimeoutMs = 0
 	}

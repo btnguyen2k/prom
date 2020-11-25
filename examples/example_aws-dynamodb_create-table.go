@@ -2,19 +2,20 @@ package main
 
 import (
 	"fmt"
-	"github.com/btnguyen2k/prom"
 	"math/rand"
 	"time"
+
+	"github.com/btnguyen2k/prom"
 )
 
 func awsDynamodbCreateIndexAndWait(adc *prom.AwsDynamodbConnect, table, index string) {
 	err := adc.CreateGlobalSecondaryIndex(nil, table, index, 1, 1,
 		[]prom.AwsDynamodbNameAndType{{"email", "S"}},
 		[]prom.AwsDynamodbNameAndType{{"email", "HASH"}})
-	fmt.Printf("  Create GSI [%s] on table [%s]: %e\n", index, table, err)
+	fmt.Printf("  Create GSI [%s] on table [%s]: %s\n", index, table, err)
 	time.Sleep(1 * time.Second)
 	for status, err := adc.GetGlobalSecondaryIndexStatus(nil, table, index); status != "ACTIVE" && err == nil; {
-		fmt.Printf("    GSI [%s] on table [%s] status: %v - %e\n", index, table, status, err)
+		fmt.Printf("    GSI [%s] on table [%s] status: %v - %s\n", index, table, status, err)
 		time.Sleep(1 * time.Second)
 		status, err = adc.GetGlobalSecondaryIndexStatus(nil, table, index)
 	}
@@ -22,24 +23,24 @@ func awsDynamodbCreateIndexAndWait(adc *prom.AwsDynamodbConnect, table, index st
 
 func awsDynamodbCreateTableAndWait(adc *prom.AwsDynamodbConnect, table string, schema, key []prom.AwsDynamodbNameAndType) {
 	err := adc.CreateTable(nil, table, 2, 2, schema, key)
-	fmt.Printf("  Create table [%s]: %e\n", table, err)
+	fmt.Printf("  Create table [%s]: %s\n", table, err)
 	if err == nil {
 		tables, err := adc.ListTables(nil)
 		if err != nil {
-			fmt.Printf("    Error: %e\n", err)
+			fmt.Printf("    Error: %s\n", err)
 		} else {
 			fmt.Printf("    Tables: %v\n", tables)
 		}
 		ok, err := adc.HasTable(nil, table)
 		if err != nil {
-			fmt.Printf("    Error: %e\n", err)
+			fmt.Printf("    Error: %s\n", err)
 		} else {
 			fmt.Printf("    HasTable[%s]: %v\n", table, ok)
 		}
 	}
 	time.Sleep(1 * time.Second)
 	for status, err := adc.GetTableStatus(nil, table); status != "ACTIVE" && err == nil; {
-		fmt.Printf("    Table [%s] status: %v - %e\n", table, status, err)
+		fmt.Printf("    Table [%s] status: %v - %s\n", table, status, err)
 		time.Sleep(1 * time.Second)
 		status, err = adc.GetTableStatus(nil, table)
 	}

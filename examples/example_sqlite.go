@@ -9,22 +9,19 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/btnguyen2k/prom"
 )
 
-var timezoneMysql = "Asia/Kabul"
+var timezoneSqlite = "Asia/Kabul"
 
 // construct an 'prom.SqlConnect' instance
-func createSqlConnectMysql() *prom.SqlConnect {
-	driver := "mysql"
-	dsn := "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc="
-	dsn += strings.ReplaceAll(timezoneMysql, "/", "%2f")
-	if os.Getenv("MYSQL_URL") != "" {
-		dsn = strings.ReplaceAll(os.Getenv("MYSQL_URL"), `"`, "")
-	}
-	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorMySql)
+func createSqlConnectSqlite() *prom.SqlConnect {
+	driver := "sqlite3"
+	dsn := "./temp/temp.db"
+	os.Remove(dsn)
+	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorSqlite)
 	if sqlConnect == nil || err != nil {
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -33,22 +30,22 @@ func createSqlConnectMysql() *prom.SqlConnect {
 			panic("error creating [prom.SqlConnect] instance")
 		}
 	}
-	loc, _ := time.LoadLocation(timezoneMysql)
+	loc, _ := time.LoadLocation(timezoneSqlite)
 	sqlConnect.SetLocation(loc)
 	return sqlConnect
 }
 
-var colsMysql = []string{"id", "username", "email",
+var colsSqlite = []string{"id", "username", "email",
 	"data_bool", "data_int", "data_float",
 	"data_time", "data_timez",
 	"data_date", "data_datez",
 	"data_datetime", "data_datetimez",
 	"data_timestamp", "data_timestampz"}
 
-func printRowMysql(row map[string]interface{}) {
+func printRowSqlite(row map[string]interface{}) {
 	id := row["id"]
 	fmt.Printf("\t\tRow [%v]\n", id)
-	for _, n := range colsMysql {
+	for _, n := range colsSqlite {
 		v := row[n]
 		fmt.Println("\t\t\t", n, "[", reflect.TypeOf(v), "] = ", v)
 	}
@@ -57,9 +54,9 @@ func printRowMysql(row map[string]interface{}) {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	SEP := "======================================================================"
-	sqlConnect := createSqlConnectMysql()
+	sqlConnect := createSqlConnectSqlite()
 	defer sqlConnect.Close()
-	loc, _ := time.LoadLocation(timezoneMysql)
+	loc, _ := time.LoadLocation(timezoneSqlite)
 	fmt.Println("Timezone:", loc)
 
 	{
@@ -86,7 +83,7 @@ func main() {
 		sql := "DROP TABLE IF EXISTS tbl_demo"
 		_, err := sqlConnect.GetDB().Exec(sql)
 		if err != nil {
-			fmt.Printf("\tError while executing query [%s]: %e\n", sql, err)
+			fmt.Printf("\tError while executing query [%s]: %s\n", sql, err)
 		} else {
 			fmt.Println("\tDropped table [tbl_demo]")
 
@@ -98,8 +95,8 @@ func main() {
 				"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
 
 			sql := "CREATE TABLE tbl_demo ("
-			for i := range colsMysql {
-				sql += colsMysql[i] + " " + types[i] + ","
+			for i := range colsSqlite {
+				sql += colsSqlite[i] + " " + types[i] + ","
 			}
 			sql += "PRIMARY KEY(id))"
 			fmt.Println("\tQuery:" + sql)
@@ -120,9 +117,9 @@ func main() {
 
 		// insert some rows
 		sql := "INSERT INTO tbl_demo ("
-		sql += strings.Join(colsMysql, ",")
+		sql += strings.Join(colsSqlite, ",")
 		sql += ") VALUES ("
-		sql += strings.Repeat("?,", len(colsMysql)-1)
+		sql += strings.Repeat("?,", len(colsSqlite)-1)
 		sql += "?)"
 
 		n := 100
@@ -162,7 +159,7 @@ func main() {
 		id := rand.Intn(100) + 1
 		fmt.Printf("\tFetching row id %d from table [tbl_demo]\n", id)
 		dbRow := sqlConnect.GetDB().QueryRow(sql, id)
-		data, err := sqlConnect.FetchRow(dbRow, len(colsMysql))
+		data, err := sqlConnect.FetchRow(dbRow, len(colsSqlite))
 		if err != nil {
 			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
@@ -181,7 +178,7 @@ func main() {
 		id = 999
 		fmt.Printf("\tFetching row id %d from table [tbl_demo]\n", id)
 		dbRow = sqlConnect.GetDB().QueryRow(sql, id)
-		data, err = sqlConnect.FetchRow(dbRow, len(colsMysql))
+		data, err = sqlConnect.FetchRow(dbRow, len(colsSqlite))
 		if err != nil {
 			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
@@ -211,14 +208,14 @@ func main() {
 		dbRows1, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows1.Close()
 		if err != nil {
-			fmt.Printf("\tE\trror while executing query: %e\n", err)
+			fmt.Printf("\tE\trror while executing query: %s\n", err)
 		} else {
 			rows, err := sqlConnect.FetchRows(dbRows1)
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %e\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowMysql(r)
+					printRowSqlite(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -230,14 +227,14 @@ func main() {
 		dbRows2, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows2.Close()
 		if err != nil {
-			fmt.Printf("\t\tError while executing query: %e\n", err)
+			fmt.Printf("\t\tError while executing query: %s\n", err)
 		} else {
 			rows, err := sqlConnect.FetchRows(dbRows2)
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %e\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowMysql(r)
+					printRowSqlite(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -254,9 +251,9 @@ func main() {
 		sql := "SELECT * FROM tbl_demo WHERE id>=? LIMIT 4"
 		callback := func(row map[string]interface{}, err error) bool {
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %e\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else {
-				printRowMysql(row)
+				printRowSqlite(row)
 			}
 			return true
 		}
@@ -266,7 +263,7 @@ func main() {
 		dbRows1, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows1.Close()
 		if err != nil {
-			fmt.Printf("\t\tError while executing query: %e\n", err)
+			fmt.Printf("\t\tError while executing query: %s\n", err)
 		} else {
 			sqlConnect.FetchRowsCallback(dbRows1, callback)
 		}
@@ -276,7 +273,7 @@ func main() {
 		dbRows2, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows2.Close()
 		if err != nil {
-			fmt.Printf("\t\tError while executing query: %e\n", err)
+			fmt.Printf("\t\tError while executing query: %s\n", err)
 		} else {
 			sqlConnect.FetchRowsCallback(dbRows2, callback)
 		}

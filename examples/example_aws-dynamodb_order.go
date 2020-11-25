@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
-	"github.com/btnguyen2k/prom"
 	"math/rand"
 	"time"
+
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+
+	"github.com/btnguyen2k/prom"
 )
 
 const (
@@ -35,7 +37,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 			panic(err)
 		}
 		for status, err := adc.GetTableStatus(nil, table); status != "ACTIVE" && err == nil; {
-			fmt.Printf("Table [%s] status: %v - %e\n", table, status, err)
+			fmt.Printf("Table [%s] status: %v - %s\n", table, status, err)
 			time.Sleep(1 * time.Second)
 			status, err = adc.GetTableStatus(nil, table)
 		}
@@ -48,7 +50,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 				keyFilter[v] = item[v]
 			}
 			_, err := adc.DeleteItem(nil, table, keyFilter, nil)
-			fmt.Printf("Delete item from table [%s] with key %s: %e\n", table, keyFilter, err)
+			fmt.Printf("Delete item from table [%s] with key %s: %s\n", table, keyFilter, err)
 			return true, nil
 		})
 	}
@@ -70,7 +72,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 			panic(err)
 		}
 		for status, err := adc.GetTableStatus(nil, table); status != "ACTIVE" && err == nil; {
-			fmt.Printf("Table [%s] status: %v - %e\n", table, status, err)
+			fmt.Printf("Table [%s] status: %v - %s\n", table, status, err)
 			time.Sleep(1 * time.Second)
 			status, err = adc.GetTableStatus(nil, table)
 		}
@@ -83,7 +85,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 				keyFilter[v] = item[v]
 			}
 			_, err := adc.DeleteItem(nil, table, keyFilter, nil)
-			fmt.Printf("Delete item from table [%s] with key %s: %e\n", table, keyFilter, err)
+			fmt.Printf("Delete item from table [%s] with key %s: %s\n", table, keyFilter, err)
 			return true, nil
 		})
 	}
@@ -103,7 +105,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 			panic(err)
 		}
 		for status, err := adc.GetTableStatus(nil, table); status != "ACTIVE" && err == nil; {
-			fmt.Printf("Table [%s] status: %v - %e\n", table, status, err)
+			fmt.Printf("Table [%s] status: %v - %s\n", table, status, err)
 			time.Sleep(1 * time.Second)
 			status, err = adc.GetTableStatus(nil, table)
 		}
@@ -116,7 +118,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 				keyFilter[v] = item[v]
 			}
 			_, err := adc.DeleteItem(nil, table, keyFilter, nil)
-			fmt.Printf("Delete item from table [%s] with key %s: %e\n", table, keyFilter, err)
+			fmt.Printf("Delete item from table [%s] with key %s: %s\n", table, keyFilter, err)
 			return true, nil
 		})
 	}
@@ -135,7 +137,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 			fmt.Println(err)
 		} else {
 			for status, err := adc.GetGlobalSecondaryIndexStatus(nil, table, idxName); status != "ACTIVE" && err == nil; {
-				fmt.Printf("Index [%s/%s] status: %v - %e\n", table, idxName, status, err)
+				fmt.Printf("Index [%s/%s] status: %v - %s\n", table, idxName, status, err)
 				time.Sleep(1 * time.Second)
 				status, err = adc.GetGlobalSecondaryIndexStatus(nil, table, idxName)
 			}

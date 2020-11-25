@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/btnguyen2k/prom"
 	"math/rand"
 	"strconv"
 	"time"
+
+	"github.com/btnguyen2k/prom"
 )
 
 func awsDynamodbPutItem(adc *prom.AwsDynamodbConnect, table string, pkAttrs []string) {
@@ -41,7 +42,7 @@ func awsDynamodbPutItem(adc *prom.AwsDynamodbConnect, table string, pkAttrs []st
 		fmt.Printf("  Inserting item to table [%s]: %s\n", table, toJsonDynamodb(item))
 		_, err := adc.PutItem(nil, table, item, nil)
 		if err != nil {
-			fmt.Printf("    Error: %e\n", err)
+			fmt.Printf("    Error: %s\n", err)
 		}
 	}
 
@@ -57,7 +58,7 @@ func awsDynamodbPutItem(adc *prom.AwsDynamodbConnect, table string, pkAttrs []st
 		fmt.Printf("  Inserting item: %s\n", toJsonDynamodb(item))
 		result, err := adc.PutItemIfNotExist(nil, table, item, pkAttrs)
 		if err != nil {
-			fmt.Printf("    Error: %e\n", err)
+			fmt.Printf("    Error: %s\n", err)
 		} else {
 			fmt.Printf("    Insert document: %v\n", result)
 		}

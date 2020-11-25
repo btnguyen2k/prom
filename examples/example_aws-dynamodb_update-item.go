@@ -2,29 +2,31 @@ package main
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
-	"github.com/btnguyen2k/prom"
 	"math/rand"
 	"time"
+
+	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+
+	"github.com/btnguyen2k/prom"
 )
 
 func awsDynamodbRemoveAttrs(adc *prom.AwsDynamodbConnect, table string, data, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrs []string) {
 	fmt.Printf("  Inserting item: %s\n", toJsonDynamodb(data))
 	_, err := adc.PutItem(nil, table, data, nil)
 	if err != nil {
-		fmt.Printf("    Error: %e\n", err)
+		fmt.Printf("    Error: %s\n", err)
 	}
 
 	ok, err := adc.RemoveAttributes(nil, table, keyFilter, condition, attrs)
 	if condition == nil {
-		fmt.Printf("  Removing attributes %v from item %v: %v - %e\n", attrs, keyFilter, ok, err)
+		fmt.Printf("  Removing attributes %v from item %v: %v - %s\n", attrs, keyFilter, ok, err)
 	} else {
-		fmt.Printf("  Removing attributes %v from item %v (with condition %v): %v - %e\n", attrs, keyFilter, *condition, ok, err)
+		fmt.Printf("  Removing attributes %v from item %v (with condition %v): %v - %s\n", attrs, keyFilter, *condition, ok, err)
 	}
 
 	item, err := adc.GetItem(nil, table, keyFilter)
 	if err != nil {
-		fmt.Printf("    Error getting item: %e\n", err)
+		fmt.Printf("    Error getting item: %s\n", err)
 	} else {
 		fmt.Printf("    Item after update: %s\n", toJsonDynamodb(item))
 	}
@@ -34,19 +36,19 @@ func awsDynamodbSetAttrs(adc *prom.AwsDynamodbConnect, table string, data, keyFi
 	fmt.Printf("  Inserting item: %s\n", toJsonDynamodb(data))
 	_, err := adc.PutItem(nil, table, data, nil)
 	if err != nil {
-		fmt.Printf("    Error: %e\n", err)
+		fmt.Printf("    Error: %s\n", err)
 	}
 
 	ok, err := adc.SetAttributes(nil, table, keyFilter, condition, attrsAndValues)
 	if condition == nil {
-		fmt.Printf("  Updating attributes %v from item %v: %v - %e\n", attrsAndValues, keyFilter, ok, err)
+		fmt.Printf("  Updating attributes %v from item %v: %v - %s\n", attrsAndValues, keyFilter, ok, err)
 	} else {
-		fmt.Printf("  Updating attributes %v from item %v (with condition %v): %v - %e\n", attrsAndValues, keyFilter, *condition, ok, err)
+		fmt.Printf("  Updating attributes %v from item %v (with condition %v): %v - %s\n", attrsAndValues, keyFilter, *condition, ok, err)
 	}
 
 	item, err := adc.GetItem(nil, table, keyFilter)
 	if err != nil {
-		fmt.Printf("    Error getting item: %e\n", err)
+		fmt.Printf("    Error getting item: %s\n", err)
 	} else {
 		fmt.Printf("    Item after update: %s\n", toJsonDynamodb(item))
 	}
@@ -56,19 +58,19 @@ func awsDynamodbAddValues(adc *prom.AwsDynamodbConnect, table string, data, keyF
 	fmt.Printf("  Inserting item: %s\n", toJsonDynamodb(data))
 	_, err := adc.PutItem(nil, table, data, nil)
 	if err != nil {
-		fmt.Printf("    Error: %e\n", err)
+		fmt.Printf("    Error: %s\n", err)
 	}
 
 	ok, err := adc.AddValuesToAttributes(nil, table, keyFilter, condition, attrsAndValues)
 	if condition == nil {
-		fmt.Printf("  Adding values to attributes %v from item %v: %v - %e\n", attrsAndValues, keyFilter, ok, err)
+		fmt.Printf("  Adding values to attributes %v from item %v: %v - %s\n", attrsAndValues, keyFilter, ok, err)
 	} else {
-		fmt.Printf("  Adding values to attributes %v from item %v (with condition %v): %v - %e\n", attrsAndValues, keyFilter, *condition, ok, err)
+		fmt.Printf("  Adding values to attributes %v from item %v (with condition %v): %v - %s\n", attrsAndValues, keyFilter, *condition, ok, err)
 	}
 
 	item, err := adc.GetItem(nil, table, keyFilter)
 	if err != nil {
-		fmt.Printf("    Error getting item: %e\n", err)
+		fmt.Printf("    Error getting item: %s\n", err)
 	} else {
 		fmt.Printf("    Item after update: %s\n", toJsonDynamodb(item))
 	}

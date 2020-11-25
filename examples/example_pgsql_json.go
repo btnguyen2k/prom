@@ -3,19 +3,25 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/btnguyen2k/prom"
-	_ "github.com/lib/pq"
 	"math/rand"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	_ "github.com/jackc/pgx/v4/stdlib"
+
+	"github.com/btnguyen2k/prom"
 )
 
 // construct an 'prom.SqlConnect' instance
 func createSqlConnectPgsqlJson() *prom.SqlConnect {
-	driver := "postgres"
+	driver := "pgx"
 	dsn := "postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
+	if os.Getenv("PGSQL_URL") != "" {
+		dsn = strings.ReplaceAll(os.Getenv("PGSQL_URL"), `"`, "")
+	}
 	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorPgSql)
 	if sqlConnect == nil || err != nil {
 		if err != nil {

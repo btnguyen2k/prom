@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"strconv"
+	"time"
+
 	"github.com/btnguyen2k/prom"
 )
 
@@ -16,39 +20,60 @@ Setup a Redis Sentinel using docker:
 func main() {
 	SEP := "======================================================================"
 
-	hostsAndPorts := "localhost:7006;localhost:5000" // first server is normal Redis server, second one is sentinel server
-	password := ""
-	maxRetries := 3
-	goRedisConnect := prom.NewGoRedisConnect(hostsAndPorts, password, maxRetries)
-
-	db := 0
-	client := goRedisConnect.GetClient(db)
+	rand.Seed(time.Now().UnixNano())
 	{
-		fmt.Println(SEP)
+		goRedisConnect := prom.NewGoRedisConnect("localhost:7006", "", 3)
+		client := goRedisConnect.GetClient(0)
 		fmt.Println("Redis client:", client)
 		result, err := client.FlushAll().Result()
 		fmt.Println("FlushAll:", result, err)
 		result, err = client.Ping().Result()
 		fmt.Println("Ping    :", result, err)
 
-		fmt.Println(SEP)
 		resultGet := client.Get("key")
-		fmt.Println("Get[key]:", resultGet)
-		resultSet := client.Set("key", "value", 0)
-		fmt.Println("Set[key]:", resultSet)
+		fmt.Printf("Get[key]: %#v / %s\n", resultGet.Val(), resultGet.Err())
+		resultSet := client.Set("key", strconv.Itoa(rand.Int()), 0)
+		fmt.Printf("Set[key]: %#v / %s\n", resultSet.Val(), resultSet.Err())
 		resultGet = client.Get("key")
-		fmt.Println("Get[key]:", resultGet)
+		fmt.Printf("Get[key]: %#v / %s\n", resultGet.Val(), resultSet.Err())
+		fmt.Println(SEP)
 	}
 
-	//
-	// goRedisConnect.SetSentinelMasterName("master")
-	// failoverClient := goRedisConnect.GetFailoverClient(db)
-	// {
-	// 	fmt.Println("Sentinel Redis client:", failoverClient)
-	// 	result, err := failoverClient.FlushAll().Result()
-	// 	fmt.Println("FlushAll:", result, err)
-	// 	result, err = failoverClient.Ping().Result()
-	// 	fmt.Println("Ping    :", result, err)
-	// 	fmt.Println("==============================")
-	// }
+	{
+		goRedisConnect := prom.NewGoRedisConnect("localhost:5000", "", 3)
+		goRedisConnect.SetSentinelMasterName("sentinel7000")
+		client := goRedisConnect.GetFailoverClient(0)
+		fmt.Println("Sentinel Redis client:", client)
+		result, err := client.FlushAll().Result()
+		fmt.Println("FlushAll:", result, err)
+		result, err = client.Ping().Result()
+		fmt.Println("Ping    :", result, err)
+
+		resultGet := client.Get("key")
+		fmt.Printf("Get[key]: %#v / %s\n", resultGet.Val(), resultGet.Err())
+		resultSet := client.Set("key", strconv.Itoa(rand.Int()), 0)
+		fmt.Printf("Set[key]: %#v / %s\n", resultSet.Val(), resultSet.Err())
+		resultGet = client.Get("key")
+		fmt.Printf("Get[key]: %#v / %s\n", resultGet.Val(), resultSet.Err())
+		fmt.Println(SEP)
+	}
+
+	{
+		goRedisConnect := prom.NewGoRedisConnect("localhost:7000,localhost:7001,localhost:7002,localhost:7003,localhost:7004,localhost:7005", "", 3)
+		goRedisConnect.SetSentinelMasterName("sentinel7000")
+		client := goRedisConnect.GetClusterClient()
+		fmt.Println("Cluster Redis client:", client)
+		result, err := client.FlushAll().Result()
+		fmt.Println("FlushAll:", result, err)
+		result, err = client.Ping().Result()
+		fmt.Println("Ping    :", result, err)
+
+		resultGet := client.Get("key")
+		fmt.Printf("Get[key]: %#v / %s\n", resultGet.Val(), resultGet.Err())
+		resultSet := client.Set("key", strconv.Itoa(rand.Int()), 0)
+		fmt.Printf("Set[key]: %#v / %s\n", resultSet.Val(), resultSet.Err())
+		resultGet = client.Get("key")
+		fmt.Printf("Get[key]: %#v / %s\n", resultGet.Val(), resultSet.Err())
+		fmt.Println(SEP)
+	}
 }

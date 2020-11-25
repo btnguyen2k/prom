@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+
 	"github.com/btnguyen2k/prom"
-	"math/rand"
-	"time"
 )
 
 func _txInitData(adc *prom.AwsDynamodbConnect, tableName string, accounts []string, initBalance int) {
@@ -25,7 +27,7 @@ func _txInitData(adc *prom.AwsDynamodbConnect, tableName string, accounts []stri
 			panic(err)
 		}
 		for status, err := adc.GetTableStatus(nil, tableName); status != "ACTIVE" && err == nil; {
-			fmt.Printf("    Table [%s] status: %v - %e\n", tableName, status, err)
+			fmt.Printf("    Table [%s] status: %v - %s\n", tableName, status, err)
 			time.Sleep(1 * time.Second)
 			status, err = adc.GetTableStatus(nil, tableName)
 		}
@@ -38,7 +40,7 @@ func _txInitData(adc *prom.AwsDynamodbConnect, tableName string, accounts []stri
 				keyFilter[v] = item[v]
 			}
 			_, err := adc.DeleteItem(nil, tableName, keyFilter, nil)
-			fmt.Printf("    Delete item from table [%s] with key %s: %e\n", tableName, keyFilter, err)
+			fmt.Printf("    Delete item from table [%s] with key %s: %s\n", tableName, keyFilter, err)
 			return true, nil
 		})
 	}
@@ -65,12 +67,13 @@ func _txTransferMoney(adc *prom.AwsDynamodbConnect, tableName, from, to string, 
 		panic(err)
 	}
 	fmt.Printf("Transferring [%d] from [%s] to [%s]...\n", amount, from, to)
-	result, err := adc.ExecTxWriteItems(nil, &dynamodb.TransactWriteItemsInput{
+	_, err := adc.ExecTxWriteItems(nil, &dynamodb.TransactWriteItemsInput{
 		ReturnConsumedCapacity: aws.String("INDEXES"),
 		TransactItems:          txItems,
 	})
-	fmt.Printf("%e\n%#v\n", err, err)
-	fmt.Println(result)
+	if err != nil {
+		fmt.Printf("%s\n%#v\n", err, err)
+	}
 }
 
 func main() {
@@ -79,7 +82,7 @@ func main() {
 	defer adc.Close()
 
 	tableName := "test_account"
-	_txInitData(adc, tableName, []string{"btnguyen2k", "thanhnb"}, 1000)
+	_txInitData(adc, tableName, []string{"btnguyen2k", "thanhnb", "nbthanh"}, 1000)
 
 	txItems := make([]*dynamodb.TransactWriteItem, 0)
 	if txItem, err := adc.BuildTxPutIfNotExist(tableName, map[string]interface{}{"id": "btnguyen2k", "balance": 1234}, []string{"id"}); err == nil && txItem != nil {
@@ -97,12 +100,13 @@ func main() {
 	} else {
 		panic(err)
 	}
-	result, err := adc.ExecTxWriteItems(nil, &dynamodb.TransactWriteItemsInput{
+	_, err := adc.ExecTxWriteItems(nil, &dynamodb.TransactWriteItemsInput{
 		ReturnConsumedCapacity: aws.String("INDEXES"),
 		TransactItems:          txItems,
 	})
-	fmt.Printf("%e\n%#v\n", err, err)
-	fmt.Println(result)
+	if err != nil {
+		fmt.Printf("%s\n%#v\n", err, err)
+	}
 
 	_txTransferMoney(adc, tableName, "btnguyen2k", "thanhnb", 100)
 	_txTransferMoney(adc, tableName, "thanhnb", "btnguyen2k", 2000)

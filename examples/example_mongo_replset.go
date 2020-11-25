@@ -3,18 +3,28 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/btnguyen2k/prom"
-	"go.mongodb.org/mongo-driver/bson"
 	"math/rand"
+	"os"
+	"strings"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+
+	"github.com/btnguyen2k/prom"
 )
 
 var _timezoneMongo = "Asia/Ho_Chi_Minh"
 
 // construct an 'prom.MongoConnect' instance
 func _createMongoConnect() *prom.MongoConnect {
-	url := "mongodb://test:test@localhost:27017/test?retryWrites=true&w=majority"
+	url := "mongodb://root:test@localhost:27017/admin?replicaSet=replicaset"
+	if os.Getenv("MONGO_URL") != "" {
+		url = strings.ReplaceAll(os.Getenv("MONGO_URL"), `"`, "")
+	}
 	db := "test"
+	if os.Getenv("MONGO_DB") != "" {
+		db = strings.ReplaceAll(os.Getenv("MONGO_DB"), `"`, "")
+	}
 	timeoutMs := 30000
 	mongoConnect, _ := prom.NewMongoConnect(url, db, timeoutMs)
 	if mongoConnect == nil {
@@ -32,7 +42,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 	SEP := "======================================================================"
 	mongoConnect := _createMongoConnect()
-	defer mongoConnect.Disconnect(nil)
+	defer mongoConnect.Close(nil)
 	loc, _ := time.LoadLocation(_timezoneMongo)
 	fmt.Println("Timezone:", loc)
 
@@ -43,7 +53,7 @@ func main() {
 		dbObj := mongoConnect.GetDatabase()
 		fmt.Println("\tCurrent database:", dbObj.Name())
 		fmt.Println("\tIs connected    :", mongoConnect.IsConnected())
-		err := mongoConnect.Ping()
+		err := mongoConnect.Ping(nil)
 		if err != nil {
 			fmt.Println("\tPing error      :", err)
 		} else {
@@ -98,8 +108,8 @@ func main() {
 					"name": "idx_email",
 				},
 			}
-			result, err = mongoConnect.CreateIndexes("demo", indexes)
-			fmt.Println("\tCreate indexes for collection [demo]:", result.Err(), err)
+			result, err := mongoConnect.CreateCollectionIndexes("demo", indexes)
+			fmt.Println("\tCreate indexes for collection [demo]:", result, err)
 		}
 
 		fmt.Println(SEP)

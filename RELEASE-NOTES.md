@@ -1,6 +1,6 @@
 # prom release notes
 
-## 2020-10-2x - v0.2.8
+## 2020-10-25 - v0.2.8
 
 - `GoRedisConnect`:
   - Add `RedisPoolOpts`
@@ -12,7 +12,7 @@
   - New functions `NewContextIfNil` and `NewContextWithCancel`
 - `SqlConnect`:
   - New getter/setter & `Init` functions
-  - New db flavor for SQLite
+  - New db flavor for `SQLite`
   - `NewContext` now returns single `context.Context` result
   - New functions `NewContextIfNil` and `NewContextWithCancel`
 - More unit tests.

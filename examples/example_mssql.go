@@ -2,13 +2,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/btnguyen2k/prom"
-	_ "github.com/denisenkom/go-mssqldb"
 	"math/rand"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	_ "github.com/denisenkom/go-mssqldb"
+
+	"github.com/btnguyen2k/prom"
 )
 
 var timezoneMssql = "Asia/Kabul"
@@ -16,7 +19,10 @@ var timezoneMssql = "Asia/Kabul"
 // construct an 'prom.SqlConnect' instance
 func createSqlConnectMssql() *prom.SqlConnect {
 	driver := "sqlserver"
-	dsn := "sqlserver://sa:Password1@localhost:1433?database=tempdb"
+	dsn := "sqlserver://sa:secret@localhost:1433?database=tempdb"
+	if os.Getenv("MSSQL_URL") != "" {
+		dsn = strings.ReplaceAll(os.Getenv("MSSQL_URL"), `"`, "")
+	}
 	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorMsSql)
 	if sqlConnect == nil || err != nil {
 		if err != nil {

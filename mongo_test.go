@@ -18,7 +18,7 @@ func TestNewMongoConnect(t *testing.T) {
 	name := "TestNewMongoConnect"
 	opts := defaultMongoPoolOpts
 	opts.MaxPoolSize = 10
-	mc, err := NewMongoConnect("mongodb://test:test@localhost:27017/?authSource=admin", "test", -1, opts)
+	mc, err := NewMongoConnectWithPoolOptions("mongodb://test:test@localhost:27017/?authSource=admin", "test", -1, opts)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", name, err)
 	}
@@ -57,7 +57,7 @@ func TestNewMongoConnect(t *testing.T) {
 
 func TestMongoConnect_GetMongoClient(t *testing.T) {
 	name := "TestMongoConnect_GetMongoClient"
-	mc, err := NewMongoConnect("mongodb://test:test@localhost:27017/?authSource=admin", "test", 10000, nil)
+	mc, err := NewMongoConnect("mongodb://test:test@localhost:27017/?authSource=admin", "test", 10000)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", name, err)
 	}
@@ -69,7 +69,7 @@ func TestMongoConnect_GetMongoClient(t *testing.T) {
 
 func TestMongoConnect_GetDatabase(t *testing.T) {
 	name := "TestMongoConnect_GetDatabase"
-	mc, err := NewMongoConnect("mongodb://test:test@localhost:27017/?authSource=admin", "test", 10000, nil)
+	mc, err := NewMongoConnect("mongodb://test:test@localhost:27017/?authSource=admin", "test", 10000)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", name, err)
 	}
@@ -82,7 +82,7 @@ func TestMongoConnect_GetDatabase(t *testing.T) {
 
 func TestMongoConnect_GetCollection(t *testing.T) {
 	name := "TestMongoConnect_GetCollection"
-	mc, err := NewMongoConnect("mongodb://test:test@localhost:27017/?authSource=admin", "test", 10000, nil)
+	mc, err := NewMongoConnect("mongodb://test:test@localhost:27017/?authSource=admin", "test", 10000)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", name, err)
 	}
@@ -96,7 +96,7 @@ func TestMongoConnect_GetCollection(t *testing.T) {
 func TestMongo_FastFailed(t *testing.T) {
 	name := "TestMongo_FastFailed"
 	timeoutMs := 20
-	mc, err := NewMongoConnect("mongodb://test:test@localhost:1234/?authSource=admin", "test", timeoutMs, nil)
+	mc, err := NewMongoConnect("mongodb://test:test@localhost:1234/?authSource=admin", "test", timeoutMs)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", name, err)
 	}
@@ -121,7 +121,7 @@ func _createMongoConnect(t *testing.T, testName string) *MongoConnect {
 		t.Skipf("%s skipped", testName)
 		return nil
 	}
-	mc, err := NewMongoConnect(mongoUrl, mongoDb, 10000, nil)
+	mc, err := NewMongoConnect(mongoUrl, mongoDb, 10000)
 	if err != nil {
 		t.Fatalf("%s/%s failed: %s", testName, "NewMongoConnect", err)
 	}

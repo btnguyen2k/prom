@@ -56,11 +56,21 @@ var (
 
 // NewGoRedisConnect constructs a new GoRedisConnect instance with supplied options and default Redis pool options.
 //
+// Parameters: see NewGoRedisConnectWithPoolOptions
+func NewGoRedisConnect(hostsAndPorts, password string, maxRetries int) *GoRedisConnect {
+	return NewGoRedisConnectWithPoolOptions(hostsAndPorts, password, maxRetries, defaultRedisPoolOpts)
+}
+
+// NewGoRedisConnectWithPoolOptions constructs a new GoRedisConnect instance with supplied options and default Redis pool options.
+//
 // Parameters:
 //   - hostsAndPorts: list of Redis servers (example: "host1:6379,host2;host3:6380")
 //   - password     : password to authenticate against Redis server
 //   - maxRetries   : max number of retries for failed operations
-func NewGoRedisConnect(hostsAndPorts, password string, maxRetries int) *GoRedisConnect {
+//   - poolOpts     : Redis connection pool settings
+//
+// Available since v0.2.8
+func NewGoRedisConnectWithPoolOptions(hostsAndPorts, password string, maxRetries int, poolOpts *RedisPoolOpts) *GoRedisConnect {
 	if maxRetries < 0 {
 		maxRetries = 0
 	}
@@ -71,7 +81,7 @@ func NewGoRedisConnect(hostsAndPorts, password string, maxRetries int) *GoRedisC
 		slaveReadOnly:   true,
 		clients:         map[int]*redis.Client{},
 		failoverClients: map[int]*redis.Client{},
-		poolOpts:        defaultRedisPoolOpts,
+		poolOpts:        poolOpts,
 	}
 	return r
 }

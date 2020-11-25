@@ -6,7 +6,7 @@
 
 Utility library to manage shared connection in Golang.
 
-Latest release [v0.2.7](RELEASE-NOTES.md).
+Latest release [v0.2.8](RELEASE-NOTES.md).
 
 ## Documentation
 
