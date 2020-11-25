@@ -244,7 +244,7 @@ func (sc *SqlConnect) NewContext(timeoutMs ...int) context.Context {
 	return ctx
 }
 
-// NewContext creates a new context with specified timeout in milliseconds if the supplied ctx is nil. Otherwise,
+// NewContextIfNil creates a new context with specified timeout in milliseconds if the supplied ctx is nil. Otherwise,
 // ctx is returned as-is.
 //
 // If there is no specified timeout, or timeout value is less than or equal to 0, the default timeout is used.
