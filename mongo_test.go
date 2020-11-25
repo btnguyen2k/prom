@@ -110,7 +110,7 @@ func TestMongo_FastFailed(t *testing.T) {
 	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
 	dmax := time.Duration(float64(time.Duration(timeoutMs)*time.Millisecond) * 1.5)
 	if d > dmax {
-		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1E6, d/1E6)
+		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
 	}
 }
 

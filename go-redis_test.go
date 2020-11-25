@@ -118,7 +118,7 @@ func TestGoRedis_FastFailed_Client(t *testing.T) {
 	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
 	dmax := 20 * time.Millisecond
 	if d > dmax {
-		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1E6, d/1E6)
+		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
 	}
 }
 
@@ -143,7 +143,7 @@ func TestGoRedis_FastFailed_FailoverClient(t *testing.T) {
 	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
 	dmax := 20 * time.Millisecond
 	if d > dmax {
-		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1E6, d/1E6)
+		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
 	}
 }
 
@@ -168,6 +168,6 @@ func TestGoRedis_FastFailed_GetClusterClient(t *testing.T) {
 	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
 	dmax := 20 * time.Millisecond
 	if d > dmax {
-		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1E6, d/1E6)
+		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
 	}
 }
