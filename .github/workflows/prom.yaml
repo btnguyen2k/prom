@@ -20,7 +20,7 @@ jobs:
     - name: Test
       run: |
         go test -cover -coverprofile=coverage_general.txt -v .
-        bash <(curl -s https://codecov.io/bash)
+        bash <(curl -s https://codecov.io/bash) -cF general
 
   testWithAwsDynamoDB:
     name: Test with AWS DynamoDB
@@ -41,7 +41,7 @@ jobs:
         export AWS_SECRET_ACCESS_KEY="DUMMYEXAMPLEKEY"
         export AWS_DYNAMODB_ENDPOINT="http://localhost:8000"
         go test -cover -coverprofile=coverage_dynamodb.txt -v -run ".*Dynamodb.*" .
-        bash <(curl -s https://codecov.io/bash)
+        bash <(curl -s https://codecov.io/bash) -cF dynamodb
 
   testWithMongoStandalone:
     name: Test with MongoDB (Standalone)
@@ -60,7 +60,7 @@ jobs:
         export MONGO_DB="test"
         export MONGO_URL="mongodb://test:test@localhost:27017/?authSource=admin"
         go test -cover -coverprofile=coverage_mongo_singleserver.txt -v -run ".*Mongo.*" .
-        bash <(curl -s https://codecov.io/bash)
+        bash <(curl -s https://codecov.io/bash) -cF mongo_singleserver
 
   testWithMongoReplicaSet:
     name: Test with MongoDB (ReplicaSet)
@@ -79,7 +79,7 @@ jobs:
         export MONGO_DB="test"
         export MONGO_URL="mongodb://root:test@localhost:27017/?authSource=admin&replicaSet=replicaset"
         go test -cover -coverprofile=coverage_mongo_replicaset.txt -v -run ".*Mongo.*" .
-        bash <(curl -s https://codecov.io/bash)
+        bash <(curl -s https://codecov.io/bash) -cF mongo_replicaset
 
   testWithSqlite:
     name: Test with SQLite
@@ -98,7 +98,7 @@ jobs:
         export SQLITE_DRIVER="sqlite3"
         export SQLITE_URL="./temp/temp.db"
         go test -cover -coverprofile=coverage_sqlite.txt -v -run ".*Sql.*" .
-        bash <(curl -s https://codecov.io/bash)
+        bash <(curl -s https://codecov.io/bash) -cF sqlite
 
   testWithMySQL:
     name: Test with MySQL
@@ -118,7 +118,7 @@ jobs:
         export MYSQL_DRIVER="mysql"
         export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=\${loc}"
         go test -cover -coverprofile=coverage_mysql.txt -v -run ".*Sql.*" .
-        bash <(curl -s https://codecov.io/bash)
+        bash <(curl -s https://codecov.io/bash) -cF mysql
 
   testWithPostgreSQL:
     name: Test with PostgreSQL
@@ -138,7 +138,7 @@ jobs:
         export PGSQL_DRIVER="pgx"
         export PGSQL_URL="postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
         go test -cover -coverprofile=coverage_pgsql.txt -v -run ".*Sql.*" .
-        bash <(curl -s https://codecov.io/bash)
+        bash <(curl -s https://codecov.io/bash) -cF pgsql
 
   testWithMSSQL:
     name: Test with MSSQL
@@ -158,4 +158,4 @@ jobs:
         export MSSQL_DRIVER="sqlserver"
         export MSSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
         go test -cover -coverprofile=coverage_mssql.txt -v -run ".*Sql.*" .
-        bash <(curl -s https://codecov.io/bash)
+        bash <(curl -s https://codecov.io/bash) -cF mssql
