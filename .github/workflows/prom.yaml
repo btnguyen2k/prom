@@ -17,11 +17,10 @@ jobs:
         go-version: ^1.13
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-    - name: Start AWS DynamoDB local server
-      run: docker run -d --name dynamodb -p 8000:8000 amazon/dynamodb-local -jar DynamoDBLocal.jar -inMemory -sharedDb
     - name: Test
       run: |
-        go test -cover -v -run .
+        go test -cover -coverprofile=coverage_general.txt -v .
+        bash <(curl -s https://codecov.io/bash)
 
   testWithAwsDynamoDB:
     name: Test with AWS DynamoDB
