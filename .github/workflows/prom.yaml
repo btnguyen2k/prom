@@ -40,7 +40,8 @@ jobs:
         export AWS_ACCESS_KEY_ID="DUMMYIDEXAMPLE"
         export AWS_SECRET_ACCESS_KEY="DUMMYEXAMPLEKEY"
         export AWS_DYNAMODB_ENDPOINT="http://localhost:8000"
-        go test -cover -v -run ".*Dynamodb.*" .
+        go test -cover -coverprofile=coverage_dynamodb.txt -v -run ".*Dynamodb.*" .
+        bash <(curl -s https://codecov.io/bash)
 
   testWithMongoStandalone:
     name: Test with MongoDB (Standalone)
@@ -58,7 +59,8 @@ jobs:
       run: |
         export MONGO_DB="test"
         export MONGO_URL="mongodb://test:test@localhost:27017/?authSource=admin"
-        go test -cover -v -run ".*Mongo.*" .
+        go test -cover -coverprofile=coverage_mongo_singleserver.txt -v -run ".*Mongo.*" .
+        bash <(curl -s https://codecov.io/bash)
 
   testWithMongoReplicaSet:
     name: Test with MongoDB (ReplicaSet)
@@ -76,7 +78,8 @@ jobs:
       run: |
         export MONGO_DB="test"
         export MONGO_URL="mongodb://root:test@localhost:27017/?authSource=admin&replicaSet=replicaset"
-        go test -cover -v -run ".*Mongo.*" .
+        go test -cover -coverprofile=coverage_mongo_replicaset.txt -v -run ".*Mongo.*" .
+        bash <(curl -s https://codecov.io/bash)
 
   testWithSqlite:
     name: Test with SQLite
@@ -94,7 +97,8 @@ jobs:
         mkdir ./temp
         export SQLITE_DRIVER="sqlite3"
         export SQLITE_URL="./temp/temp.db"
-        go test -cover -v -run ".*Sql.*" .
+        go test -cover -coverprofile=coverage_sqlite.txt -v -run ".*Sql.*" .
+        bash <(curl -s https://codecov.io/bash)
 
   testWithMySQL:
     name: Test with MySQL
@@ -113,7 +117,8 @@ jobs:
         export TIMEZONE="Asia/Ho_Chi_Minh"
         export MYSQL_DRIVER="mysql"
         export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=\${loc}"
-        go test -cover -v -run ".*Sql.*" .
+        go test -cover -coverprofile=coverage_mysql.txt -v -run ".*Sql.*" .
+        bash <(curl -s https://codecov.io/bash)
 
   testWithPostgreSQL:
     name: Test with PostgreSQL
@@ -132,7 +137,8 @@ jobs:
         export TIMEZONE="Asia/Ho_Chi_Minh"
         export PGSQL_DRIVER="pgx"
         export PGSQL_URL="postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
-        go test -cover -v -run ".*Sql.*" .
+        go test -cover -coverprofile=coverage_pgsql.txt -v -run ".*Sql.*" .
+        bash <(curl -s https://codecov.io/bash)
 
   testWithMSSQL:
     name: Test with MSSQL
@@ -151,4 +157,5 @@ jobs:
         export TIMEZONE="Asia/Ho_Chi_Minh"
         export MSSQL_DRIVER="sqlserver"
         export MSSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
-        go test -cover -v -run ".*Sql.*" .
+        go test -cover -coverprofile=coverage_mssql.txt -v -run ".*Sql.*" .
+        bash <(curl -s https://codecov.io/bash)
