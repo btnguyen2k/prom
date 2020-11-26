@@ -14,8 +14,6 @@ import (
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/godror/godror"
-	// _ "github.com/sijms/go-ora"
-	// _"github.com/mattn/go-oci8"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	_ "github.com/mattn/go-sqlite3"
 )

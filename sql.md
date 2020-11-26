@@ -1,14 +1,18 @@
 **'Prom' for the `database/sql` package (https://golang.org/pkg/database/sql/)**
 
-Drivers:
-- [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql).
-- [x] PostgreSQL: [github.com/lib/pq](https://github.com/lib/pq).
-- [x] Oracle: [github.com/godror/godror](https://github.com/go-goracle/goracle).
-- [ ] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb) (_experimental_).
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom#SqlConnect)
+
+Prom for `database/sql` has been tested and supports with the following drivers:
+
+- [x] SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
+- [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
+- [x] PostgreSQL:[github.com/jackc/pgx](https://github.com/jackc/pgx)
+- [x] Oracle: [github.com/godror/godror](https://github.com/go-goracle/goracle)
+- [x] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb).
 
 Sample usage (MySQL):
 
-```golang
+```go
 import (
 	"github.com/btnguyen2k/prom"
 	_ "github.com/go-sql-driver/mysql"
@@ -16,8 +20,9 @@ import (
 )
 
 driver := "mysql"
-dsn := "test:test@tcp(localhost:3306)/test"
-sqlConnect, err := prom.NewSqlConnect(driver, dsn, 10000, nil)
+dsn := "user:passwd@tcp(localhost:3306)/dbname"
+timeoutMs := 10000
+sqlConnect, err := prom.NewSqlConnect(driver, dsn, timeoutMs, nil)
 if sqlConnect == nil || err != nil {
     if err != nil {
 	    fmt.Println("Error:", err)
@@ -29,7 +34,7 @@ if sqlConnect == nil || err != nil {
 
 // from now on, one SqlConnect instance can be shared & used by all goroutines within the application
 
-//execute SQL statement to drop & create table
+// execute SQL statement to drop & create table
 sql := "DROP TABLE IF EXISTS tbl_demo"
 _, err := sqlConnect.GetDB().Exec(sql)
 if err != nil {
@@ -45,7 +50,7 @@ if err != nil {
 	}
 }
 
-//insert some rows
+// insert some rows
 sql = "INSERT INTO tbl_demo (id, name) VALUES (?, ?)"
 n := 100
 fmt.Printf("Inserting %d rows to table [tbl_demo]\n", n)
@@ -56,6 +61,7 @@ for i := 1; i <= n; i++ {
 }
 ```
 
-See usage examples in [examples directory](examples/). Documentation at [![GoDoc](https://godoc.org/github.com/btnguyen2k/prom?status.svg)](https://godoc.org/github.com/btnguyen2k/prom#SqlConnect)
-
-See also [database/sql](https://golang.org/pkg/database/sql/) package.
+See more:
+- [examples](examples/)
+- Package [database/sql](https://golang.org/pkg/database/sql/)
+- [SQL database drivers](https://github.com/golang/go/wiki/SQLDrivers) for Go
