@@ -1,8 +1,10 @@
 **'Prom' for go-redis library (https://github.com/go-redis/redis)**
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom#GoRedisConnect)
+
 Usage:
 
-```golang
+```go
 hostsAndPorts  := "host1:6379,host2;host3:6380"
 password       := ""
 maxRetries     := 3
@@ -28,6 +30,6 @@ failoverClient := goRedisConnect.GetFailoverClient(db)
 clusterClient := goRedisConnect.GetClusterClient()
 ```
 
-See usage examples in [examples directory](examples/). Documentation at [![GoDoc](https://godoc.org/github.com/btnguyen2k/prom?status.svg)](https://godoc.org/github.com/btnguyen2k/prom#GoRedisConnect)
-
-See also [go-redis documentation](https://godoc.org/github.com/go-redis/redis).
+See more:
+- [examples](examples/)
+- [go-redis](https://godoc.org/github.com/go-redis/redis)

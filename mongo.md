@@ -1,12 +1,15 @@
 **'Prom' for the official Go driver for MongoDB (https://github.com/mongodb/mongo-go-driver)**
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom#MongoConnect)
+
 Usage:
 
-```golang
-url := "mongodb://username:password@localhost:27017/auth_db"
+```go
+url := "mongodb://user:passwd@localhost:37017/?authSource=auth_db"
+// urlReplSet := "mongodb://user:passwd@host1:27017,host2:27017,host3:27017/?authSource=auth_db&replicaSet=rsName"
 db := "mydb"
 timeoutMs := 10000
-mongoConnect, err := prom.NewMongoConnect(url, db, 10000)
+mongoConnect, err := prom.NewMongoConnect(url, db, timeoutMs)
 
 if err != nil {
     // if mongoConnect is not nil, error can be ignore
@@ -15,6 +18,6 @@ if err != nil {
 // from now on, one MongoConnect instance can be shared & used by all goroutines within the application
 ```
 
-See usage examples in [examples directory](examples/). Documentation at [![GoDoc](https://godoc.org/github.com/btnguyen2k/prom?status.svg)](https://godoc.org/github.com/btnguyen2k/prom#MongoConnect)
-
-See also [Go driver for MongoDB](https://godoc.org/go.mongodb.org/mongo-driver/mongo).
+See more:
+- [examples](examples/)
+- [Go driver for MongoDB](https://godoc.org/go.mongodb.org/mongo-driver/mongo)
