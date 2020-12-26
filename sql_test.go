@@ -333,6 +333,9 @@ func _generatePlaceholders(num int, dbtype string) string {
 }
 
 func sqlInitTable(sqlc *SqlConnect, table, dbtype string, insertSampleRows bool) error {
+	if dbtype == "cosmos" || dbtype == "cosmosdb" {
+		sqlc.GetDB().Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS prom"))
+	}
 	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", table))
 	sqlCreate := "CREATE TABLE %s (%s, PRIMARY KEY (%s))"
 	sqlInsert := "INSERT INTO %s (%s) VALUES (%s)"
