@@ -4,10 +4,9 @@
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom)
 [![Actions Status](https://github.com/btnguyen2k/prom/workflows/prom/badge.svg)](https://github.com/btnguyen2k/prom/actions)
 [![codecov](https://codecov.io/gh/btnguyen2k/prom/branch/master/graph/badge.svg?token=EBTGTZMSUV)](https://codecov.io/gh/btnguyen2k/prom)
+[![Release](https://img.shields.io/github/release/btnguyen2k/prom.svg?style=flat-square)](RELEASE-NOTES.md)
 
-Utility library to manage shared connection in Golang.
-
-Latest release [v0.2.8](RELEASE-NOTES.md).
+Utility library to manage shared connections in Go.
 
 ## Documentation
 

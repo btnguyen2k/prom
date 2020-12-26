@@ -1,5 +1,13 @@
 # prom release notes
 
+## 2020-12-26 - v0.2.9
+
+- `SqlConnect`:
+  - Add `FlavorCosmosDb` && [Azure Cosmos DB](https://docs.microsoft.com/en-us/azure/cosmos-db/) support.
+- More unit tests.
+- Update dependency libs.
+- Other fixes & enhancements.
+
 ## 2020-10-25 - v0.2.8
 
 - `GoRedisConnect`:

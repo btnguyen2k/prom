@@ -4,11 +4,12 @@
 
 Prom for `database/sql` has been tested and supports with the following drivers:
 
-- [x] SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
-- [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
-- [x] PostgreSQL:[github.com/jackc/pgx](https://github.com/jackc/pgx)
-- [x] Oracle: [github.com/godror/godror](https://github.com/go-goracle/goracle)
+- [x] Azure Cosmos DB: [github.com/btnguyen2k/gocosmos](https://github.com/btnguyen2k/gocosmos).
 - [x] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb).
+- [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql).
+- [x] Oracle: [github.com/godror/godror](https://github.com/go-goracle/goracle).
+- [x] PostgreSQL:[github.com/jackc/pgx](https://github.com/jackc/pgx).
+- [x] SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3).
 
 Sample usage (MySQL):
 
@@ -22,7 +23,7 @@ import (
 driver := "mysql"
 dsn := "user:passwd@tcp(localhost:3306)/dbname"
 timeoutMs := 10000
-sqlConnect, err := prom.NewSqlConnect(driver, dsn, timeoutMs, nil)
+sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, timeoutMs, nil, prom.FlavorMySql)
 if sqlConnect == nil || err != nil {
     if err != nil {
 	    fmt.Println("Error:", err)
