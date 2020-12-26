@@ -662,7 +662,7 @@ func TestSqlConnect_FetchRowsCallback(t *testing.T) {
 	}
 }
 
-var sqlColNames = []string{"id", "data_str", "data_bool",
+var sqlColNamesTestDataType = []string{"id", "data_str", "data_bool",
 	"data_int_tiny", "data_int_small", "data_int_medium", "data_int", "data_int_big",
 	"data_float1", "data_float2", "data_float3", "data_float4",
 	"data_fix1", "data_fix2", "data_fix3", "data_fix4",
@@ -671,20 +671,25 @@ var sqlColNames = []string{"id", "data_str", "data_bool",
 	"data_datetime", "data_datetimez",
 	"data_timestamp", "data_timestampz"}
 
-func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []string) {
+func _testSqlDataType(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTypes []string) {
 	tblName := "tbl_test"
 	rand.Seed(time.Now().UnixNano())
 	{
 		sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
 
-		sql := fmt.Sprintf("CREATE TABLE %s (", tblName)
-		for i := range sqlColNames {
-			sql += sqlColNames[i] + " " + colTypes[i] + ","
-		}
-		sql += "PRIMARY KEY(id))"
-		_, err := sqlc.GetDB().Exec(sql)
-		if err != nil {
-			t.Fatalf("%s failed: %s\n%s", name, err, sql)
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			if _, err := sqlc.GetDB().Exec(fmt.Sprintf("CREATE TABLE %s WITH pk=/%s WITH maxru=10000", tblName, sqlColNamesTestDataType[0])); err != nil {
+				t.Fatalf("%s failed: %s", name, err)
+			}
+		} else {
+			sql := fmt.Sprintf("CREATE TABLE %s (", tblName)
+			for i := range sqlColNamesTestDataType {
+				sql += sqlColNamesTestDataType[i] + " " + colTypes[i] + ","
+			}
+			sql += fmt.Sprintf("PRIMARY KEY(%s))", sqlColNamesTestDataType[0])
+			if _, err := sqlc.GetDB().Exec(sql); err != nil {
+				t.Fatalf("%s failed: %s\n%s", name, err, sql)
+			}
 		}
 	}
 
@@ -695,7 +700,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 	now := time.Now().Round(time.Second).In(loc)
 	// fmt.Printf("Now: %s / %s\n", time.Now().Format(timeLayoutFull), now.Format(timeLayoutFull))
 	type Row struct {
-		id             int
+		id             string
 		dataStr        string
 		dataBool       string
 		dataIntTiny    int8
@@ -726,39 +731,24 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 	// insert some rows
 	{
 		sql := fmt.Sprintf("INSERT INTO %s (", tblName)
-		sql += strings.Join(sqlColNames, ",")
+		sql += strings.Join(sqlColNamesTestDataType, ",")
 		sql += ") VALUES ("
-		switch sqlc.flavor {
-		case FlavorMySql, FlavorSqlite:
-			sql += strings.Repeat("?,", len(sqlColNames)-1) + "?)"
-		case FlavorPgSql:
-			for k := range sqlColNames {
-				sql += "$" + strconv.Itoa(k+1) + ","
-			}
-			sql = sql[0:len(sql)-1] + ")"
-		case FlavorMsSql:
-			for k := range sqlColNames {
-				sql += "@p" + strconv.Itoa(k+1) + ","
-			}
-			sql = sql[0:len(sql)-1] + ")"
-		case FlavorOracle:
-			for k := range sqlColNames {
-				sql += ":" + strconv.Itoa(k+1) + ","
-			}
-			sql = sql[0:len(sql)-1] + ")"
-		}
+		sql += _generatePlaceholders(len(sqlColNamesTestDataType), dbtype) + ")"
 		for i := 1; i <= numRows; i++ {
 			// ti := now.Add(time.Duration(i) * time.Minute)
 			ti := now
 			vInt := rand.Int63()
+			if dbtype == "cosmos" || dbtype == "cosmosdb" {
+				vInt >>= 63 - 48
+			}
 			row := Row{
-				id:             i,
+				id:             fmt.Sprintf("%03d", i),
 				dataStr:        ti.Format(timeLayoutFull),
 				dataBool:       strconv.Itoa(int(vInt % 2)),
-				dataIntTiny:    int8(vInt%2 ^ 8),
-				dataIntSmall:   int16(vInt%2 ^ 16),
-				dataIntMedium:  int(vInt%2 ^ 24),
-				dataInt:        int32(vInt%2 ^ 32),
+				dataIntTiny:    int8(vInt % (2 ^ 8)),
+				dataIntSmall:   int16(vInt % (2 ^ 16)),
+				dataIntMedium:  int(vInt % (2 ^ 24)),
+				dataInt:        int32(vInt % (2 ^ 32)),
 				dataIntBig:     vInt,
 				dataFloat1:     rand.Float64(),
 				dataFloat2:     rand.Float64(),
@@ -778,12 +768,16 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 				dataTimestampz: ti,
 			}
 			rowArr = append(rowArr, row)
-			_, err := sqlc.GetDB().Exec(sql, row.id, row.dataStr, row.dataBool,
+			params := []interface{}{row.id, row.dataStr, row.dataBool,
 				row.dataIntTiny, row.dataIntSmall, row.dataIntMedium, row.dataInt, row.dataIntBig,
 				row.dataFloat1, row.dataFloat2, row.dataFloat3, row.dataFloat4,
 				row.dataFix1, row.dataFix2, row.dataFix3, row.dataFix4,
 				row.dataTime, row.dataTimez, row.dataDate, row.dataDatez,
-				row.dataDatetime, row.dataDatetimez, row.dataTimestamp, row.dataTimestampz)
+				row.dataDatetime, row.dataDatetimez, row.dataTimestamp, row.dataTimestampz}
+			if dbtype == "cosmos" || dbtype == "cosmosdb" {
+				params = append(params, row.id)
+			}
+			_, err := sqlc.GetDB().Exec(sql, params...)
 			if err != nil {
 				t.Fatalf("%s failed: %s", name, err)
 			}
@@ -793,8 +787,14 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 	// query some rows
 	{
 		id := rand.Intn(numRows) + 1
-		sql := fmt.Sprintf("SELECT * FROM %s WHERE id>=%d ORDER BY id", tblName, id)
-		dbRows, err := sqlc.GetDB().Query(sql)
+		placeholder := _generatePlaceholders(1, dbtype)
+		sql := "SELECT * FROM %s WHERE id>=%s ORDER BY id"
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			sql = "SELECT * FROM %s t WHERE t.id>=%s WITH cross_partition=true"
+		}
+		sql = fmt.Sprintf(sql, tblName, placeholder)
+		params := []interface{}{fmt.Sprintf("%03d", id)}
+		dbRows, err := sqlc.GetDB().Query(sql, params...)
 		if err != nil {
 			t.Fatalf("%s failed: %s", name, err)
 		}
@@ -828,7 +828,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToInt(expected.dataIntTiny)
 			v, _ := reddo.ToInt(row[f])
 			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -836,7 +836,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToInt(expected.dataIntSmall)
 			v, _ := reddo.ToInt(row[f])
 			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -844,7 +844,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToInt(expected.dataIntMedium)
 			v, _ := reddo.ToInt(row[f])
 			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -852,7 +852,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToInt(expected.dataInt)
 			v, _ := reddo.ToInt(row[f])
 			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -860,7 +860,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToInt(expected.dataIntBig)
 			v, _ := reddo.ToInt(row[f])
 			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -868,7 +868,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToFloat(expected.dataFloat1)
 			v, _ := reddo.ToFloat(row[f])
 			if math.Round(v*10e5)/10e5 != math.Round(e*10e5)/10e5 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -876,7 +876,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToFloat(expected.dataFloat2)
 			v, _ := reddo.ToFloat(row[f])
 			if math.Round(v*10e5)/10e5 != math.Round(e*10e5)/10e5 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -884,7 +884,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToFloat(expected.dataFloat3)
 			v, _ := reddo.ToFloat(row[f])
 			if math.Round(v*10e8)/10e8 != math.Round(e*10e8)/10e8 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -892,7 +892,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToFloat(expected.dataFloat4)
 			v, _ := reddo.ToFloat(row[f])
 			if math.Round(v*10e8)/10e8 != math.Round(e*10e8)/10e8 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -900,7 +900,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToFloat(expected.dataFix1)
 			v, _ := reddo.ToFloat(row[f])
 			if math.Round(v*10e1)/10e1 != math.Round(e*10e1)/10e1 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -908,7 +908,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToFloat(expected.dataFix2)
 			v, _ := reddo.ToFloat(row[f])
 			if math.Round(v*10e3)/10e3 != math.Round(e*10e3)/10e3 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -916,7 +916,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToFloat(expected.dataFix3)
 			v, _ := reddo.ToFloat(row[f])
 			if math.Round(v*10e5)/10e5 != math.Round(e*10e5)/10e5 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -924,7 +924,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToFloat(expected.dataFix4)
 			v, _ := reddo.ToFloat(row[f])
 			if math.Round(v*10e7)/10e7 != math.Round(e*10e7)/10e7 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -932,7 +932,7 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToString(expected.dataStr)
 			v, _ := reddo.ToString(row[f])
 			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
@@ -940,15 +940,18 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			e, _ := reddo.ToBool(expected.dataBool)
 			v, _ := reddo.ToBool(row[f])
 			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
 			}
 		}
 		{
 			tz := time.Now().In(loc).Format("-07:00")
 			for _, f := range []string{"data_time", "data_timez", "data_date", "data_datez", "data_datetime", "data_datetimez", "data_timestamp", "data_timestampz"} {
 				v, _ := reddo.ToTime(row[f])
+				if str, ok := row[f].(string); ok {
+					v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+				}
 				if v.Format("-07:00") != tz {
-					t.Fatalf("%s failed: [%s] expected timezone %#v but received %#v", name, f, tz, v.Format("-07:00"))
+					t.Fatalf("%s failed: [%s] expected timezone %#v but received %#v", name, row["id"].(string)+"/"+f, tz, v.Format("-07:00"))
 				}
 			}
 		}
@@ -956,64 +959,88 @@ func _testSqlDataTye(t *testing.T, name string, sqlc *SqlConnect, colTypes []str
 			f := "data_time"
 			e, _ := reddo.ToTime(expected.dataTime)
 			v, _ := reddo.ToTime(row[f])
+			if str, ok := row[f].(string); ok {
+				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+			}
 			if v.In(loc).Format(timeLayoutTime) != e.In(loc).Format(timeLayoutTime) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e.In(loc).Format(timeLayoutTime), v.In(loc).Format(timeLayoutTime))
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutTime), v.In(loc).Format(timeLayoutTime))
 			}
 		}
 		{
 			f := "data_timez"
 			e, _ := reddo.ToTime(expected.dataTimez)
 			v, _ := reddo.ToTime(row[f])
+			if str, ok := row[f].(string); ok {
+				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+			}
 			if v.In(loc).Format(timeLayoutTime) != e.In(loc).Format(timeLayoutTime) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e.In(loc).Format(timeLayoutTime), v.In(loc).Format(timeLayoutTime))
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutTime), v.In(loc).Format(timeLayoutTime))
 			}
 		}
 		{
 			f := "data_date"
 			e, _ := reddo.ToTime(expected.dataDate)
 			v, _ := reddo.ToTime(row[f])
+			if str, ok := row[f].(string); ok {
+				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+			}
 			if v.In(loc).Format(timeLayoutDate) != e.In(loc).Format(timeLayoutDate) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e.In(loc).Format(timeLayoutDate), v.In(loc).Format(timeLayoutDate))
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutDate), v.In(loc).Format(timeLayoutDate))
 			}
 		}
 		{
 			f := "data_datez"
 			e, _ := reddo.ToTime(expected.dataDatez)
 			v, _ := reddo.ToTime(row[f])
+			if str, ok := row[f].(string); ok {
+				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+			}
 			if v.In(loc).Format(timeLayoutDate) != e.In(loc).Format(timeLayoutDate) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e.In(loc).Format(timeLayoutDate), v.In(loc).Format(timeLayoutDate))
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutDate), v.In(loc).Format(timeLayoutDate))
 			}
 		}
 		{
 			f := "data_datetime"
 			e, _ := reddo.ToTime(expected.dataDatetime)
 			v, _ := reddo.ToTime(row[f])
+			if str, ok := row[f].(string); ok {
+				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+			}
 			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
 			}
 		}
 		{
 			f := "data_datetimez"
 			e, _ := reddo.ToTime(expected.dataDatetimez)
 			v, _ := reddo.ToTime(row[f])
+			if str, ok := row[f].(string); ok {
+				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+			}
 			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
 			}
 		}
 		{
 			f := "data_timestamp"
 			e, _ := reddo.ToTime(expected.dataTimestamp)
 			v, _ := reddo.ToTime(row[f])
+			if str, ok := row[f].(string); ok {
+				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+			}
 			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
 			}
 		}
 		{
 			f := "data_timestampz"
 			e, _ := reddo.ToTime(expected.dataTimestampz)
 			v, _ := reddo.ToTime(row[f])
+			if str, ok := row[f].(string); ok {
+				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+			}
 			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
 			}
 		}
 	}
@@ -1033,7 +1060,7 @@ func TestSql_DataType_Mysql(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"INT", "VARCHAR(64)", "CHAR(1)",
+	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
 		"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT",
 		"FLOAT", "REAL", "DOUBLE", "DOUBLE PRECISION",
 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
@@ -1041,7 +1068,7 @@ func TestSql_DataType_Mysql(t *testing.T) {
 		"DATE", "DATE",
 		"DATETIME", "DATETIME",
 		"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
-	_testSqlDataTye(t, name, sqlc, sqlColTypes)
+	_testSqlDataType(t, name, "mysql", sqlc, sqlColTypes)
 }
 
 func TestSql_DataType_Pgsql(t *testing.T) {
@@ -1049,7 +1076,10 @@ func TestSql_DataType_Pgsql(t *testing.T) {
 	urlMap := sqlGetUrlFromEnv()
 	info, ok := urlMap["pgsql"]
 	if !ok {
-		t.Skipf("%s skipped", name)
+		info, ok = urlMap["postgresql"]
+		if !ok {
+			t.Skipf("%s skipped", name)
+		}
 	}
 	sqlc, err := newSqlConnectPgsql(info.driver, info.url, timezoneSql, -1, nil)
 	if err != nil {
@@ -1058,7 +1088,7 @@ func TestSql_DataType_Pgsql(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"INT", "VARCHAR(64)", "CHAR(1)",
+	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
 		"SMALLINT", "INT2", "INT4", "INT", "BIGINT",
 		"FLOAT", "REAL", "DOUBLE PRECISION", "DOUBLE PRECISION",
 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
@@ -1066,7 +1096,7 @@ func TestSql_DataType_Pgsql(t *testing.T) {
 		"DATE", "DATE",
 		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE",
 		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
-	_testSqlDataTye(t, name, sqlc, sqlColTypes)
+	_testSqlDataType(t, name, "pgsql", sqlc, sqlColTypes)
 }
 
 func TestSql_DataType_Mssql(t *testing.T) {
@@ -1083,7 +1113,7 @@ func TestSql_DataType_Mssql(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"INT", "NVARCHAR(64)", "NCHAR(1)",
+	sqlColTypes := []string{"NVARCHAR(8)", "NVARCHAR(64)", "NCHAR(1)",
 		"TINYINT", "SMALLINT", "INT", "INTEGER", "BIGINT",
 		"FLOAT(24)", "REAL", "FLOAT(53)", "DOUBLE PRECISION",
 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
@@ -1091,7 +1121,7 @@ func TestSql_DataType_Mssql(t *testing.T) {
 		"DATE", "DATE",
 		"DATETIME", "DATETIMEOFFSET",
 		"DATETIME2", "DATETIMEOFFSET"}
-	_testSqlDataTye(t, name, sqlc, sqlColTypes)
+	_testSqlDataType(t, name, "mssql", sqlc, sqlColTypes)
 }
 
 func TestSql_DataType_Oracle(t *testing.T) {
@@ -1108,7 +1138,7 @@ func TestSql_DataType_Oracle(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"INT", "NVARCHAR2(64)", "NCHAR(1)",
+	sqlColTypes := []string{"NVARCHAR2(8)", "NVARCHAR2(64)", "NCHAR(1)",
 		"SMALLINT", "SMALLINT", "INT", "INTEGER", "INTEGER",
 		"FLOAT", "BINARY_FLOAT", "REAL", "BINARY_DOUBLE",
 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
@@ -1116,7 +1146,7 @@ func TestSql_DataType_Oracle(t *testing.T) {
 		"DATE", "TIMESTAMP WITH TIME ZONE",
 		"DATE", "TIMESTAMP WITH TIME ZONE",
 		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
-	_testSqlDataTye(t, name, sqlc, sqlColTypes)
+	_testSqlDataType(t, name, "oracle", sqlc, sqlColTypes)
 }
 
 func TestSql_DataType_Sqlite(t *testing.T) {
@@ -1124,7 +1154,10 @@ func TestSql_DataType_Sqlite(t *testing.T) {
 	urlMap := sqlGetUrlFromEnv()
 	info, ok := urlMap["sqlite"]
 	if !ok {
-		t.Skipf("%s skipped", name)
+		info, ok = urlMap["sqlite3"]
+		if !ok {
+			t.Skipf("%s skipped", name)
+		}
 	}
 	sqlc, err := newSqlConnectSqlite(info.driver, info.url, timezoneSql, -1, nil)
 	if err != nil {
@@ -1133,7 +1166,7 @@ func TestSql_DataType_Sqlite(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"INT", "VARCHAR(64)", "CHAR(1)",
+	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
 		"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT",
 		"FLOAT", "REAL", "DOUBLE", "DOUBLE PRECISION",
 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
@@ -1141,5 +1174,25 @@ func TestSql_DataType_Sqlite(t *testing.T) {
 		"DATE", "DATE",
 		"DATETIME", "DATETIME",
 		"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
-	_testSqlDataTye(t, name, sqlc, sqlColTypes)
+	_testSqlDataType(t, name, "sqlite", sqlc, sqlColTypes)
+}
+
+func TestSql_DataType_Cosmos(t *testing.T) {
+	name := "TestSql_DataType_Cosmos"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap["cosmos"]
+	if !ok {
+		info, ok = urlMap["cosmosdb"]
+		if !ok {
+			t.Skipf("%s skipped", name)
+		}
+	}
+	sqlc, err := newSqlConnectCosmosdb(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	_testSqlDataType(t, name, "cosmos", sqlc, nil)
 }
