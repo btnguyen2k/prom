@@ -551,10 +551,10 @@ func TestSqlConnect_FetchRows(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	name := "TestSqlConnect_FetchRows"
 	urlMap := sqlGetUrlFromEnv()
-	for k, info := range urlMap {
+	for dbtype, info := range urlMap {
 		var sqlc *SqlConnect
 		var err error
-		switch k {
+		switch dbtype {
 		case "sqlite", "sqlite3":
 			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mssql":
@@ -563,36 +563,42 @@ func TestSqlConnect_FetchRows(t *testing.T) {
 			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "oracle":
 			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
-		case "pgsql":
+		case "pgsql", "postgresql":
+			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "cosmos", "cosmosdb":
 			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
 		default:
-			t.Fatalf("%s failed: unknown database type [%s]", name, k)
+			t.Fatalf("%s failed: unknown database type [%s]", name, dbtype)
 		}
 		if err != nil {
-			t.Fatalf("%s failed: error [%s]", name+"/"+k, err)
+			t.Fatalf("%s failed: error [%s]", name+"/"+dbtype, err)
 		} else if sqlc == nil {
-			t.Fatalf("%s failed: nil", name+"/"+k)
+			t.Fatalf("%s failed: nil", name+"/"+dbtype)
 		}
-		err = sqlInitTable(sqlc, testSqlTableName, k, true)
+		err = sqlInitTable(sqlc, testSqlTableName, dbtype, true)
 		if err != nil {
-			t.Fatalf("%s failed: error [%s]", name+"/sqlInitTable/"+k, err)
+			t.Fatalf("%s failed: error [%s]", name+"/sqlInitTable/"+dbtype, err)
 		}
-		sqlSelect := "SELECT * FROM %s WHERE userid < '%s'"
+		placeholder := _generatePlaceholders(1, dbtype)
+		sqlSelect := "SELECT * FROM %s WHERE userid < %s"
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			sqlSelect = "SELECT CROSS PARTITION * FROM %s t WHERE t.userid < %s"
+		}
 		i := rand.Intn(10)
-		id := strconv.Itoa(i)
-		dbRows, err := sqlc.GetDB().Query(fmt.Sprintf(sqlSelect, testSqlTableName, id))
+		params := []interface{}{strconv.Itoa(i)}
+		dbRows, err := sqlc.GetDB().Query(fmt.Sprintf(sqlSelect, testSqlTableName, placeholder), params...)
 		if err != nil {
-			t.Fatalf("%s failed: error [%s]", name+"/Query/"+k, err)
+			t.Fatalf("%s failed: error [%s]", name+"/Query/"+dbtype, err)
 		} else if dbRows == nil {
-			t.Fatalf("%s failed: nil", name+"/Query/"+k)
+			t.Fatalf("%s failed: nil", name+"/Query/"+dbtype)
 		}
 		dataRows, err := sqlc.FetchRows(dbRows)
 		if err != nil {
-			t.Fatalf("%s failed: error [%s]", name+"/FetchRows/"+k, err)
+			t.Fatalf("%s failed: error [%s]", name+"/FetchRows/"+dbtype, err)
 		} else if dataRows == nil {
-			t.Fatalf("%s failed: nil", name+"/FetchRows/"+k)
+			t.Fatalf("%s failed: nil", name+"/FetchRows/"+dbtype)
 		} else if len(dataRows) != i {
-			t.Fatalf("%s failed: expected %d fields but received %d", name+"/FetchRows/"+k, i, len(dataRows))
+			t.Fatalf("%s failed: expected %d fields but received %d", name+"/FetchRows/"+dbtype, i, len(dataRows))
 		}
 	}
 }
@@ -601,10 +607,10 @@ func TestSqlConnect_FetchRowsCallback(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	name := "TestSqlConnect_FetchRowsCallback"
 	urlMap := sqlGetUrlFromEnv()
-	for k, info := range urlMap {
+	for dbtype, info := range urlMap {
 		var sqlc *SqlConnect
 		var err error
-		switch k {
+		switch dbtype {
 		case "sqlite", "sqlite3":
 			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mssql":
@@ -613,28 +619,34 @@ func TestSqlConnect_FetchRowsCallback(t *testing.T) {
 			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "oracle":
 			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
-		case "pgsql":
+		case "pgsql", "postgresql":
 			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "cosmos", "cosmosdb":
+			sqlc, err = newSqlConnectCosmosdb(info.driver, info.url, timezoneSql, 10000, nil)
 		default:
-			t.Fatalf("%s failed: unknown database type [%s]", name, k)
+			t.Fatalf("%s failed: unknown database type [%s]", name, dbtype)
 		}
 		if err != nil {
-			t.Fatalf("%s failed: error [%s]", name+"/"+k, err)
+			t.Fatalf("%s failed: error [%s]", name+"/"+dbtype, err)
 		} else if sqlc == nil {
-			t.Fatalf("%s failed: nil", name+"/"+k)
+			t.Fatalf("%s failed: nil", name+"/"+dbtype)
 		}
-		err = sqlInitTable(sqlc, testSqlTableName, k, true)
+		err = sqlInitTable(sqlc, testSqlTableName, dbtype, true)
 		if err != nil {
-			t.Fatalf("%s failed: error [%s]", name+"/sqlInitTable/"+k, err)
+			t.Fatalf("%s failed: error [%s]", name+"/sqlInitTable/"+dbtype, err)
 		}
-		sqlSelect := "SELECT * FROM %s WHERE userid < '%s'"
+		placeholder := _generatePlaceholders(1, dbtype)
+		sqlSelect := "SELECT * FROM %s WHERE userid < %s"
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			sqlSelect = "SELECT CROSS PARTITION * FROM %s t WHERE t.userid < %s"
+		}
 		i := rand.Intn(10)
-		id := strconv.Itoa(i)
-		dbRows, err := sqlc.GetDB().Query(fmt.Sprintf(sqlSelect, testSqlTableName, id))
+		params := []interface{}{strconv.Itoa(i)}
+		dbRows, err := sqlc.GetDB().Query(fmt.Sprintf(sqlSelect, testSqlTableName, placeholder), params...)
 		if err != nil {
-			t.Fatalf("%s failed: error [%s]", name+"/Query/"+k, err)
+			t.Fatalf("%s failed: error [%s]", name+"/Query/"+dbtype, err)
 		} else if dbRows == nil {
-			t.Fatalf("%s failed: nil", name+"/Query/"+k)
+			t.Fatalf("%s failed: nil", name+"/Query/"+dbtype)
 		}
 		dataRows := make([]map[string]interface{}, 0)
 		sqlc.FetchRowsCallback(dbRows, func(row map[string]interface{}, err error) bool {
@@ -645,7 +657,7 @@ func TestSqlConnect_FetchRowsCallback(t *testing.T) {
 			return true
 		})
 		if len(dataRows) != i {
-			t.Fatalf("%s failed: expected %d fields but received %d", name+"/FetchRowsCallback/"+k, i, len(dataRows))
+			t.Fatalf("%s failed: expected %d fields but received %d", name+"/FetchRowsCallback/"+dbtype, i, len(dataRows))
 		}
 	}
 }
