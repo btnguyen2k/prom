@@ -183,3 +183,6 @@ jobs:
         go test -cover -coverprofile="coverage_cosmosdb.txt" -v -run ".*Sql.*" .
     - name: Codecov
       uses: codecov/codecov-action@v1.0.15
+      with:
+        flags: cosmosdb
+        name: cosmosdb
