@@ -26,6 +26,7 @@ const (
 	FlavorMsSql
 	FlavorOracle
 	FlavorSqlite
+		FlavorCosmosDb
 )
 
 // SqlPoolOptions configures database connection pooling options.
