@@ -496,10 +496,10 @@ func TestSqlConnect_FetchRow(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	name := "TestSqlConnect_FetchRow"
 	urlMap := sqlGetUrlFromEnv()
-	for k, info := range urlMap {
+	for dbtype, info := range urlMap {
 		var sqlc *SqlConnect
 		var err error
-		switch k {
+		switch dbtype {
 		case "sqlite", "sqlite3":
 			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
 		case "mssql":
@@ -508,30 +508,41 @@ func TestSqlConnect_FetchRow(t *testing.T) {
 			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "oracle":
 			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
-		case "pgsql":
+		case "pgsql", "postgresql":
 			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "cosmos", "cosmosdb":
+			sqlc, err = newSqlConnectCosmosdb(info.driver, info.url, timezoneSql, 10000, nil)
 		default:
-			t.Fatalf("%s failed: unknown database type [%s]", name, k)
+			t.Fatalf("%s failed: unknown database type [%s]", name, dbtype)
 		}
 		if err != nil {
-			t.Fatalf("%s failed: error [%s]", name+"/"+k, err)
+			t.Fatalf("%s failed: error [%s]", name+"/"+dbtype, err)
 		} else if sqlc == nil {
-			t.Fatalf("%s failed: nil", name+"/"+k)
+			t.Fatalf("%s failed: nil", name+"/"+dbtype)
 		}
-		err = sqlInitTable(sqlc, testSqlTableName, k, true)
+		err = sqlInitTable(sqlc, testSqlTableName, dbtype, true)
 		if err != nil {
-			t.Fatalf("%s failed: error [%s]", name+"/sqlInitTable/"+k, err)
+			t.Fatalf("%s failed: error [%s]", name+"/sqlInitTable/"+dbtype, err)
 		}
-		sqlSelect := "SELECT * FROM %s WHERE userid='%s'"
-		id := strconv.Itoa(rand.Intn(10))
-		dbRow := sqlc.GetDB().QueryRow(fmt.Sprintf(sqlSelect, testSqlTableName, id))
+
+		placeholder := _generatePlaceholders(1, dbtype)
+		sqlSelect := fmt.Sprintf("SELECT * FROM %s WHERE %s=%s", testSqlTableName, sqlTableColNames[0], placeholder)
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			colList := "t." + sqlTableColNames[1]
+			for i, n := 2, len(sqlTableColNames); i < n; i++ {
+				colList += ",t." + sqlTableColNames[i]
+			}
+			sqlSelect = fmt.Sprintf("SELECT %s FROM %s t WHERE t.%s=%s", colList, testSqlTableName, sqlTableColNames[0], placeholder)
+		}
+		params := []interface{}{strconv.Itoa(rand.Intn(10))}
+		dbRow := sqlc.GetDB().QueryRow(sqlSelect, params...)
 		dataRow, err := sqlc.FetchRow(dbRow, len(sqlTableColNames)-1)
 		if err != nil {
-			t.Fatalf("%s failed: error [%s]", name+"/FetchRow/"+k, err)
+			t.Fatalf("%s failed: error [%s]", name+"/FetchRow/"+dbtype, err)
 		} else if dataRow == nil {
-			t.Fatalf("%s failed: nil", name+"/FetchRow/"+k)
+			t.Fatalf("%s failed: nil", name+"/FetchRow/"+dbtype)
 		} else if len(dataRow) != len(sqlTableColNames)-1 {
-			t.Fatalf("%s failed: expected %d fields but received %d", name+"/FetchRow/"+k, len(sqlTableColNames)-1, len(dataRow))
+			t.Fatalf("%s failed: expected %d fields but received %d", name+"/FetchRow/"+dbtype, len(sqlTableColNames)-1, len(dataRow))
 		}
 	}
 }
