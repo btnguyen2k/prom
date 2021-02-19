@@ -813,6 +813,7 @@ func _testSqlDataType(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTy
 		}
 		expected := rowArr[id-1]
 		row := rows[0]
+		fmt.Printf("DEBUG: %#v\n", row)
 		// fmt.Println(id, row)
 		for k, v := range row {
 			// transform to lower-cases
@@ -1144,7 +1145,7 @@ func TestSql_DataType_Oracle(t *testing.T) {
 	sqlColTypes := []string{"NVARCHAR2(8)", "NVARCHAR2(64)", "NCHAR(1)",
 		"SMALLINT", "SMALLINT", "INT", "INTEGER", "INTEGER",
 		"FLOAT", "BINARY_FLOAT", "REAL", "BINARY_DOUBLE",
-		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
+		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMBER(12,6)", "DECIMAL(12,8)",
 		"DATE", "TIMESTAMP WITH TIME ZONE",
 		"DATE", "TIMESTAMP WITH TIME ZONE",
 		"DATE", "TIMESTAMP WITH TIME ZONE",

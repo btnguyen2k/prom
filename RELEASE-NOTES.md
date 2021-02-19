@@ -1,5 +1,9 @@
 # prom release notes
 
+## 2021-02-19 - v0.2.10
+
+- Quick fix for Oracle's `NUMBER` data type.
+
 ## 2020-12-26 - v0.2.9
 
 - `SqlConnect`:
