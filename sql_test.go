@@ -1,16 +1,18 @@
 package prom
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"math/rand"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/btnguyen2k/consu/reddo"
 	_ "github.com/btnguyen2k/gocosmos"
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
@@ -70,11 +72,13 @@ func newSqlConnectPgsql(driver, url, timezone string, timeoutMs int, poolOptions
 }
 
 func newSqlConnectCosmosdb(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+	url += ";Db=prom"
 	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorCosmosDb)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
 	}
+	sqlc.GetDB().Exec("CREATE DATABASE prom WITH maxru=10000")
 	return sqlc, err
 }
 
@@ -150,51 +154,6 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 		}
 	}
 }
-
-// func TestSqlConnect_FastFailed(t *testing.T) {
-// 	name := "TestSqlConnect_FastFailed"
-//
-// 	type testInfo struct {
-// 		driver, dsn string
-// 		dbFlavor    DbFlavor
-// 	}
-// 	testDataMap := map[string]testInfo{
-// 		"sqlite": {driver: "sqlite3", dsn: "./should_not_exist/temp.db", dbFlavor: FlavorSqlite},
-// 		"mssql":  {driver: "sqlserver", dsn: "sqlserver://sa:secret@localhost:1234?database=tempdb&connection+timeout=1&dial+timeout=1", dbFlavor: FlavorMsSql},
-// 		"mysql":  {driver: "mysql", dsn: "test:test@tcp(localhost:1234)/test?charset=utf8mb4,utf8&parseTime=false", dbFlavor: FlavorMySql},
-// 		"oracle": {driver: "godror", dsn: "test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1234)))(CONNECT_DATA=(SID=ORCLCDB)))", dbFlavor: FlavorOracle},
-// 		"pgsql":  {driver: "pgx", dsn: "postgres://test:test@localhost:1234/test?sslmode=disable&client_encoding=UTF-8&application_name=prom&connect_timeout=1", dbFlavor: FlavorPgSql},
-// 	}
-// 	timeoutMs := 1024
-// 	for k, info := range testDataMap {
-// 		var sqlc *SqlConnect
-// 		switch k {
-// 		case "sqlite", "sqlite3":
-// 			sqlc, _ = newSqlConnectSqlite(info.driver, info.dsn, timezoneSql, timeoutMs, nil)
-// 		case "mssql":
-// 			sqlc, _ = newSqlConnectMssql(info.driver, info.dsn, timezoneSql, timeoutMs, nil)
-// 		case "mysql":
-// 			sqlc, _ = newSqlConnectMysql(info.driver, info.dsn, timezoneSql, timeoutMs, nil)
-// 		case "oracle":
-// 			sqlc, _ = newSqlConnectOracle(info.driver, info.dsn, timezoneSql, timeoutMs, nil)
-// 		case "pgsql":
-// 			sqlc, _ = newSqlConnectPgsql(info.driver, info.dsn, timezoneSql, timeoutMs, nil)
-// 		default:
-// 			t.Fatalf("%s failed: unknown database type [%s]", name, k)
-// 		}
-//
-// 		tstart := time.Now()
-// 		err := sqlc.Ping(nil)
-// 		if err == nil {
-// 			t.Fatalf("%s/%s failed: the operation should not success", name, k)
-// 		}
-// 		d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
-// 		dmax := time.Duration(float64(time.Duration(timeoutMs)*time.Millisecond) * 1.5)
-// 		if d > dmax {
-// 			t.Fatalf("%s/%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, k, dmax/1E6, d/1E6)
-// 		}
-// 	}
-// }
 
 const (
 	envSqliteDriver = "SQLITE_DRIVER"
@@ -665,524 +624,310 @@ func TestSqlConnect_FetchRowsCallback(t *testing.T) {
 	}
 }
 
-var sqlColNamesTestDataType = []string{"id", "data_str", "data_bool",
-	"data_int_tiny", "data_int_small", "data_int_medium", "data_int", "data_int_big",
-	"data_float1", "data_float2", "data_float3", "data_float4",
-	"data_fix1", "data_fix2", "data_fix3", "data_fix4",
-	"data_time", "data_timez",
-	"data_date", "data_datez",
-	"data_datetime", "data_datetimez",
-	"data_timestamp", "data_timestampz"}
+/*----------------------------------------------------------------------*/
 
-func _testSqlDataType(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTypes []string) {
+func _toIntIfInteger(v interface{}) (int64, error) {
+	if v == nil {
+		return 0, errors.New("input is nil")
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return rv.Int(), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return int64(rv.Uint()), nil
+	}
+	return 0, errors.New("input is not integer")
+}
+
+func _toIntIfNumber(v interface{}) (int64, error) {
+	if v == nil {
+		return 0, errors.New("input is nil")
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return rv.Int(), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return int64(rv.Uint()), nil
+	case reflect.Float32, reflect.Float64:
+		return int64(rv.Float()), nil
+	}
+	return 0, errors.New("input is not valid number")
+}
+
+var sqlColNames_TestDataTypeInt = []string{"id",
+	"data_int", "data_integer", "data_decimal", "data_number", "data_numeric",
+	"data_tinyint", "data_smallint", "data_mediumint", "data_bigint",
+	"data_int1", "data_int2", "data_int4", "data_int8"}
+
+func _testSqlDataTypeInt(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTypes []string) {
 	tblName := "tbl_test"
 	rand.Seed(time.Now().UnixNano())
-	{
-		sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
 
-		if dbtype == "cosmos" || dbtype == "cosmosdb" {
-			if _, err := sqlc.GetDB().Exec(fmt.Sprintf("CREATE TABLE %s WITH pk=/%s WITH maxru=10000", tblName, sqlColNamesTestDataType[0])); err != nil {
-				t.Fatalf("%s failed: %s", name, err)
-			}
-		} else {
-			sql := fmt.Sprintf("CREATE TABLE %s (", tblName)
-			for i := range sqlColNamesTestDataType {
-				sql += sqlColNamesTestDataType[i] + " " + colTypes[i] + ","
-			}
-			sql += fmt.Sprintf("PRIMARY KEY(%s))", sqlColNamesTestDataType[0])
-			if _, err := sqlc.GetDB().Exec(sql); err != nil {
-				t.Fatalf("%s failed: %s\n%s", name, err, sql)
-			}
+	colNameList := sqlColNames_TestDataTypeInt
+
+	// init
+	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
+	if dbtype == "cosmos" || dbtype == "cosmosdb" {
+		if _, err := sqlc.GetDB().Exec(fmt.Sprintf("CREATE COLLECTION %s WITH pk=/%s", tblName, colNameList[0])); err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		}
+	} else {
+		sql := fmt.Sprintf("CREATE TABLE %s (", tblName)
+		for i := range colNameList {
+			sql += colNameList[i] + " " + colTypes[i] + ","
+		}
+		sql += fmt.Sprintf("PRIMARY KEY(%s))", colNameList[0])
+		if _, err := sqlc.GetDB().Exec(sql); err != nil {
+			t.Fatalf("%s failed: %s\n%s", name, err, sql)
 		}
 	}
 
-	timeLayoutFull := "2006-01-02T15:04:05-07:00"
-	timeLayoutTime := "15:04:05-07:00"
-	timeLayoutDate := "2006-01-02"
-	loc, _ := time.LoadLocation(timezoneSql)
-	now := time.Now().Round(time.Second).In(loc)
-	// fmt.Printf("Now: %s / %s\n", time.Now().Format(timeLayoutFull), now.Format(timeLayoutFull))
 	type Row struct {
-		id             string
-		dataStr        string
-		dataBool       string
-		dataIntTiny    int8
-		dataIntSmall   int16
-		dataIntMedium  int
-		dataInt        int32
-		dataIntBig     int64
-		dataFloat1     float64
-		dataFloat2     float64
-		dataFloat3     float64
-		dataFloat4     float64
-		dataFix1       float64
-		dataFix2       float64
-		dataFix3       float64
-		dataFix4       float64
-		dataTime       time.Time
-		dataTimez      time.Time
-		dataDate       time.Time
-		dataDatez      time.Time
-		dataDatetime   time.Time
-		dataDatetimez  time.Time
-		dataTimestamp  time.Time
-		dataTimestampz time.Time
+		id            string
+		dataInt       int
+		dataInteger   int
+		dataDecimal   int
+		dataNumber    int
+		dataNumeric   int
+		dataTinyInt   int8
+		dataSmallInt  int16
+		dataMediumInt int32
+		dataBigInt    int64
+		dataInt1      int8
+		dataInt2      int16
+		dataInt4      int32
+		dataInt8      int64
 	}
 	rowArr := make([]Row, 0)
 	numRows := 100
 
 	// insert some rows
-	{
-		sql := fmt.Sprintf("INSERT INTO %s (", tblName)
-		sql += strings.Join(sqlColNamesTestDataType, ",")
-		sql += ") VALUES ("
-		sql += _generatePlaceholders(len(sqlColNamesTestDataType), dbtype) + ")"
-		for i := 1; i <= numRows; i++ {
-			// ti := now.Add(time.Duration(i) * time.Minute)
-			ti := now
-			vInt := rand.Int63()
-			if dbtype == "cosmos" || dbtype == "cosmosdb" {
-				vInt >>= 63 - 48
-			}
-			row := Row{
-				id:             fmt.Sprintf("%03d", i),
-				dataStr:        ti.Format(timeLayoutFull),
-				dataBool:       strconv.Itoa(int(vInt % 2)),
-				dataIntTiny:    int8(vInt % (2 ^ 8)),
-				dataIntSmall:   int16(vInt % (2 ^ 16)),
-				dataIntMedium:  int(vInt % (2 ^ 24)),
-				dataInt:        int32(vInt % (2 ^ 32)),
-				dataIntBig:     vInt,
-				dataFloat1:     math.Round(rand.Float64()*10e5) / 10e5,
-				dataFloat2:     math.Round(rand.Float64()*10e5) / 10e5,
-				dataFloat3:     math.Round(rand.Float64()*10e8) / 10e8,
-				dataFloat4:     math.Round(rand.Float64()*10e8) / 10e8,
-				dataFix1:       math.Round(rand.Float64()*10e1) / 10e1,
-				dataFix2:       math.Round(rand.Float64()*10e3) / 10e3,
-				dataFix3:       math.Round(rand.Float64()*10e5) / 10e5,
-				dataFix4:       math.Round(rand.Float64()*10e7) / 10e7,
-				dataTime:       ti,
-				dataTimez:      ti,
-				dataDate:       ti,
-				dataDatez:      ti,
-				dataDatetime:   ti,
-				dataDatetimez:  ti,
-				dataTimestamp:  ti,
-				dataTimestampz: ti,
-			}
-			rowArr = append(rowArr, row)
-			params := []interface{}{row.id, row.dataStr, row.dataBool,
-				row.dataIntTiny, row.dataIntSmall, row.dataIntMedium, row.dataInt, row.dataIntBig,
-				row.dataFloat1, row.dataFloat2, row.dataFloat3, row.dataFloat4,
-				row.dataFix1, row.dataFix2, row.dataFix3, row.dataFix4,
-				row.dataTime, row.dataTimez, row.dataDate, row.dataDatez,
-				row.dataDatetime, row.dataDatetimez, row.dataTimestamp, row.dataTimestampz}
-			if dbtype == "cosmos" || dbtype == "cosmosdb" {
-				params = append(params, row.id)
-			}
-			_, err := sqlc.GetDB().Exec(sql, params...)
-			if err != nil {
-				t.Fatalf("%s failed: %s", name, err)
-			}
+	sql := fmt.Sprintf("INSERT INTO %s (", tblName)
+	sql += strings.Join(colNameList, ",")
+	sql += ") VALUES ("
+	sql += _generatePlaceholders(len(colNameList), dbtype) + ")"
+	for i := 1; i <= numRows; i++ {
+		vInt := rand.Int63()
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			vInt >>= 63 - 48
+		}
+		row := Row{
+			id:            fmt.Sprintf("%03d", i),
+			dataInt:       int(vInt%(2^32)) + 1,
+			dataInteger:   int(vInt%(2^32)) + 2,
+			dataDecimal:   int(vInt%(2^32)) + 3,
+			dataNumber:    int(vInt%(2^32)) + 4,
+			dataNumeric:   int(vInt%(2^32)) + 5,
+			dataTinyInt:   int8(vInt%(2^8)) + 6,
+			dataSmallInt:  int16(vInt%(2^16)) + 7,
+			dataMediumInt: int32(vInt%(2^24)) + 8,
+			dataBigInt:    vInt - 1,
+			dataInt1:      int8(vInt%(2^8)) + 9,
+			dataInt2:      int16(vInt%(2^16)) + 10,
+			dataInt4:      int32(vInt%(2^24)) + 11,
+			dataInt8:      vInt - 2,
+		}
+		rowArr = append(rowArr, row)
+		params := []interface{}{row.id, row.dataInt, row.dataInteger, row.dataDecimal, row.dataNumber, row.dataNumeric,
+			row.dataTinyInt, row.dataSmallInt, row.dataMediumInt, row.dataBigInt,
+			row.dataInt1, row.dataInt2, row.dataInt4, row.dataInt8}
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			params = append(params, row.id)
+		}
+		_, err := sqlc.GetDB().Exec(sql, params...)
+		if err != nil {
+			t.Fatalf("%s failed: %s", name, err)
 		}
 	}
 
 	// query some rows
+	id := rand.Intn(numRows) + 1
+	placeholder := _generatePlaceholders(1, dbtype)
+	sql = "SELECT * FROM %s WHERE id>=%s ORDER BY id"
+	if dbtype == "cosmos" || dbtype == "cosmosdb" {
+		sql = "SELECT * FROM %s t WHERE t.id>=%s WITH cross_partition=true"
+	}
+	sql = fmt.Sprintf(sql, tblName, placeholder)
+	params := []interface{}{fmt.Sprintf("%03d", id)}
+	dbRows, err := sqlc.GetDB().Query(sql, params...)
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	defer dbRows.Close()
+	rows := make([]map[string]interface{}, 0)
+	err = sqlc.FetchRowsCallback(dbRows, func(row map[string]interface{}, err error) bool {
+		rows = append(rows, row)
+		return false
+	})
+	// rows, err := sqlc.FetchRows(dbRows)
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	row := rows[0]
+	for k, v := range row {
+		// transform to lower-cases
+		row[strings.ToLower(k)] = v
+	}
+	expected := rowArr[id-1]
+
+	// fmt.Printf("\tDEBUG: %#v\n", row)
 	{
-		id := rand.Intn(numRows) + 1
-		placeholder := _generatePlaceholders(1, dbtype)
-		sql := "SELECT * FROM %s WHERE id>=%s ORDER BY id"
+		f := "id"
+		e := expected.id
+		v, ok := row[f].(string)
+		if !ok || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, row[f])
+		}
+	}
+	{
+		e := int64(expected.dataInt)
+		f := colNameList[1]
+		v, err := _toIntIfInteger(row[f])
 		if dbtype == "cosmos" || dbtype == "cosmosdb" {
-			sql = "SELECT * FROM %s t WHERE t.id>=%s WITH cross_partition=true"
+			v, err = _toIntIfNumber(row[f])
 		}
-		sql = fmt.Sprintf(sql, tblName, placeholder)
-		params := []interface{}{fmt.Sprintf("%03d", id)}
-		dbRows, err := sqlc.GetDB().Query(sql, params...)
-		if err != nil {
-			t.Fatalf("%s failed: %s", name, err)
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		defer dbRows.Close()
-		rows := make([]map[string]interface{}, 0)
-		err = sqlc.FetchRowsCallback(dbRows, func(row map[string]interface{}, err error) bool {
-			rows = append(rows, row)
-			return false
-		})
-		// rows, err := sqlc.FetchRows(dbRows)
-		if err != nil {
-			t.Fatalf("%s failed: %s", name, err)
+	}
+	{
+		e := int64(expected.dataInteger)
+		f := colNameList[2]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		expected := rowArr[id-1]
-		row := rows[0]
-		fmt.Printf("DEBUG: %#v\n", row)
-		// fmt.Println(id, row)
-		for k, v := range row {
-			// transform to lower-cases
-			row[strings.ToLower(k)] = v
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			f := "id"
-			e, _ := reddo.ToInt(expected.id)
-			v, _ := reddo.ToInt(row[f])
-			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
-			}
+	}
+	{
+		e := int64(expected.dataDecimal)
+		f := colNameList[3]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_int_tiny"
-			e, _ := reddo.ToInt(expected.dataIntTiny)
-			v, _ := reddo.ToInt(row[f])
-			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			f := "data_int_small"
-			e, _ := reddo.ToInt(expected.dataIntSmall)
-			v, _ := reddo.ToInt(row[f])
-			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+	}
+	{
+		e := int64(expected.dataNumber)
+		f := colNameList[4]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_int_medium"
-			e, _ := reddo.ToInt(expected.dataIntMedium)
-			v, _ := reddo.ToInt(row[f])
-			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			f := "data_int"
-			e, _ := reddo.ToInt(expected.dataInt)
-			v, _ := reddo.ToInt(row[f])
-			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+	}
+	{
+		e := int64(expected.dataNumeric)
+		f := colNameList[5]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_int_big"
-			e, _ := reddo.ToInt(expected.dataIntBig)
-			v, _ := reddo.ToInt(row[f])
-			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			f := "data_float1"
-			e, _ := reddo.ToFloat(expected.dataFloat1)
-			v, _ := reddo.ToFloat(row[f])
-			if math.Round(v*10e5)/10e5 != math.Round(e*10e5)/10e5 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+	}
+	{
+		e := int64(expected.dataTinyInt)
+		f := colNameList[6]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_float2"
-			e, _ := reddo.ToFloat(expected.dataFloat2)
-			v, _ := reddo.ToFloat(row[f])
-			if math.Round(v*10e5)/10e5 != math.Round(e*10e5)/10e5 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			f := "data_float3"
-			e, _ := reddo.ToFloat(expected.dataFloat3)
-			v, _ := reddo.ToFloat(row[f])
-			if math.Round(v*10e8)/10e8 != math.Round(e*10e8)/10e8 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+	}
+	{
+		e := int64(expected.dataSmallInt)
+		f := colNameList[7]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_float4"
-			e, _ := reddo.ToFloat(expected.dataFloat4)
-			v, _ := reddo.ToFloat(row[f])
-			if math.Round(v*10e8)/10e8 != math.Round(e*10e8)/10e8 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			f := "data_fix1"
-			e, _ := reddo.ToFloat(expected.dataFix1)
-			v, _ := reddo.ToFloat(row[f])
-			if math.Round(v*10e1)/10e1 != math.Round(e*10e1)/10e1 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+	}
+	{
+		e := int64(expected.dataMediumInt)
+		f := colNameList[8]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_fix2"
-			e, _ := reddo.ToFloat(expected.dataFix2)
-			v, _ := reddo.ToFloat(row[f])
-			if math.Round(v*10e3)/10e3 != math.Round(e*10e3)/10e3 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			f := "data_fix3"
-			e, _ := reddo.ToFloat(expected.dataFix3)
-			v, _ := reddo.ToFloat(row[f])
-			if math.Round(v*10e5)/10e5 != math.Round(e*10e5)/10e5 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+	}
+	{
+		e := int64(expected.dataBigInt)
+		f := colNameList[9]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_fix4"
-			e, _ := reddo.ToFloat(expected.dataFix4)
-			v, _ := reddo.ToFloat(row[f])
-			if math.Round(v*10e7)/10e7 != math.Round(e*10e7)/10e7 {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			f := "data_str"
-			e, _ := reddo.ToString(expected.dataStr)
-			v, _ := reddo.ToString(row[f])
-			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+	}
+	{
+		e := int64(expected.dataInt1)
+		f := colNameList[10]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_bool"
-			e, _ := reddo.ToBool(expected.dataBool)
-			v, _ := reddo.ToBool(row[f])
-			if v != e {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			tz := time.Now().In(loc).Format("-07:00")
-			for _, f := range []string{"data_time", "data_timez", "data_date", "data_datez", "data_datetime", "data_datetimez", "data_timestamp", "data_timestampz"} {
-				v, _ := reddo.ToTime(row[f])
-				if str, ok := row[f].(string); ok {
-					v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
-				}
-				if v.Format("-07:00") != tz {
-					t.Fatalf("%s failed: [%s] expected timezone %#v but received %#v", name, row["id"].(string)+"/"+f, tz, v.Format("-07:00"))
-				}
-			}
+	}
+	{
+		e := int64(expected.dataInt2)
+		f := colNameList[11]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_time"
-			e, _ := reddo.ToTime(expected.dataTime)
-			v, _ := reddo.ToTime(row[f])
-			if str, ok := row[f].(string); ok {
-				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
-			}
-			if v.In(loc).Format(timeLayoutTime) != e.In(loc).Format(timeLayoutTime) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutTime), v.In(loc).Format(timeLayoutTime))
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			f := "data_timez"
-			e, _ := reddo.ToTime(expected.dataTimez)
-			v, _ := reddo.ToTime(row[f])
-			if str, ok := row[f].(string); ok {
-				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
-			}
-			if v.In(loc).Format(timeLayoutTime) != e.In(loc).Format(timeLayoutTime) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutTime), v.In(loc).Format(timeLayoutTime))
-			}
+	}
+	{
+		e := int64(expected.dataInt4)
+		f := colNameList[12]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_date"
-			e, _ := reddo.ToTime(expected.dataDate)
-			v, _ := reddo.ToTime(row[f])
-			if str, ok := row[f].(string); ok {
-				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
-			}
-			if v.In(loc).Format(timeLayoutDate) != e.In(loc).Format(timeLayoutDate) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutDate), v.In(loc).Format(timeLayoutDate))
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
-		{
-			f := "data_datez"
-			e, _ := reddo.ToTime(expected.dataDatez)
-			v, _ := reddo.ToTime(row[f])
-			if str, ok := row[f].(string); ok {
-				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
-			}
-			if v.In(loc).Format(timeLayoutDate) != e.In(loc).Format(timeLayoutDate) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutDate), v.In(loc).Format(timeLayoutDate))
-			}
+	}
+	{
+		e := int64(expected.dataInt8)
+		f := colNameList[13]
+		v, err := _toIntIfInteger(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toIntIfNumber(row[f])
 		}
-		{
-			f := "data_datetime"
-			e, _ := reddo.ToTime(expected.dataDatetime)
-			v, _ := reddo.ToTime(row[f])
-			if str, ok := row[f].(string); ok {
-				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
-			}
-			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
-			}
-		}
-		{
-			f := "data_datetimez"
-			e, _ := reddo.ToTime(expected.dataDatetimez)
-			v, _ := reddo.ToTime(row[f])
-			if str, ok := row[f].(string); ok {
-				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
-			}
-			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
-			}
-		}
-		{
-			f := "data_timestamp"
-			e, _ := reddo.ToTime(expected.dataTimestamp)
-			v, _ := reddo.ToTime(row[f])
-			if str, ok := row[f].(string); ok {
-				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
-			}
-			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
-			}
-		}
-		{
-			f := "data_timestampz"
-			e, _ := reddo.ToTime(expected.dataTimestampz)
-			v, _ := reddo.ToTime(row[f])
-			if str, ok := row[f].(string); ok {
-				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
-			}
-			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
-				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
-			}
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 		}
 	}
 }
 
-func TestSql_DataType_Mysql(t *testing.T) {
-	name := "TestSql_DataType_Mysql"
-	urlMap := sqlGetUrlFromEnv()
-	info, ok := urlMap["mysql"]
-	if !ok {
-		t.Skipf("%s skipped", name)
-	}
-	sqlc, err := newSqlConnectMysql(info.driver, info.url, timezoneSql, -1, nil)
-	if err != nil {
-		t.Fatalf("%s failed: error [%s]", name, err)
-	} else if sqlc == nil {
-		t.Fatalf("%s failed: nil", name)
-	}
-
-	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
-		"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT",
-		"FLOAT", "REAL", "DOUBLE", "DOUBLE PRECISION",
-		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
-		"TIME", "TIME",
-		"DATE", "DATE",
-		"DATETIME", "DATETIME",
-		"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
-	_testSqlDataType(t, name, "mysql", sqlc, sqlColTypes)
-}
-
-func TestSql_DataType_Pgsql(t *testing.T) {
-	name := "TestSql_DataType_Pgsql"
-	urlMap := sqlGetUrlFromEnv()
-	info, ok := urlMap["pgsql"]
-	if !ok {
-		info, ok = urlMap["postgresql"]
-		if !ok {
-			t.Skipf("%s skipped", name)
-		}
-	}
-	sqlc, err := newSqlConnectPgsql(info.driver, info.url, timezoneSql, -1, nil)
-	if err != nil {
-		t.Fatalf("%s failed: error [%s]", name, err)
-	} else if sqlc == nil {
-		t.Fatalf("%s failed: nil", name)
-	}
-
-	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
-		"SMALLINT", "INT2", "INT4", "INT", "BIGINT",
-		"FLOAT", "REAL", "DOUBLE PRECISION", "DOUBLE PRECISION",
-		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
-		"TIME", "TIME WITH TIME ZONE",
-		"DATE", "DATE",
-		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE",
-		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
-	_testSqlDataType(t, name, "pgsql", sqlc, sqlColTypes)
-}
-
-func TestSql_DataType_Mssql(t *testing.T) {
-	name := "TestSql_DataType_Mssql"
-	urlMap := sqlGetUrlFromEnv()
-	info, ok := urlMap["mssql"]
-	if !ok {
-		t.Skipf("%s skipped", name)
-	}
-	sqlc, err := newSqlConnectMssql(info.driver, info.url, timezoneSql, -1, nil)
-	if err != nil {
-		t.Fatalf("%s failed: error [%s]", name, err)
-	} else if sqlc == nil {
-		t.Fatalf("%s failed: nil", name)
-	}
-
-	sqlColTypes := []string{"NVARCHAR(8)", "NVARCHAR(64)", "NCHAR(1)",
-		"TINYINT", "SMALLINT", "INT", "INTEGER", "BIGINT",
-		"FLOAT(24)", "REAL", "FLOAT(53)", "DOUBLE PRECISION",
-		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
-		"TIME", "TIME",
-		"DATE", "DATE",
-		"DATETIME", "DATETIMEOFFSET",
-		"DATETIME2", "DATETIMEOFFSET"}
-	_testSqlDataType(t, name, "mssql", sqlc, sqlColTypes)
-}
-
-func TestSql_DataType_Oracle(t *testing.T) {
-	name := "TestSql_DataType_Oracle"
-	urlMap := sqlGetUrlFromEnv()
-	info, ok := urlMap["oracle"]
-	if !ok {
-		t.Skipf("%s skipped", name)
-	}
-	sqlc, err := newSqlConnectOracle(info.driver, info.url, timezoneSql, -1, nil)
-	if err != nil {
-		t.Fatalf("%s failed: error [%s]", name, err)
-	} else if sqlc == nil {
-		t.Fatalf("%s failed: nil", name)
-	}
-
-	sqlColTypes := []string{"NVARCHAR2(8)", "NVARCHAR2(64)", "NCHAR(1)",
-		"SMALLINT", "SMALLINT", "INT", "INTEGER", "INTEGER",
-		"FLOAT", "BINARY_FLOAT", "REAL", "BINARY_DOUBLE",
-		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMBER(12,6)", "DECIMAL(12,8)",
-		"DATE", "TIMESTAMP WITH TIME ZONE",
-		"DATE", "TIMESTAMP WITH TIME ZONE",
-		"DATE", "TIMESTAMP WITH TIME ZONE",
-		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
-	_testSqlDataType(t, name, "oracle", sqlc, sqlColTypes)
-}
-
-func TestSql_DataType_Sqlite(t *testing.T) {
-	name := "TestSql_DataType_Sqlite"
-	urlMap := sqlGetUrlFromEnv()
-	info, ok := urlMap["sqlite"]
-	if !ok {
-		info, ok = urlMap["sqlite3"]
-		if !ok {
-			t.Skipf("%s skipped", name)
-		}
-	}
-	sqlc, err := newSqlConnectSqlite(info.driver, info.url, timezoneSql, -1, nil)
-	if err != nil {
-		t.Fatalf("%s failed: error [%s]", name, err)
-	} else if sqlc == nil {
-		t.Fatalf("%s failed: nil", name)
-	}
-
-	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
-		"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT",
-		"FLOAT", "REAL", "DOUBLE", "DOUBLE PRECISION",
-		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
-		"TIME", "TIME",
-		"DATE", "DATE",
-		"DATETIME", "DATETIME",
-		"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
-	_testSqlDataType(t, name, "sqlite", sqlc, sqlColTypes)
-}
-
-func TestSql_DataType_Cosmos(t *testing.T) {
-	name := "TestSql_DataType_Cosmos"
+func TestSql_DataTypeInt_Cosmos(t *testing.T) {
+	name := "TestSql_DataTypeInt_Cosmos"
 	urlMap := sqlGetUrlFromEnv()
 	info, ok := urlMap["cosmos"]
 	if !ok {
@@ -1198,5 +943,1863 @@ func TestSql_DataType_Cosmos(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	_testSqlDataType(t, name, "cosmos", sqlc, nil)
+	_testSqlDataTypeInt(t, name, "cosmos", sqlc, nil)
 }
+
+func TestSql_DataTypeInt_Mssql(t *testing.T) {
+	name := "TestSql_DataTypeInt_Mssql"
+	dbtype := "mssql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectMssql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	// MSSQL has no data type NUMBER
+	// DECIMAL(*,0) or NUMERIC(*,0) can be used as integer
+	sqlColTypes := []string{"NVARCHAR(8)",
+		"INT", "INTEGER", "DECIMAL(32,0)", "DECIMAL(36,0)", "NUMERIC(38,0)",
+		"TINYINT", "SMALLINT", "INT", "BIGINT",
+		"TINYINT", "SMALLINT", "INTEGER", "BIGINT"}
+	_testSqlDataTypeInt(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeInt_Mysql(t *testing.T) {
+	name := "TestSql_DataTypeInt_Mysql"
+	dbtype := "mysql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectMysql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	// MySQL has not data type NUMBER or NUMERIC
+	// DECIMAL(*,0) can be used as integer, but FLOAT(*,0) or DOUBLE(*,0) cannot
+	sqlColTypes := []string{"NVARCHAR(8)",
+		"INT", "INTEGER", "DECIMAL(32,0)", "INT", "INTEGER",
+		"TINYINT", "SMALLINT", "MEDIUMINT", "BIGINT",
+		"TINYINT", "SMALLINT", "MEDIUMINT", "BIGINT"}
+	_testSqlDataTypeInt(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeInt_Oracle(t *testing.T) {
+	name := "TestSql_DataTypeInt_Oracle"
+	dbtype := "oracle"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectOracle(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	// NUMERIC(*,0) or NUMBER(*,0) OR DECIMAL(*,0) can be used as integer
+	sqlColTypes := []string{"NVARCHAR2(8)",
+		"INT", "INTEGER", "NUMERIC(38,0)", "NUMBER(38,0)", "DECIMAL(38,0)",
+		"NUMERIC(3,0)", "SMALLINT", "DECIMAL(19,0)", "DEC(38,0)",
+		"DEC(4,0)", "NUMBER(8,0)", "DECIMAL(16,0)", "NUMERIC(32,0)"}
+	_testSqlDataTypeInt(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeInt_Pgsql(t *testing.T) {
+	name := "TestSql_DataTypeInt_Pgsql"
+	dbtype := "pgsql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectPgsql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	// PostgreSQL has no data type NUMBER
+	// NUMERIC(*,0) or NUMBER(*,0) OR DECIMAL(*,0) cannot be used as integer
+	sqlColTypes := []string{"VARCHAR(8)",
+		"INT", "INTEGER", "INT", "INTEGER", "INT",
+		"INT", "SMALLINT", "INTEGER", "BIGINT",
+		"INT", "INT2", "INT4", "INT8"}
+	_testSqlDataTypeInt(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeInt_Sqlite(t *testing.T) {
+	name := "TestSql_DataTypeInt_Sqlite"
+	dbtype := "sqlite"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectSqlite(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	// DECIMAL(*,0), NUMBER(*,0) or NUMERIC(*,0) can be used as integer
+	sqlColTypes := []string{"NVARCHAR(8)",
+		"INT", "INTEGER", "DECIMAL(32,0)", "NUMBER(32,0)", "NUMERIC(32,0)",
+		"TINYINT", "SMALLINT", "MEDIUMINT", "BIGINT",
+		"INT1", "INT2", "INT4", "INT8"}
+	_testSqlDataTypeInt(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataType_PgsqlSerial(t *testing.T) {
+	name := "TestSql_DataType_PgsqlSerial"
+	dbtype := "pgsql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectPgsql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	colNameList := []string{"id", "data_smallserial", "data_serial", "dataa_bigserial"}
+	colTypes := []string{"VARCHAR(8)", "SMALLSERIAL", "SERIAL", "BIGSERIAL"}
+	tblName := "tbl_test"
+	rand.Seed(time.Now().UnixNano())
+
+	// init
+	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
+	sql := fmt.Sprintf("CREATE TABLE %s (", tblName)
+	for i := range colNameList {
+		sql += colNameList[i] + " " + colTypes[i] + ","
+	}
+	sql += fmt.Sprintf("PRIMARY KEY(%s))", colNameList[0])
+	if _, err := sqlc.GetDB().Exec(sql); err != nil {
+		t.Fatalf("%s failed: %s\n%s", name, err, sql)
+	}
+
+	type Row struct {
+		id              string
+		dataSmallSerial int
+		dataSerial      int
+		dataBigSerial   int
+	}
+	rowArr := make([]Row, 0)
+	numRows := 100
+
+	// insert some rows
+	sql = fmt.Sprintf("INSERT INTO %s (", tblName)
+	sql += strings.Join(colNameList, ",")
+	sql += ") VALUES ("
+	sql += _generatePlaceholders(len(colNameList), dbtype) + ")"
+	for i := 1; i <= numRows; i++ {
+		vInt := rand.Int63()
+		row := Row{
+			id:              fmt.Sprintf("%03d", i),
+			dataSmallSerial: int(vInt%(2^16)) + 1,
+			dataSerial:      int(vInt%(2^24)) + 2,
+			dataBigSerial:   int(vInt%(2^32)) + 3,
+		}
+		rowArr = append(rowArr, row)
+		params := []interface{}{row.id, row.dataSmallSerial, row.dataSerial, row.dataBigSerial}
+		_, err := sqlc.GetDB().Exec(sql, params...)
+		if err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		}
+	}
+
+	// query some rows
+	id := rand.Intn(numRows) + 1
+	placeholder := _generatePlaceholders(1, dbtype)
+	sql = "SELECT * FROM %s WHERE id>=%s ORDER BY id"
+	sql = fmt.Sprintf(sql, tblName, placeholder)
+	params := []interface{}{fmt.Sprintf("%03d", id)}
+	dbRows, err := sqlc.GetDB().Query(sql, params...)
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	defer dbRows.Close()
+	rows, err := sqlc.FetchRows(dbRows)
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	row := rows[0]
+	for k, v := range row {
+		// transform to lower-cases
+		row[strings.ToLower(k)] = v
+	}
+	expected := rowArr[id-1]
+
+	{
+		f := "id"
+		e := expected.id
+		v, ok := row[f].(string)
+		if !ok || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, row[f])
+		}
+	}
+	{
+		e := int64(expected.dataSmallSerial)
+		f := colNameList[1]
+		v, err := _toIntIfInteger(row[f])
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := int64(expected.dataSerial)
+		f := colNameList[2]
+		v, err := _toIntIfInteger(row[f])
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := int64(expected.dataBigSerial)
+		f := colNameList[3]
+		v, err := _toIntIfInteger(row[f])
+		if err != nil || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+}
+
+/*----------------------------------------------------------------------*/
+
+func _toFloatIfReal(v interface{}) (float64, error) {
+	if v == nil {
+		return 0, errors.New("input is nil")
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Float32, reflect.Float64:
+		return rv.Float(), nil
+	}
+	return 0, errors.New("input is not real number")
+}
+
+func _toFloatIfNumber(v interface{}) (float64, error) {
+	if v == nil {
+		return 0, errors.New("input is nil")
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return float64(rv.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return float64(rv.Uint()), nil
+	case reflect.Float32, reflect.Float64:
+		return rv.Float(), nil
+	}
+	return 0, errors.New("input is not valid number")
+}
+
+var sqlColNames_TestDataTypeReal = []string{"id",
+	"data_float", "data_double", "data_real",
+	"data_decimal", "data_number", "data_numeric",
+	"data_float32", "data_float64",
+	"data_float4", "data_float8"}
+
+func _testSqlDataTypeReal(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTypes []string) {
+	tblName := "tbl_test"
+	rand.Seed(time.Now().UnixNano())
+
+	colNameList := sqlColNames_TestDataTypeReal
+
+	// init
+	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
+	if dbtype == "cosmos" || dbtype == "cosmosdb" {
+		if _, err := sqlc.GetDB().Exec(fmt.Sprintf("CREATE COLLECTION %s WITH pk=/%s", tblName, colNameList[0])); err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		}
+	} else {
+		sql := fmt.Sprintf("CREATE TABLE %s (", tblName)
+		for i := range colNameList {
+			sql += colNameList[i] + " " + colTypes[i] + ","
+		}
+		sql += fmt.Sprintf("PRIMARY KEY(%s))", colNameList[0])
+		if _, err := sqlc.GetDB().Exec(sql); err != nil {
+			t.Fatalf("%s failed: %s\n%s", name, err, sql)
+		}
+	}
+
+	type Row struct {
+		id          string
+		dataFloat   float64
+		dataDouble  float64
+		dataReal    float64
+		dataDecimal float64
+		dataNumber  float64
+		dataNumeric float64
+		dataFloat32 float32
+		dataFloat64 float64
+		dataFloat4  float32
+		dataFloat8  float64
+	}
+	rowArr := make([]Row, 0)
+	numRows := 100
+
+	// insert some rows
+	sql := fmt.Sprintf("INSERT INTO %s (", tblName)
+	sql += strings.Join(colNameList, ",")
+	sql += ") VALUES ("
+	sql += _generatePlaceholders(len(colNameList), dbtype) + ")"
+	for i := 1; i <= numRows; i++ {
+		vReal := rand.Float64()
+		// vInt := rand.Int63()
+		// if dbtype == "cosmos" || dbtype == "cosmosdb" {
+		// 	vInt >>= 63 - 48
+		// }
+		row := Row{
+			id:          fmt.Sprintf("%03d", i),
+			dataFloat:   math.Round(vReal*10e5) / 10e5,
+			dataDouble:  math.Round(vReal*10e5) / 10e5,
+			dataReal:    math.Round(vReal*10e5) / 10e5,
+			dataDecimal: math.Round(vReal*10e5) / 10e5,
+			dataNumber:  math.Round(vReal*10e5) / 10e5,
+			dataNumeric: math.Round(vReal*10e5) / 10e5,
+			dataFloat32: float32(math.Round(vReal*10e3) / 10e3),
+			dataFloat64: math.Round(vReal*10e7) / 10e7,
+			dataFloat4:  float32(math.Round(vReal*10e3) / 10e3),
+			dataFloat8:  math.Round(vReal*10e7) / 10e7,
+		}
+		rowArr = append(rowArr, row)
+		params := []interface{}{row.id, row.dataFloat, row.dataDouble, row.dataReal,
+			row.dataDecimal, row.dataNumeric, row.dataNumeric,
+			row.dataFloat32, row.dataFloat64, row.dataFloat4, row.dataFloat8}
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			params = append(params, row.id)
+		}
+		_, err := sqlc.GetDB().Exec(sql, params...)
+		if err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		}
+	}
+
+	// query some rows
+	id := rand.Intn(numRows) + 1
+	placeholder := _generatePlaceholders(1, dbtype)
+	sql = "SELECT * FROM %s WHERE id>=%s ORDER BY id"
+	if dbtype == "cosmos" || dbtype == "cosmosdb" {
+		sql = "SELECT * FROM %s t WHERE t.id>=%s WITH cross_partition=true"
+	}
+	sql = fmt.Sprintf(sql, tblName, placeholder)
+	params := []interface{}{fmt.Sprintf("%03d", id)}
+	dbRows, err := sqlc.GetDB().Query(sql, params...)
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	defer dbRows.Close()
+	rows := make([]map[string]interface{}, 0)
+	err = sqlc.FetchRowsCallback(dbRows, func(row map[string]interface{}, err error) bool {
+		rows = append(rows, row)
+		return false
+	})
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	row := rows[0]
+	for k, v := range row {
+		// transform to lower-cases
+		row[strings.ToLower(k)] = v
+	}
+	expected := rowArr[id-1]
+
+	{
+		f := "id"
+		e := expected.id
+		v, ok := row[f].(string)
+		if !ok || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, row[f])
+		}
+	}
+	{
+		e := float64(expected.dataFloat)
+		f := colNameList[1]
+		delta := 10e6
+		v, err := _toFloatIfReal(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toFloatIfNumber(row[f])
+		}
+		if err != nil || math.Round(v*delta)/delta != math.Round(e*delta)/delta {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := float64(expected.dataDouble)
+		f := colNameList[2]
+		delta := 10e6
+		v, err := _toFloatIfReal(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toFloatIfNumber(row[f])
+		}
+		if err != nil || math.Round(v*delta)/delta != math.Round(e*delta)/delta {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := float64(expected.dataReal)
+		f := colNameList[3]
+		delta := 10e6
+		v, err := _toFloatIfReal(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toFloatIfNumber(row[f])
+		}
+		if err != nil || math.Round(v*delta)/delta != math.Round(e*delta)/delta {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := float64(expected.dataDecimal)
+		f := colNameList[4]
+		delta := 10e6
+		v, err := _toFloatIfReal(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toFloatIfNumber(row[f])
+		}
+		if err != nil || math.Round(v*delta)/delta != math.Round(e*delta)/delta {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := float64(expected.dataNumber)
+		f := colNameList[5]
+		delta := 10e6
+		v, err := _toFloatIfReal(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toFloatIfNumber(row[f])
+		}
+		if err != nil || math.Round(v*delta)/delta != math.Round(e*delta)/delta {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := float64(expected.dataNumeric)
+		f := colNameList[6]
+		delta := 10e6
+		v, err := _toFloatIfReal(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toFloatIfNumber(row[f])
+		}
+		if err != nil || math.Round(v*delta)/delta != math.Round(e*delta)/delta {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := float64(expected.dataFloat32)
+		f := colNameList[7]
+		delta := 10e4
+		v, err := _toFloatIfReal(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toFloatIfNumber(row[f])
+		}
+		if err != nil || math.Round(v*delta)/delta != math.Round(e*delta)/delta {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := float64(expected.dataFloat64)
+		f := colNameList[8]
+		delta := 10e8
+		v, err := _toFloatIfReal(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toFloatIfNumber(row[f])
+		}
+		if err != nil || math.Round(v*delta)/delta != math.Round(e*delta)/delta {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := float64(expected.dataFloat4)
+		f := colNameList[9]
+		delta := 10e4
+		v, err := _toFloatIfReal(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toFloatIfNumber(row[f])
+		}
+		if err != nil || math.Round(v*delta)/delta != math.Round(e*delta)/delta {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := float64(expected.dataFloat8)
+		f := colNameList[10]
+		delta := 10e8
+		v, err := _toFloatIfReal(row[f])
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			v, err = _toFloatIfNumber(row[f])
+		}
+		if err != nil || math.Round(v*delta)/delta != math.Round(e*delta)/delta {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+}
+
+func TestSql_DataTypeReal_Cosmos(t *testing.T) {
+	name := "TestSql_DataTypeReal_Cosmos"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap["cosmos"]
+	if !ok {
+		info, ok = urlMap["cosmosdb"]
+		if !ok {
+			t.Skipf("%s skipped", name)
+		}
+	}
+	sqlc, err := newSqlConnectCosmosdb(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	_testSqlDataTypeReal(t, name, "cosmos", sqlc, nil)
+}
+
+func TestSql_DataTypeReal_Mssql(t *testing.T) {
+	name := "TestSql_DataTypeReal_Mssql"
+	dbtype := "mssql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectMssql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	// MSSQL has no data type NUMBER
+	sqlColTypes := []string{"NVARCHAR(8)",
+		"FLOAT(32)", "DOUBLE PRECISION", "REAL",
+		"DECIMAL(38,6)", "DEC(38,6)", "NUMERIC(38,6)",
+		"FLOAT(16)", "FLOAT(32)",
+		"FLOAT(20)", "FLOAT(40)"}
+	_testSqlDataTypeReal(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeReal_Mysql(t *testing.T) {
+	name := "TestSql_DataTypeReal_Mysql"
+	dbtype := "mysql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectMysql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	// MySQL has not data type NUMBER or NUMERIC
+	sqlColTypes := []string{"VARCHAR(8)",
+		"FLOAT(32)", "DOUBLE(38,6)", "REAL",
+		"DECIMAL(38,6)", "DEC(38,6)", "DOUBLE PRECISION(38,6)",
+		"FLOAT(16,4)", "DOUBLE(32,8)",
+		"FLOAT(20,4)", "DOUBLE(40,8)"}
+	_testSqlDataTypeReal(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeReal_Oracle(t *testing.T) {
+	name := "TestSql_DataTypeReal_Oracle"
+	dbtype := "oracle"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectOracle(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"NVARCHAR2(8)",
+		"FLOAT", "DOUBLE PRECISION", "REAL",
+		"DECIMAL(38,6)", "NUMBER(38,6)", "NUMERIC(38,6)",
+		"BINARY_FLOAT", "BINARY_DOUBLE",
+		"BINARY_FLOAT", "BINARY_DOUBLE"}
+	_testSqlDataTypeReal(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeReal_Pgsql(t *testing.T) {
+	name := "TestSql_DataTypeReal_Pgsql"
+	dbtype := "pgsql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectPgsql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	// PostgreSQL has no data type NUMBER
+	sqlColTypes := []string{"VARCHAR(8)",
+		"FLOAT", "DOUBLE PRECISION", "REAL",
+		"DECIMAL(38,6)", "NUMERIC(38,6)", "NUMERIC(38,6)",
+		"FLOAT4", "FLOAT8",
+		"FLOAT4", "FLOAT8"}
+	_testSqlDataTypeReal(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeReal_Sqlite(t *testing.T) {
+	name := "TestSql_DataTypeReal_Sqlite"
+	dbtype := "sqlite"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectSqlite(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"VARCHAR(8)",
+		"FLOAT", "DOUBLE", "REAL",
+		"DECIMAL(38,6)", "NUMBER(38,6)", "NUMERIC(38,6)",
+		"FLOAT", "DOUBLE PRECISION",
+		"FLOAT4", "FLOAT8"}
+	_testSqlDataTypeReal(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+/*----------------------------------------------------------------------*/
+
+var sqlColNames_TestDataTypeString = []string{"id",
+	"data_char", "data_varchar", "data_binchar", "data_text",
+	"data_uchar", "data_uvchar", "data_utext",
+	"data_clob", "data_uclob", "data_blob"}
+
+func _testSqlDataTypeString(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTypes []string) {
+	tblName := "tbl_test"
+	rand.Seed(time.Now().UnixNano())
+
+	colNameList := sqlColNames_TestDataTypeString
+
+	// init
+	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
+	if dbtype == "cosmos" || dbtype == "cosmosdb" {
+		if _, err := sqlc.GetDB().Exec(fmt.Sprintf("CREATE COLLECTION %s WITH pk=/%s", tblName, colNameList[0])); err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		}
+	} else {
+		sql := fmt.Sprintf("CREATE TABLE %s (", tblName)
+		for i := range colNameList {
+			sql += colNameList[i] + " " + colTypes[i] + ","
+		}
+		sql += fmt.Sprintf("PRIMARY KEY(%s))", colNameList[0])
+		if _, err := sqlc.GetDB().Exec(sql); err != nil {
+			t.Fatalf("%s failed: %s\n%s", name, err, sql)
+		}
+	}
+
+	type Row struct {
+		id          string
+		dataChar    string
+		dataVchar   string
+		dataBinchar []byte
+		dataText    string
+		dataUchar   string
+		dataUvchar  string
+		dataUtext   string
+		dataClob    string
+		dataUclob   string
+		dataBlob    []byte
+	}
+	rowArr := make([]Row, 0)
+	numRows := 100
+
+	// insert some rows
+	sql := fmt.Sprintf("INSERT INTO %s (", tblName)
+	sql += strings.Join(colNameList, ",")
+	sql += ") VALUES ("
+	sql += _generatePlaceholders(len(colNameList), dbtype) + ")"
+	for i := 1; i <= numRows; i++ {
+		id := fmt.Sprintf("%03d", i)
+		row := Row{
+			id:          id,
+			dataChar:    "CHAR " + id,
+			dataVchar:   "VCHAR " + id,
+			dataBinchar: []byte("BINCHAR " + id),
+			dataText:    strings.Repeat("This is supposed to be a long text ", i*2),
+			dataUchar:   "Chào buổi sáng, доброе утро, ສະ​ບາຍ​ດີ​ຕອນ​ເຊົ້າ, สวัสดีตอนเช้า",
+			dataUvchar:  "Chào buổi sáng, доброе утро, ສະ​ບາຍ​ດີ​ຕອນ​ເຊົ້າ, สวัสดีตอนเช้า",
+			dataUtext:   strings.Repeat("Chào buổi sáng, đây sẽ là một đoạn văn bản dài. доброе утро, ສະ​ບາຍ​ດີ​ຕອນ​ເຊົ້າ, สวัสดีตอนเช้า ", i*2),
+			dataClob:    strings.Repeat("This is supposed to be a long text ", i*10),
+			dataUclob:   strings.Repeat("Chào buổi sáng, đây sẽ là một đoạn văn bản dài. доброе утро, ສະ​ບາຍ​ດີ​ຕອນ​ເຊົ້າ, สวัสดีตอนเช้า ", i*10),
+			dataBlob:    []byte(strings.Repeat("This is supposed to be a long text ", i*10)),
+		}
+		rowArr = append(rowArr, row)
+		params := []interface{}{row.id, row.dataChar,
+			row.dataVchar, row.dataBinchar, row.dataText, row.dataUchar, row.dataUvchar, row.dataUtext,
+			row.dataClob, row.dataUclob, row.dataBlob}
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			params = append(params, row.id)
+		}
+		_, err := sqlc.GetDB().Exec(sql, params...)
+		if err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		}
+	}
+
+	// query some rows
+	id := rand.Intn(numRows) + 1
+	placeholder := _generatePlaceholders(1, dbtype)
+	sql = "SELECT * FROM %s WHERE id>=%s ORDER BY id"
+	if dbtype == "cosmos" || dbtype == "cosmosdb" {
+		sql = "SELECT * FROM %s t WHERE t.id>=%s WITH cross_partition=true"
+	}
+	sql = fmt.Sprintf(sql, tblName, placeholder)
+	params := []interface{}{fmt.Sprintf("%03d", id)}
+	dbRows, err := sqlc.GetDB().Query(sql, params...)
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	defer dbRows.Close()
+	rows := make([]map[string]interface{}, 0)
+	err = sqlc.FetchRowsCallback(dbRows, func(row map[string]interface{}, err error) bool {
+		rows = append(rows, row)
+		return false
+	})
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	row := rows[0]
+	for k, v := range row {
+		// transform to lower-cases
+		row[strings.ToLower(k)] = v
+	}
+	expected := rowArr[id-1]
+
+	{
+		f := "id"
+		e := expected.id
+		v, ok := row[f].(string)
+		if !ok || v != e {
+			t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, row[f])
+		}
+	}
+	{
+		e := expected.dataChar
+		f := colNameList[1]
+		v, ok := row[f].(string)
+		if !ok || strings.TrimSpace(v) != strings.TrimSpace(e) {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := expected.dataVchar
+		f := colNameList[2]
+		v, ok := row[f].(string)
+		if !ok || strings.TrimSpace(v) != strings.TrimSpace(e) {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := expected.dataBinchar
+		f := colNameList[3]
+		v, ok := row[f].([]byte)
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			var t string
+			t, ok = row[f].(string)
+			if ok {
+				var err error
+				v, err = base64.StdEncoding.DecodeString(t)
+				ok = err == nil
+			}
+		}
+		if !ok || !reflect.DeepEqual(v, e) {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := expected.dataText
+		f := colNameList[4]
+		v, ok := row[f].(string)
+		if !ok || strings.TrimSpace(v) != strings.TrimSpace(e) {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := expected.dataUchar
+		f := colNameList[5]
+		v, ok := row[f].(string)
+		if !ok || strings.TrimSpace(v) != strings.TrimSpace(e) {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := expected.dataUvchar
+		f := colNameList[6]
+		v, ok := row[f].(string)
+		if !ok || strings.TrimSpace(v) != strings.TrimSpace(e) {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := expected.dataUtext
+		f := colNameList[7]
+		v, ok := row[f].(string)
+		if !ok || strings.TrimSpace(v) != strings.TrimSpace(e) {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := expected.dataClob
+		f := colNameList[8]
+		v, ok := row[f].(string)
+		if !ok || strings.TrimSpace(v) != strings.TrimSpace(e) {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := expected.dataUclob
+		f := colNameList[9]
+		v, ok := row[f].(string)
+		if !ok || strings.TrimSpace(v) != strings.TrimSpace(e) {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+	{
+		e := expected.dataBlob
+		f := colNameList[10]
+		v, ok := row[f].([]byte)
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			var t string
+			t, ok = row[f].(string)
+			if ok {
+				var err error
+				v, err = base64.StdEncoding.DecodeString(t)
+				ok = err == nil
+			}
+		}
+		if !ok || !reflect.DeepEqual(v, e) {
+			t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+		}
+	}
+}
+
+func TestSql_DataTypeString_Cosmos(t *testing.T) {
+	name := "TestSql_DataTypeString_Cosmos"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap["cosmos"]
+	if !ok {
+		info, ok = urlMap["cosmosdb"]
+		if !ok {
+			t.Skipf("%s skipped", name)
+		}
+	}
+	sqlc, err := newSqlConnectCosmosdb(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	_testSqlDataTypeString(t, name, "cosmos", sqlc, nil)
+}
+
+func TestSql_DataTypeString_Mssql(t *testing.T) {
+	name := "TestSql_DataTypeString_Mssql"
+	dbtype := "mssql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectMssql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"NVARCHAR(8)",
+		"CHAR(255)", "VARCHAR(255)", "VARBINARY(255)", "TEXT",
+		"NCHAR(255)", "NVARCHAR(255)", "NTEXT",
+		"TEXT", "NTEXT", "IMAGE"}
+	_testSqlDataTypeString(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeString_Mysql(t *testing.T) {
+	name := "TestSql_DataTypeString_Mysql"
+	dbtype := "mysql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectMysql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"VARCHAR(8)",
+		"CHAR(255)", "VARCHAR(255)", "VARBINARY(255)", "TEXT",
+		"CHAR(255)", "VARCHAR(255)", "TEXT",
+		"MEDIUMTEXT", "LONGTEXT", "BLOB"}
+	_testSqlDataTypeString(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeString_Oracle(t *testing.T) {
+	name := "TestSql_DataTypeString_Oracle"
+	dbtype := "oracle"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectOracle(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"NVARCHAR2(8)",
+		"CHAR(255)", "VARCHAR2(255)", "RAW(255)", "CLOB",
+		"NCHAR(255)", "NVARCHAR2(255)", "NCLOB",
+		"CLOB", "NCLOB", "BLOB"}
+	_testSqlDataTypeString(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeString_Pgsql(t *testing.T) {
+	name := "TestSql_DataTypeString_Pgsql"
+	dbtype := "pgsql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectPgsql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	// PostgreSQL has no data type NUMBER
+	sqlColTypes := []string{"VARCHAR(8)",
+		"CHAR(255)", "VARCHAR(255)", "BYTEA", "TEXT",
+		"CHAR(255)", "VARCHAR(255)", "TEXT",
+		"TEXT", "TEXT", "BYTEA"}
+	_testSqlDataTypeString(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeString_Sqlite(t *testing.T) {
+	name := "TestSql_DataTypeString_Sqlite"
+	dbtype := "sqlite"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectSqlite(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"VARCHAR(8)",
+		"CHAR(255)", "VARCHAR(255)", "BLOB", "TEXT",
+		"NCHAR(255)", "NVARCHAR(255)", "TEXT",
+		"CLOB", "TEXT", "BLOB"}
+	_testSqlDataTypeString(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+// func TestSql_DataType_Mysql(t *testing.T) {
+// 	name := "TestSql_DataType_Mysql"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap["mysql"]
+// 	if !ok {
+// 		t.Skipf("%s skipped", name)
+// 	}
+// 	sqlc, err := newSqlConnectMysql(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
+// 		"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT",
+// 		"FLOAT", "REAL", "DOUBLE", "DOUBLE PRECISION",
+// 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
+// 		"TIME", "TIME",
+// 		"DATE", "DATE",
+// 		"DATETIME", "DATETIME",
+// 		"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
+// 	_testSqlDataType(t, name, "mysql", sqlc, sqlColTypes)
+// }
+//
+// func TestSql_DataType_Oracle(t *testing.T) {
+// 	name := "TestSql_DataType_Oracle"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap["oracle"]
+// 	if !ok {
+// 		t.Skipf("%s skipped", name)
+// 	}
+// 	sqlc, err := newSqlConnectOracle(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"NVARCHAR2(8)", "NVARCHAR2(64)", "NCHAR(1)",
+// 		"SMALLINT", "SMALLINT", "INT", "INTEGER", "INTEGER",
+// 		"FLOAT", "BINARY_FLOAT", "REAL", "BINARY_DOUBLE",
+// 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMBER(12,6)", "DECIMAL(12,8)",
+// 		"DATE", "TIMESTAMP WITH TIME ZONE",
+// 		"DATE", "TIMESTAMP WITH TIME ZONE",
+// 		"DATE", "TIMESTAMP WITH TIME ZONE",
+// 		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
+// 	_testSqlDataType(t, name, "oracle", sqlc, sqlColTypes)
+// }
+//
+// func TestSql_DataType_Pgsql(t *testing.T) {
+// 	name := "TestSql_DataType_Pgsql"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap["pgsql"]
+// 	if !ok {
+// 		info, ok = urlMap["postgresql"]
+// 		if !ok {
+// 			t.Skipf("%s skipped", name)
+// 		}
+// 	}
+// 	sqlc, err := newSqlConnectPgsql(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
+// 		"SMALLINT", "INT2", "INT4", "INT", "BIGINT",
+// 		"FLOAT", "REAL", "DOUBLE PRECISION", "DOUBLE PRECISION",
+// 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
+// 		"TIME", "TIME WITH TIME ZONE",
+// 		"DATE", "DATE",
+// 		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE",
+// 		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
+// 	_testSqlDataType(t, name, "pgsql", sqlc, sqlColTypes)
+// }
+//
+// func TestSql_DataType_Sqlite(t *testing.T) {
+// 	name := "TestSql_DataType_Sqlite"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap["sqlite"]
+// 	if !ok {
+// 		info, ok = urlMap["sqlite3"]
+// 		if !ok {
+// 			t.Skipf("%s skipped", name)
+// 		}
+// 	}
+// 	sqlc, err := newSqlConnectSqlite(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
+// 		"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT",
+// 		"FLOAT", "REAL", "DOUBLE", "DOUBLE PRECISION",
+// 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
+// 		"TIME", "TIME",
+// 		"DATE", "DATE",
+// 		"DATETIME", "DATETIME",
+// 		"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
+// 	_testSqlDataType(t, name, "sqlite", sqlc, sqlColTypes)
+// }
+
+// /*----------------------------------------------------------------------*/
+//
+// var sqlColNamesTestDataType = []string{"id", "data_str", "data_bool",
+// 	"data_int_tiny", "data_int_small", "data_int_medium", "data_int", "data_int_big",
+// 	"data_float1", "data_float2", "data_float3", "data_float4",
+// 	"data_fix1", "data_fix2", "data_fix3", "data_fix4",
+// 	"data_time", "data_timez",
+// 	"data_date", "data_datez",
+// 	"data_datetime", "data_datetimez",
+// 	"data_timestamp", "data_timestampz"}
+//
+// func _testSqlDataType(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTypes []string) {
+// 	tblName := "tbl_test"
+// 	rand.Seed(time.Now().UnixNano())
+// 	{
+// 		sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
+//
+// 		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+// 			if _, err := sqlc.GetDB().Exec(fmt.Sprintf("CREATE TABLE %s WITH pk=/%s WITH maxru=10000", tblName, sqlColNamesTestDataType[0])); err != nil {
+// 				t.Fatalf("%s failed: %s", name, err)
+// 			}
+// 		} else {
+// 			sql := fmt.Sprintf("CREATE TABLE %s (", tblName)
+// 			for i := range sqlColNamesTestDataType {
+// 				sql += sqlColNamesTestDataType[i] + " " + colTypes[i] + ","
+// 			}
+// 			sql += fmt.Sprintf("PRIMARY KEY(%s))", sqlColNamesTestDataType[0])
+// 			if _, err := sqlc.GetDB().Exec(sql); err != nil {
+// 				t.Fatalf("%s failed: %s\n%s", name, err, sql)
+// 			}
+// 		}
+// 	}
+//
+// 	timeLayoutFull := "2006-01-02T15:04:05-07:00"
+// 	timeLayoutTime := "15:04:05-07:00"
+// 	timeLayoutDate := "2006-01-02"
+// 	loc, _ := time.LoadLocation(timezoneSql)
+// 	now := time.Now().Round(time.Second).In(loc)
+// 	// fmt.Printf("Now: %s / %s\n", time.Now().Format(timeLayoutFull), now.Format(timeLayoutFull))
+// 	type Row struct {
+// 		id             string
+// 		dataStr        string
+// 		dataBool       string
+// 		dataIntTiny    int8
+// 		dataIntSmall   int16
+// 		dataIntMedium  int
+// 		dataInt        int32
+// 		dataIntBig     int64
+// 		dataFloat1     float64
+// 		dataFloat2     float64
+// 		dataFloat3     float64
+// 		dataFloat4     float64
+// 		dataFix1       float64
+// 		dataFix2       float64
+// 		dataFix3       float64
+// 		dataFix4       float64
+// 		dataTime       time.Time
+// 		dataTimez      time.Time
+// 		dataDate       time.Time
+// 		dataDatez      time.Time
+// 		dataDatetime   time.Time
+// 		dataDatetimez  time.Time
+// 		dataTimestamp  time.Time
+// 		dataTimestampz time.Time
+// 	}
+// 	rowArr := make([]Row, 0)
+// 	numRows := 100
+//
+// 	// insert some rows
+// 	{
+// 		sql := fmt.Sprintf("INSERT INTO %s (", tblName)
+// 		sql += strings.Join(sqlColNamesTestDataType, ",")
+// 		sql += ") VALUES ("
+// 		sql += _generatePlaceholders(len(sqlColNamesTestDataType), dbtype) + ")"
+// 		for i := 1; i <= numRows; i++ {
+// 			// ti := now.Add(time.Duration(i) * time.Minute)
+// 			ti := now
+// 			vInt := rand.Int63()
+// 			if dbtype == "cosmos" || dbtype == "cosmosdb" {
+// 				vInt >>= 63 - 48
+// 			}
+// 			row := Row{
+// 				id:             fmt.Sprintf("%03d", i),
+// 				dataStr:        ti.Format(timeLayoutFull),
+// 				dataBool:       strconv.Itoa(int(vInt % 2)),
+// 				dataIntTiny:    int8(vInt % (2 ^ 8)),
+// 				dataIntSmall:   int16(vInt % (2 ^ 16)),
+// 				dataIntMedium:  int(vInt % (2 ^ 24)),
+// 				dataInt:        int32(vInt % (2 ^ 32)),
+// 				dataIntBig:     vInt,
+// 				dataFloat1:     math.Round(rand.Float64()*10e5) / 10e5,
+// 				dataFloat2:     math.Round(rand.Float64()*10e5) / 10e5,
+// 				dataFloat3:     math.Round(rand.Float64()*10e8) / 10e8,
+// 				dataFloat4:     math.Round(rand.Float64()*10e8) / 10e8,
+// 				dataFix1:       math.Round(rand.Float64()*10e1) / 10e1,
+// 				dataFix2:       math.Round(rand.Float64()*10e3) / 10e3,
+// 				dataFix3:       math.Round(rand.Float64()*10e5) / 10e5,
+// 				dataFix4:       math.Round(rand.Float64()*10e7) / 10e7,
+// 				dataTime:       ti,
+// 				dataTimez:      ti,
+// 				dataDate:       ti,
+// 				dataDatez:      ti,
+// 				dataDatetime:   ti,
+// 				dataDatetimez:  ti,
+// 				dataTimestamp:  ti,
+// 				dataTimestampz: ti,
+// 			}
+// 			rowArr = append(rowArr, row)
+// 			params := []interface{}{row.id, row.dataStr, row.dataBool,
+// 				row.dataIntTiny, row.dataIntSmall, row.dataIntMedium, row.dataInt, row.dataIntBig,
+// 				row.dataFloat1, row.dataFloat2, row.dataFloat3, row.dataFloat4,
+// 				row.dataFix1, row.dataFix2, row.dataFix3, row.dataFix4,
+// 				row.dataTime, row.dataTimez, row.dataDate, row.dataDatez,
+// 				row.dataDatetime, row.dataDatetimez, row.dataTimestamp, row.dataTimestampz}
+// 			if dbtype == "cosmos" || dbtype == "cosmosdb" {
+// 				params = append(params, row.id)
+// 			}
+// 			_, err := sqlc.GetDB().Exec(sql, params...)
+// 			if err != nil {
+// 				t.Fatalf("%s failed: %s", name, err)
+// 			}
+// 		}
+// 	}
+//
+// 	// query some rows
+// 	{
+// 		id := rand.Intn(numRows) + 1
+// 		placeholder := _generatePlaceholders(1, dbtype)
+// 		sql := "SELECT * FROM %s WHERE id>=%s ORDER BY id"
+// 		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+// 			sql = "SELECT * FROM %s t WHERE t.id>=%s WITH cross_partition=true"
+// 		}
+// 		sql = fmt.Sprintf(sql, tblName, placeholder)
+// 		params := []interface{}{fmt.Sprintf("%03d", id)}
+// 		dbRows, err := sqlc.GetDB().Query(sql, params...)
+// 		if err != nil {
+// 			t.Fatalf("%s failed: %s", name, err)
+// 		}
+// 		defer dbRows.Close()
+// 		rows := make([]map[string]interface{}, 0)
+// 		err = sqlc.FetchRowsCallback(dbRows, func(row map[string]interface{}, err error) bool {
+// 			rows = append(rows, row)
+// 			return false
+// 		})
+// 		// rows, err := sqlc.FetchRows(dbRows)
+// 		if err != nil {
+// 			t.Fatalf("%s failed: %s", name, err)
+// 		}
+// 		expected := rowArr[id-1]
+// 		row := rows[0]
+// 		// fmt.Printf("DEBUG: %#v\n", row)
+// 		// fmt.Println(id, row)
+// 		for k, v := range row {
+// 			// transform to lower-cases
+// 			row[strings.ToLower(k)] = v
+// 		}
+// 		{
+// 			f := "id"
+// 			e, _ := reddo.ToInt(expected.id)
+// 			v, _ := reddo.ToInt(row[f])
+// 			if v != e {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_int_tiny"
+// 			e, _ := reddo.ToInt(expected.dataIntTiny)
+// 			v, _ := reddo.ToInt(row[f])
+// 			if v != e {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_int_small"
+// 			e, _ := reddo.ToInt(expected.dataIntSmall)
+// 			v, _ := reddo.ToInt(row[f])
+// 			if v != e {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_int_medium"
+// 			e, _ := reddo.ToInt(expected.dataIntMedium)
+// 			v, _ := reddo.ToInt(row[f])
+// 			if v != e {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_int"
+// 			e, _ := reddo.ToInt(expected.dataInt)
+// 			v, _ := reddo.ToInt(row[f])
+// 			if v != e {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_int_big"
+// 			e, _ := reddo.ToInt(expected.dataIntBig)
+// 			v, _ := reddo.ToInt(row[f])
+// 			if v != e {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_float1"
+// 			e, _ := reddo.ToFloat(expected.dataFloat1)
+// 			v, _ := reddo.ToFloat(row[f])
+// 			if math.Round(v*10e5)/10e5 != math.Round(e*10e5)/10e5 {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_float2"
+// 			e, _ := reddo.ToFloat(expected.dataFloat2)
+// 			v, _ := reddo.ToFloat(row[f])
+// 			if math.Round(v*10e5)/10e5 != math.Round(e*10e5)/10e5 {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_float3"
+// 			e, _ := reddo.ToFloat(expected.dataFloat3)
+// 			v, _ := reddo.ToFloat(row[f])
+// 			if math.Round(v*10e8)/10e8 != math.Round(e*10e8)/10e8 {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_float4"
+// 			e, _ := reddo.ToFloat(expected.dataFloat4)
+// 			v, _ := reddo.ToFloat(row[f])
+// 			if math.Round(v*10e8)/10e8 != math.Round(e*10e8)/10e8 {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_fix1"
+// 			e, _ := reddo.ToFloat(expected.dataFix1)
+// 			v, _ := reddo.ToFloat(row[f])
+// 			if math.Round(v*10e1)/10e1 != math.Round(e*10e1)/10e1 {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_fix2"
+// 			e, _ := reddo.ToFloat(expected.dataFix2)
+// 			v, _ := reddo.ToFloat(row[f])
+// 			if math.Round(v*10e3)/10e3 != math.Round(e*10e3)/10e3 {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_fix3"
+// 			e, _ := reddo.ToFloat(expected.dataFix3)
+// 			v, _ := reddo.ToFloat(row[f])
+// 			if math.Round(v*10e5)/10e5 != math.Round(e*10e5)/10e5 {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_fix4"
+// 			e, _ := reddo.ToFloat(expected.dataFix4)
+// 			v, _ := reddo.ToFloat(row[f])
+// 			if math.Round(v*10e7)/10e7 != math.Round(e*10e7)/10e7 {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_str"
+// 			e, _ := reddo.ToString(expected.dataStr)
+// 			v, _ := reddo.ToString(row[f])
+// 			if v != e {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			f := "data_bool"
+// 			e, _ := reddo.ToBool(expected.dataBool)
+// 			v, _ := reddo.ToBool(row[f])
+// 			if v != e {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e, v)
+// 			}
+// 		}
+// 		{
+// 			tz := time.Now().In(loc).Format("-07:00")
+// 			for _, f := range []string{"data_time", "data_timez", "data_date", "data_datez", "data_datetime", "data_datetimez", "data_timestamp", "data_timestampz"} {
+// 				v, _ := reddo.ToTime(row[f])
+// 				if str, ok := row[f].(string); ok {
+// 					v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+// 				}
+// 				if v.Format("-07:00") != tz {
+// 					t.Fatalf("%s failed: [%s] expected timezone %#v but received %#v", name, row["id"].(string)+"/"+f, tz, v.Format("-07:00"))
+// 				}
+// 			}
+// 		}
+// 		{
+// 			f := "data_time"
+// 			e, _ := reddo.ToTime(expected.dataTime)
+// 			v, _ := reddo.ToTime(row[f])
+// 			if str, ok := row[f].(string); ok {
+// 				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+// 			}
+// 			if v.In(loc).Format(timeLayoutTime) != e.In(loc).Format(timeLayoutTime) {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutTime), v.In(loc).Format(timeLayoutTime))
+// 			}
+// 		}
+// 		{
+// 			f := "data_timez"
+// 			e, _ := reddo.ToTime(expected.dataTimez)
+// 			v, _ := reddo.ToTime(row[f])
+// 			if str, ok := row[f].(string); ok {
+// 				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+// 			}
+// 			if v.In(loc).Format(timeLayoutTime) != e.In(loc).Format(timeLayoutTime) {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutTime), v.In(loc).Format(timeLayoutTime))
+// 			}
+// 		}
+// 		{
+// 			f := "data_date"
+// 			e, _ := reddo.ToTime(expected.dataDate)
+// 			v, _ := reddo.ToTime(row[f])
+// 			if str, ok := row[f].(string); ok {
+// 				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+// 			}
+// 			if v.In(loc).Format(timeLayoutDate) != e.In(loc).Format(timeLayoutDate) {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutDate), v.In(loc).Format(timeLayoutDate))
+// 			}
+// 		}
+// 		{
+// 			f := "data_datez"
+// 			e, _ := reddo.ToTime(expected.dataDatez)
+// 			v, _ := reddo.ToTime(row[f])
+// 			if str, ok := row[f].(string); ok {
+// 				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+// 			}
+// 			if v.In(loc).Format(timeLayoutDate) != e.In(loc).Format(timeLayoutDate) {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutDate), v.In(loc).Format(timeLayoutDate))
+// 			}
+// 		}
+// 		{
+// 			f := "data_datetime"
+// 			e, _ := reddo.ToTime(expected.dataDatetime)
+// 			v, _ := reddo.ToTime(row[f])
+// 			if str, ok := row[f].(string); ok {
+// 				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+// 			}
+// 			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
+// 			}
+// 		}
+// 		{
+// 			f := "data_datetimez"
+// 			e, _ := reddo.ToTime(expected.dataDatetimez)
+// 			v, _ := reddo.ToTime(row[f])
+// 			if str, ok := row[f].(string); ok {
+// 				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+// 			}
+// 			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
+// 			}
+// 		}
+// 		{
+// 			f := "data_timestamp"
+// 			e, _ := reddo.ToTime(expected.dataTimestamp)
+// 			v, _ := reddo.ToTime(row[f])
+// 			if str, ok := row[f].(string); ok {
+// 				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+// 			}
+// 			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
+// 			}
+// 		}
+// 		{
+// 			f := "data_timestampz"
+// 			e, _ := reddo.ToTime(expected.dataTimestampz)
+// 			v, _ := reddo.ToTime(row[f])
+// 			if str, ok := row[f].(string); ok {
+// 				v, _ = reddo.ToTimeWithLayout(str, time.RFC3339)
+// 			}
+// 			if v.In(loc).Format(timeLayoutFull) != e.In(loc).Format(timeLayoutFull) {
+// 				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, row["id"].(string)+"/"+f, e.In(loc).Format(timeLayoutFull), v.In(loc).Format(timeLayoutFull))
+// 			}
+// 		}
+// 	}
+// }
+//
+// func TestSql_DataType_Cosmos(t *testing.T) {
+// 	name := "TestSql_DataType_Cosmos"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap["cosmos"]
+// 	if !ok {
+// 		info, ok = urlMap["cosmosdb"]
+// 		if !ok {
+// 			t.Skipf("%s skipped", name)
+// 		}
+// 	}
+// 	sqlc, err := newSqlConnectCosmosdb(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	_testSqlDataType(t, name, "cosmos", sqlc, nil)
+// }
+//
+// func TestSql_DataType_Mssql(t *testing.T) {
+// 	name := "TestSql_DataType_Mssql"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap["mssql"]
+// 	if !ok {
+// 		t.Skipf("%s skipped", name)
+// 	}
+// 	sqlc, err := newSqlConnectMssql(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"NVARCHAR(8)", "NVARCHAR(64)", "NCHAR(1)",
+// 		"TINYINT", "SMALLINT", "INT", "INTEGER", "BIGINT",
+// 		"FLOAT(24)", "REAL", "FLOAT(53)", "DOUBLE PRECISION",
+// 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
+// 		"TIME", "TIME",
+// 		"DATE", "DATE",
+// 		"DATETIME", "DATETIMEOFFSET",
+// 		"DATETIME2", "DATETIMEOFFSET"}
+// 	_testSqlDataType(t, name, "mssql", sqlc, sqlColTypes)
+// }
+//
+// func TestSql_DataType_Mysql(t *testing.T) {
+// 	name := "TestSql_DataType_Mysql"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap["mysql"]
+// 	if !ok {
+// 		t.Skipf("%s skipped", name)
+// 	}
+// 	sqlc, err := newSqlConnectMysql(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
+// 		"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT",
+// 		"FLOAT", "REAL", "DOUBLE", "DOUBLE PRECISION",
+// 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
+// 		"TIME", "TIME",
+// 		"DATE", "DATE",
+// 		"DATETIME", "DATETIME",
+// 		"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
+// 	_testSqlDataType(t, name, "mysql", sqlc, sqlColTypes)
+// }
+//
+// func TestSql_DataType_Oracle(t *testing.T) {
+// 	name := "TestSql_DataType_Oracle"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap["oracle"]
+// 	if !ok {
+// 		t.Skipf("%s skipped", name)
+// 	}
+// 	sqlc, err := newSqlConnectOracle(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"NVARCHAR2(8)", "NVARCHAR2(64)", "NCHAR(1)",
+// 		"SMALLINT", "SMALLINT", "INT", "INTEGER", "INTEGER",
+// 		"FLOAT", "BINARY_FLOAT", "REAL", "BINARY_DOUBLE",
+// 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMBER(12,6)", "DECIMAL(12,8)",
+// 		"DATE", "TIMESTAMP WITH TIME ZONE",
+// 		"DATE", "TIMESTAMP WITH TIME ZONE",
+// 		"DATE", "TIMESTAMP WITH TIME ZONE",
+// 		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
+// 	_testSqlDataType(t, name, "oracle", sqlc, sqlColTypes)
+// }
+//
+// func TestSql_DataType_Pgsql(t *testing.T) {
+// 	name := "TestSql_DataType_Pgsql"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap["pgsql"]
+// 	if !ok {
+// 		info, ok = urlMap["postgresql"]
+// 		if !ok {
+// 			t.Skipf("%s skipped", name)
+// 		}
+// 	}
+// 	sqlc, err := newSqlConnectPgsql(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
+// 		"SMALLINT", "INT2", "INT4", "INT", "BIGINT",
+// 		"FLOAT", "REAL", "DOUBLE PRECISION", "DOUBLE PRECISION",
+// 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
+// 		"TIME", "TIME WITH TIME ZONE",
+// 		"DATE", "DATE",
+// 		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE",
+// 		"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
+// 	_testSqlDataType(t, name, "pgsql", sqlc, sqlColTypes)
+// }
+//
+// func TestSql_DataType_Sqlite(t *testing.T) {
+// 	name := "TestSql_DataType_Sqlite"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap["sqlite"]
+// 	if !ok {
+// 		info, ok = urlMap["sqlite3"]
+// 		if !ok {
+// 			t.Skipf("%s skipped", name)
+// 		}
+// 	}
+// 	sqlc, err := newSqlConnectSqlite(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"VARCHAR(8)", "VARCHAR(64)", "CHAR(1)",
+// 		"TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT",
+// 		"FLOAT", "REAL", "DOUBLE", "DOUBLE PRECISION",
+// 		"NUMERIC(12,2)", "DECIMAL(12,4)", "NUMERIC(12,6)", "DECIMAL(12,8)",
+// 		"TIME", "TIME",
+// 		"DATE", "DATE",
+// 		"DATETIME", "DATETIME",
+// 		"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
+// 	_testSqlDataType(t, name, "sqlite", sqlc, sqlColTypes)
+// }
+
+// /*----------------------------------------------------------------------*/
+//
+// var sqlColNamesTestNullValue = []string{"id", "data_int", "data_float", "data_str", "data_time"}
+//
+// func _testSqlNullValue(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTypes []string) {
+// 	tblName := "tbl_test"
+// 	rand.Seed(time.Now().UnixNano())
+// 	{
+// 		sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
+//
+// 		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+// 			if _, err := sqlc.GetDB().Exec(fmt.Sprintf("CREATE TABLE %s WITH pk=/%s WITH maxru=10000", tblName, sqlColNamesTestDataType[0])); err != nil {
+// 				t.Fatalf("%s failed: %s", name, err)
+// 			}
+// 		} else {
+// 			sql := fmt.Sprintf("CREATE TABLE %s (", tblName)
+// 			for i := range sqlColNamesTestNullValue {
+// 				sql += sqlColNamesTestNullValue[i] + " " + colTypes[i] + ","
+// 			}
+// 			sql += fmt.Sprintf("PRIMARY KEY(%s))", sqlColNamesTestNullValue[0])
+// 			if _, err := sqlc.GetDB().Exec(sql); err != nil {
+// 				t.Fatalf("%s failed: %s\n%s", name, err, sql)
+// 			}
+// 		}
+// 	}
+//
+// 	// timeLayoutFull := "2006-01-02T15:04:05-07:00"
+// 	// timeLayoutTime := "15:04:05-07:00"
+// 	// timeLayoutDate := "2006-01-02"
+// 	loc, _ := time.LoadLocation(timezoneSql)
+// 	type Row struct {
+// 		id        string
+// 		dataInt   *int64
+// 		dataFloat *float64
+// 		dataStr   *string
+// 		dataTime  *time.Time
+// 	}
+// 	rowArr := make([]Row, 0)
+// 	numRows := 100
+//
+// 	// insert some rows
+// 	{
+// 		sql := fmt.Sprintf("INSERT INTO %s (", tblName)
+// 		sql += strings.Join(sqlColNamesTestNullValue, ",")
+// 		sql += ") VALUES ("
+// 		sql += _generatePlaceholders(len(sqlColNamesTestNullValue), dbtype) + ")"
+// 		for i := 1; i <= numRows; i++ {
+// 			vInt := int64(rand.Int31())
+// 			vFloat := float64(rand.Float32())
+// 			vStr := fmt.Sprintf("%0.6f", rand.Float64())
+// 			vTime := time.Now().Add(time.Duration(rand.Intn(1234567)) * time.Second).Round(time.Second).In(loc)
+// 			if dbtype == "cosmos" || dbtype == "cosmosdb" {
+// 				vInt >>= 63 - 48
+// 			}
+// 			row := Row{id: fmt.Sprintf("%03d", i)}
+// 			if i%2 == 0 {
+// 				row.dataInt = &vInt
+// 			}
+// 			if i%3 == 0 {
+// 				row.dataFloat = &vFloat
+// 			}
+// 			if i%4 == 0 {
+// 				row.dataStr = &vStr
+// 			}
+// 			if i%5 == 0 {
+// 				row.dataTime = &vTime
+// 			}
+// 			rowArr = append(rowArr, row)
+// 			params := []interface{}{row.id, row.dataInt, row.dataFloat, row.dataStr, row.dataTime}
+// 			if dbtype == "cosmos" || dbtype == "cosmosdb" {
+// 				params = append(params, row.id)
+// 			}
+// 			_, err := sqlc.GetDB().Exec(sql, params...)
+// 			if err != nil {
+// 				t.Fatalf("%s failed: %s", name, err)
+// 			}
+// 		}
+// 	}
+//
+// 	// query some rows
+// 	{
+// 		for i := 1; i <= numRows; i++ {
+// 			id := fmt.Sprintf("%03d", i)
+// 			placeholder := _generatePlaceholders(1, dbtype)
+// 			sql := "SELECT * FROM %s WHERE id=%s ORDER BY id"
+// 			if dbtype == "cosmos" || dbtype == "cosmosdb" {
+// 				sql = "SELECT * FROM %s t WHERE t.id=%s WITH cross_partition=true"
+// 			}
+// 			sql = fmt.Sprintf(sql, tblName, placeholder)
+// 			params := []interface{}{id}
+// 			dbRows, err := sqlc.GetDB().Query(sql, params...)
+// 			if err != nil {
+// 				t.Fatalf("%s failed: %s", name, err)
+// 			}
+// 			rows, err := sqlc.FetchRows(dbRows)
+// 			if err != nil {
+// 				t.Fatalf("%s failed: %s", name, err)
+// 			}
+// 			row := rows[0]
+// 			for k, v := range row {
+// 				// transform to lower-cases
+// 				row[strings.ToLower(k)] = v
+// 			}
+//
+// 			if i%2 != 0 {
+// 				if v, ok := row[sqlColNamesTestNullValue[1]]; !ok || v != (*int64)(nil) {
+// 					t.Fatalf("%s failed: column %s / value %#v / status %#v", name, sqlColNamesTestNullValue[1], v, ok)
+// 				}
+// 			}
+// 			if i%3 != 0 {
+// 				if v, ok := row[sqlColNamesTestNullValue[2]]; !ok || v != (*float64)(nil) {
+// 					t.Fatalf("%s failed: column %s / value %#v / status %#v", name, sqlColNamesTestNullValue[2], v, ok)
+// 				}
+// 			}
+// 			if i%4 != 0 {
+// 				if v, ok := row[sqlColNamesTestNullValue[3]]; !ok || v != (*string)(nil) {
+// 					t.Fatalf("%s failed: column %s / value %#v / status %#v", name, sqlColNamesTestNullValue[3], v, ok)
+// 				}
+// 			}
+// 			if i%5 != 0 {
+// 				if v, ok := row[sqlColNamesTestNullValue[4]]; !ok || v != (*time.Time)(nil) {
+// 					t.Fatalf("%s failed: column %s / value %#v / status %#v", name, sqlColNamesTestNullValue[4], v, ok)
+// 				}
+// 			}
+// 		}
+// 	}
+// }
+//
+// func TestSql_NullValue_Mssql(t *testing.T) {
+// 	name := "TestSql_NullValue_Mssql"
+// 	dbtype := "mssql"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap[dbtype]
+// 	if !ok {
+// 		t.Skipf("%s skipped", name)
+// 	}
+// 	sqlc, err := newSqlConnectMssql(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"NVARCHAR(8)", "INT", "REAL", "NVARCHAR(64)", "DATETIME"}
+// 	_testSqlNullValue(t, name, dbtype, sqlc, sqlColTypes)
+// }
+//
+// func TestSql_NullValue_Mysql(t *testing.T) {
+// 	name := "TestSql_NullValue_Mysql"
+// 	dbtype := "mysql"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap[dbtype]
+// 	if !ok {
+// 		t.Skipf("%s skipped", name)
+// 	}
+// 	sqlc, err := newSqlConnectMysql(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"VARCHAR(8)", "INT", "REAL", "VARCHAR(64)", "DATETIME"}
+// 	_testSqlNullValue(t, name, dbtype, sqlc, sqlColTypes)
+// }
+//
+// func TestSql_NullValue_Oracle(t *testing.T) {
+// 	name := "TestSql_NullValue_Oracle"
+// 	dbtype := "oracle"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap[dbtype]
+// 	if !ok {
+// 		t.Skipf("%s skipped", name)
+// 	}
+// 	sqlc, err := newSqlConnectOracle(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"NVARCHAR2(8)", "INT", "REAL", "NVARCHAR2(64)", "TIMESTAMP"}
+// 	_testSqlNullValue(t, name, dbtype, sqlc, sqlColTypes)
+// }
+//
+// func TestSql_NullValue_Pgsql(t *testing.T) {
+// 	name := "TestSql_NullValue_Pgsql"
+// 	dbtype := "pgsql"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap[dbtype]
+// 	if !ok {
+// 		t.Skipf("%s skipped", name)
+// 	}
+// 	sqlc, err := newSqlConnectPgsql(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"VARCHAR(8)", "INT", "REAL", "VARCHAR(64)", "TIMESTAMP"}
+// 	_testSqlNullValue(t, name, dbtype, sqlc, sqlColTypes)
+// }
+//
+// func TestSql_NullValue_Sqlite(t *testing.T) {
+// 	name := "TestSql_NullValue_Sqlite"
+// 	dbtype := "sqlite"
+// 	urlMap := sqlGetUrlFromEnv()
+// 	info, ok := urlMap[dbtype]
+// 	if !ok {
+// 		t.Skipf("%s skipped", name)
+// 	}
+// 	sqlc, err := newSqlConnectSqlite(info.driver, info.url, timezoneSql, -1, nil)
+// 	if err != nil {
+// 		t.Fatalf("%s failed: error [%s]", name, err)
+// 	} else if sqlc == nil {
+// 		t.Fatalf("%s failed: nil", name)
+// 	}
+//
+// 	sqlColTypes := []string{"VARCHAR(8)", "INT", "REAL", "VARCHAR(64)", "DATETIME"}
+// 	_testSqlNullValue(t, name, dbtype, sqlc, sqlColTypes)
+// }
