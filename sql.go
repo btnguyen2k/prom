@@ -350,6 +350,9 @@ var dbFloatTypes = map[string]map[DbFlavor]bool{
 	"DOUBLE PRECISION": {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
 	"BINARY_FLOAT":     {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
 	"BINARY_DOUBLE":    {FlavorDefault: true, FlavorOracle: true},
+	"MONEY":            {FlavorDefault: true, FlavorMsSql: true, FlavorPgSql: true},
+	"SMALLMONEY":       {FlavorDefault: true, FlavorMsSql: true},
+	"790":              {FlavorPgSql: true},
 }
 var dbStringTypes = map[string]map[DbFlavor]bool{
 	"CHAR":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
@@ -657,10 +660,10 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 	}
 	result := map[string]interface{}{}
 	for i, v := range colsAndTypes {
-		// if v.Name() == "data_decimal" {
+		// if v.Name() == "data_money2" {
 		// 	fmt.Printf("%s/%s/%s/%#v - %s\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
 		// 	fmt.Println(v.DecimalSize())
-		// 	fmt.Println(v.ScanType().Name(), isRealNumber)
+		// 	// fmt.Println(v.ScanType().Name())
 		// }
 		switch {
 		case vals[i] == nil:
@@ -675,6 +678,15 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			}
 		case (sc.flavor == FlavorMsSql || sc.flavor == FlavorMySql || sc.flavor == FlavorPgSql) && sc.isNumberType(v):
 			isRealNumber := v.ScanType().Name() == "float32" || v.ScanType().Name() == "float64"
+			dbTypeName := strings.ToUpper(v.DatabaseTypeName())
+			isRealNumber = isRealNumber || dbTypeName == "MONEY" || dbTypeName == "SMALLMONEY"
+			if sc.flavor == FlavorPgSql && dbTypeName == "790" {
+				// PostgreSQL type 790 is type "MONEY"
+				isRealNumber = true
+				v := fmt.Sprintf("%s", vals[i])
+				v = regexp.MustCompile(`[^\d\.]+`).ReplaceAllString(v, "")
+				vals[i] = v
+			}
 			_, scale, _ := v.DecimalSize()
 			isRealNumber = isRealNumber || scale != 0
 			var err error
@@ -683,6 +695,9 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			} else {
 				result[v.Name()], err = toIntIfValidInteger(vals[i])
 			}
+			// fmt.Printf("%s/%s/%s/%#v - %s\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
+			// fmt.Println(v.DecimalSize())
+			// fmt.Println(v.ScanType().Name(), isRealNumber)
 			if err != nil {
 				return nil, err
 			}
