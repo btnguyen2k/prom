@@ -344,6 +344,7 @@ var dbFloatTypes = map[string]map[DbFlavor]bool{
 	"FLOAT4":           {FlavorDefault: true, FlavorPgSql: true},
 	"FLOAT8":           {FlavorDefault: true, FlavorPgSql: true},
 	"REAL":             {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"NUMBER":           {FlavorDefault: true, FlavorSqlite: true},
 	"NUMERIC":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
 	"DECIMAL":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
 	"DOUBLE":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
@@ -498,7 +499,7 @@ func toIntIfValidInteger(v interface{}) (int64, error) {
 }
 
 // toFloatIfValidReal converts the input to float64 if:
-//   - the input is a floating point/real number
+//   - the input is a floating point/real number or integer
 //   - a string or []byte representing a floating point/real number
 func toFloatIfValidReal(v interface{}) (float64, error) {
 	if v == nil {
@@ -506,6 +507,10 @@ func toFloatIfValidReal(v interface{}) (float64, error) {
 	}
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return float64(rv.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return float64(rv.Uint()), nil
 	case reflect.Float32, reflect.Float64:
 		return rv.Float(), nil
 	case reflect.String:
@@ -628,10 +633,6 @@ func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v 
 }
 
 func (sc *SqlConnect) _scanNilValue(result map[string]interface{}, v *sql.ColumnType) error {
-	// if strings.ToUpper(v.Name()) == "DATA_FLOAT" || strings.ToUpper(v.Name()) == "DATA_INT" {
-	// fmt.Printf("%s/%s/%s/%#v - %#v - %#v - %#v\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), sc.isIntType(v), sc.isFloatType(v), sc.isStringType(v), sc.isDateTimeType(v))
-	// fmt.Println(v.DecimalSize())
-	// }
 	switch {
 	case sc.isIntType(v):
 		result[v.Name()] = (*int64)(nil)
@@ -660,8 +661,8 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 	}
 	result := map[string]interface{}{}
 	for i, v := range colsAndTypes {
-		// if v.Name() == "data_money2" {
-		// 	fmt.Printf("%s/%s/%s/%#v - %s\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
+		// if v.Name() == "data_decimal" {
+		// 	fmt.Printf("Column: %s / DbType: %s / GoType: %s / Value: %#v(%T)\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
 		// 	fmt.Println(v.DecimalSize())
 		// 	// fmt.Println(v.ScanType().Name())
 		// }
@@ -676,8 +677,18 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			if err := sc._scanNilValue(result, v); err != nil {
 				return nil, err
 			}
+		case sc.flavor == FlavorSqlite && sc.isNumberType(v):
+			var err error
+			if sc.isFloatType(v) {
+				result[v.Name()], err = toFloatIfValidReal(vals[i])
+			} else {
+				result[v.Name()], err = toIntIfValidInteger(vals[i])
+			}
+			if err != nil {
+				return nil, err
+			}
 		case (sc.flavor == FlavorMsSql || sc.flavor == FlavorMySql || sc.flavor == FlavorPgSql) && sc.isNumberType(v):
-			isRealNumber := v.ScanType().Name() == "float32" || v.ScanType().Name() == "float64"
+			isRealNumber := v.ScanType() != nil && (v.ScanType().Name() == "float32" || v.ScanType().Name() == "float64")
 			dbTypeName := strings.ToUpper(v.DatabaseTypeName())
 			isRealNumber = isRealNumber || dbTypeName == "MONEY" || dbTypeName == "SMALLMONEY"
 			if sc.flavor == FlavorPgSql && dbTypeName == "790" {
@@ -695,9 +706,6 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			} else {
 				result[v.Name()], err = toIntIfValidInteger(vals[i])
 			}
-			// fmt.Printf("%s/%s/%s/%#v - %s\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
-			// fmt.Println(v.DecimalSize())
-			// fmt.Println(v.ScanType().Name(), isRealNumber)
 			if err != nil {
 				return nil, err
 			}
