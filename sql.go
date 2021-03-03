@@ -380,7 +380,7 @@ var dbDateTimeTypes = map[string]map[DbFlavor]bool{
 	"DATETIME2":                      {FlavorDefault: true, FlavorMsSql: true},
 	"DATETIMEOFFSET":                 {FlavorDefault: true, FlavorMsSql: true},
 	"SMALLDATETIME":                  {FlavorDefault: true, FlavorMsSql: true},
-	"TIMESTAMP":                      {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true},
+	"TIMESTAMP":                      {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
 	"TIMESTAMP WITH TIME ZONE":       {FlavorDefault: true, FlavorOracle: true},
 	"TIMESTAMP WITH LOCAL TIME ZONE": {FlavorDefault: true, FlavorOracle: true},
 }
@@ -602,13 +602,35 @@ func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *
 	return err
 }
 
-func (sc *SqlConnect) _scanSqliteDateTimeFromString(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// SQLite store date/time as string, with timezone info
+func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
 	loc := sc.ensureLocation()
-	var err error
-	result[v.Name()], err = time.Parse(dtlayoutTzz, val.(string))
-	result[v.Name()] = result[v.Name()].(time.Time).In(loc)
-	return err
+
+	str, ok := val.(string)
+	if ok {
+		// date/time is fetched as string, with timezone info
+		var err error
+		result[v.Name()], err = time.Parse(dtlayoutTzz, str)
+		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+		return err
+	}
+
+	bytes, ok := val.([]byte)
+	if ok {
+		// date/time is fetched as []byte, with timezone info
+		var err error
+		result[v.Name()], err = time.Parse(dtlayoutTzz, string(bytes))
+		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+		return err
+	}
+
+	time, ok := val.(time.Time)
+	if ok {
+		// date/time is fetched as time.Time, with timezone info
+		result[v.Name()] = time.In(loc)
+		return nil
+	}
+
+	return errors.New(fmt.Sprintf("sqlite: cannot convert value %#v to time.Time", val))
 }
 
 func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
@@ -661,7 +683,7 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 	}
 	result := map[string]interface{}{}
 	for i, v := range colsAndTypes {
-		// if v.Name() == "data_decimal" {
+		// if v.Name() == "data_datetimez" {
 		// 	fmt.Printf("Column: %s / DbType: %s / GoType: %s / Value: %#v(%T)\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
 		// 	fmt.Println(v.DecimalSize())
 		// 	// fmt.Println(v.ScanType().Name())
@@ -709,18 +731,21 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			if err != nil {
 				return nil, err
 			}
-		case sc.isIntType(v) && isValueTypeRawBytes(vals[i]):
-			// when number is loaded as []byte
-			result[v.Name()], _ = strconv.ParseInt(string(vals[i].([]byte)), 10, 64)
-		case sc.isFloatType(v) && isValueTypeRawBytes(vals[i]):
-			// when number is loaded as []byte
-			result[v.Name()], _ = strconv.ParseFloat(string(vals[i].([]byte)), 64)
-		case sc.isStringType(v) && isValueTypeRawBytes(vals[i]):
-			// when string is loaded as []byte
-			result[v.Name()] = string(vals[i].([]byte))
+		case isValueTypeRawBytes(vals[i]) && (sc.isNumberType(v) || sc.isStringType(v)):
+			switch {
+			case sc.isStringType(v):
+				// when string is loaded as []byte
+				result[v.Name()] = string(vals[i].([]byte))
+			case sc.isIntType(v):
+				// when number is loaded as []byte
+				result[v.Name()], _ = strconv.ParseInt(string(vals[i].([]byte)), 10, 64)
+			case sc.isFloatType(v):
+				// when number is loaded as []byte
+				result[v.Name()], _ = strconv.ParseFloat(string(vals[i].([]byte)), 64)
+			}
 		case sc.flavor == FlavorSqlite && sc.isDateTimeType(v):
 			// special care for SQLite's date/time types
-			if err := sc._scanSqliteDateTimeFromString(result, v, vals[i]); err != nil {
+			if err := sc._scanSqliteDateTime(result, v, vals[i]); err != nil {
 				return nil, err
 			}
 		case sc.flavor == FlavorMySql && sc.isDateTimeType(v) && isValueTypeRawBytes(vals[i]):
