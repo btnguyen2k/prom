@@ -83,7 +83,8 @@ func newSqlConnectCosmosdb(driver, url, timezone string, timeoutMs int, poolOpti
 }
 
 const (
-	timezoneSql = "Asia/Kabul"
+	timezoneSql  = "Asia/Kabul"
+	timezoneSql2 = "Europe/Rome"
 )
 
 func TestNewSqlConnect(t *testing.T) {
@@ -2506,7 +2507,7 @@ func TestSql_DataTypeMoney_Oracle(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"VARCHAR(8)",
+	sqlColTypes := []string{"NVARCHAR2(8)",
 		"NUMERIC(24,2)", "DECIMAL(28,4)", "DEC(32,6)", "NUMERIC(36,8)"}
 	_testSqlDataTypeMoney(t, name, dbtype, sqlc, sqlColTypes)
 }
@@ -2553,8 +2554,18 @@ func TestSql_DataTypeMoney_Sqlite(t *testing.T) {
 
 /*----------------------------------------------------------------------*/
 
+func _startOfDay(t time.Time) time.Time {
+	arr := []byte(t.Format(time.RFC3339))
+	arr[11], arr[12], arr[14], arr[15], arr[17], arr[18] = '0', '0', '0', '0', '0', '0'
+	t, _ = time.ParseInLocation(time.RFC3339, string(arr), t.Location())
+	return t
+}
+
 var sqlColNames_TestDataTypeDatetime = []string{"id",
-	"data_date", "data_time", "data_datetime", "data_datetimez"}
+	"data_date", "data_datez",
+	"data_time", "data_timez",
+	"data_datetime", "data_datetimez",
+	"data_duration"}
 
 func _testSqlDataTypeDatetime(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTypes []string) {
 	tblName := "tbl_test"
@@ -2582,14 +2593,18 @@ func _testSqlDataTypeDatetime(t *testing.T, name, dbtype string, sqlc *SqlConnec
 	type Row struct {
 		id            string
 		dataDate      time.Time
+		dataDatez     time.Time
 		dataTime      time.Time
+		dataTimez     time.Time
 		dataDatetime  time.Time
-		dataTimestamp time.Time
+		dataDatetimez time.Time
+		dataDuration  time.Duration
 	}
 	rowArr := make([]Row, 0)
 	numRows := 100
 
 	LOC, _ := time.LoadLocation(timezoneSql)
+	LOC2, _ := time.LoadLocation(timezoneSql2)
 
 	// insert some rows
 	sql := fmt.Sprintf("INSERT INTO %s (", tblName)
@@ -2598,15 +2613,20 @@ func _testSqlDataTypeDatetime(t *testing.T, name, dbtype string, sqlc *SqlConnec
 	sql += _generatePlaceholders(len(colNameList), dbtype) + ")"
 	for i := 1; i <= numRows; i++ {
 		vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", LOC)
+		vDatetime = vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute)
 		row := Row{
 			id:            fmt.Sprintf("%03d", i),
-			dataDate:      vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute),
-			dataTime:      vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute),
-			dataDatetime:  vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute),
-			dataTimestamp: vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute),
+			dataDate:      _startOfDay(vDatetime),
+			dataDatez:     _startOfDay(vDatetime),
+			dataTime:      vDatetime,
+			dataTimez:     vDatetime,
+			dataDatetime:  vDatetime,
+			dataDatetimez: vDatetime,
+			dataDuration:  time.Duration(rand.Int63n(1024)) * time.Second,
 		}
 		rowArr = append(rowArr, row)
-		params := []interface{}{row.id, row.dataDate, row.dataTime, row.dataDatetime, row.dataTimestamp}
+		params := []interface{}{row.id, row.dataDate, row.dataDatez, row.dataTime, row.dataTimez,
+			row.dataDatetime, row.dataDatetimez, row.dataDuration}
 		if dbtype == "cosmos" || dbtype == "cosmosdb" {
 			params = append(params, row.id)
 		}
@@ -2659,34 +2679,42 @@ func _testSqlDataTypeDatetime(t *testing.T, name, dbtype string, sqlc *SqlConnec
 				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
 				v = t
 				ok = err == nil
-			}
-			if estr, vstr := e.Format(layout), v.Format(layout); !ok || vstr != estr {
-				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
+				// } else {
+				// 	e = _startOfDay(e)
 			}
 			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
+			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
+				t.Fatalf("%s failed: [%s]\nexpected %#v/%#v(%T)\nbut received %#v/%#v(%T) (Ok: %#v)", name,
+					row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e,
+					vstr, v.Format(time.RFC3339), row[f], ok)
+			}
 		}
 		{
-			layout := "15:04:05"
-			e := expected.dataTime
+			layout := "2006-01-02"
+			e := expected.dataDatez
 			f := colNameList[2]
 			v, ok := row[f].(time.Time)
 			if dbtype == "cosmos" || dbtype == "cosmosdb" {
 				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
 				v = t
 				ok = err == nil
-			}
-			if estr, vstr := e.Format(layout), v.Format(layout); !ok || vstr != estr {
-				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
+				// } else {
+				// 	e = _startOfDay(e)
 			}
 			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
+			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
+				t.Fatalf("%s failed: [%s]\nexpected %#v/%#v(%T)\nbut received %#v/%#v(%T) (Ok: %#v)", name,
+					row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e,
+					vstr, v.Format(time.RFC3339), row[f], ok)
+			}
 		}
 		{
-			layout := time.RFC3339
-			e := expected.dataDatetime
+			layout := "15:04:05"
+			e := expected.dataTime
 			f := colNameList[3]
 			v, ok := row[f].(time.Time)
 			if dbtype == "cosmos" || dbtype == "cosmosdb" {
@@ -2694,16 +2722,16 @@ func _testSqlDataTypeDatetime(t *testing.T, name, dbtype string, sqlc *SqlConnec
 				v = t
 				ok = err == nil
 			}
-			if estr, vstr := e.Format(layout), v.Format(layout); !ok || vstr != estr {
-				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
-			}
 			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
+			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
+				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
+			}
 		}
 		{
-			layout := time.RFC3339
-			e := expected.dataTimestamp
+			layout := "15:04:05"
+			e := expected.dataTimez
 			f := colNameList[4]
 			v, ok := row[f].(time.Time)
 			if dbtype == "cosmos" || dbtype == "cosmosdb" {
@@ -2711,11 +2739,56 @@ func _testSqlDataTypeDatetime(t *testing.T, name, dbtype string, sqlc *SqlConnec
 				v = t
 				ok = err == nil
 			}
-			if estr, vstr := e.Format(layout), v.Format(layout); !ok || vstr != estr {
+			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
+			}
+			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
+			}
+		}
+		{
+			layout := time.RFC3339
+			e := expected.dataDatetime
+			f := colNameList[5]
+			v, ok := row[f].(time.Time)
+			if dbtype == "cosmos" || dbtype == "cosmosdb" {
+				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
+				v = t
+				ok = err == nil
 			}
 			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
+			}
+			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
+				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
+			}
+		}
+		{
+			layout := time.RFC3339
+			e := expected.dataDatetimez
+			f := colNameList[6]
+			v, ok := row[f].(time.Time)
+			if dbtype == "cosmos" || dbtype == "cosmosdb" {
+				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
+				v = t
+				ok = err == nil
+			}
+			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
+			}
+			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
+				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
+			}
+		}
+		{
+			e := expected.dataDuration
+			f := colNameList[7]
+			v, err := _toIntIfInteger(row[f])
+			if dbtype == "cosmos" || dbtype == "cosmosdb" {
+				v, err = _toIntIfNumber(row[f])
+			}
+			if err != nil || v != int64(e) {
+				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 			}
 		}
 	}
@@ -2757,7 +2830,7 @@ func TestSql_DataTypeDatetime_Mssql(t *testing.T) {
 	}
 
 	sqlColTypes := []string{"NVARCHAR(8)",
-		"DATE", "TIME", "DATETIME2", "DATETIMEOFFSET"}
+		"DATE", "DATE", "TIME", "TIME", "DATETIME2", "DATETIMEOFFSET", "BIGINT"}
 	_testSqlDataTypeDatetime(t, name, dbtype, sqlc, sqlColTypes)
 }
 
@@ -2777,7 +2850,7 @@ func TestSql_DataTypeDatetime_Mysql(t *testing.T) {
 	}
 
 	sqlColTypes := []string{"VARCHAR(8)",
-		"DATE", "TIME", "DATETIME", "TIMESTAMP"}
+		"DATE", "DATE", "TIME", "TIME", "DATETIME", "TIMESTAMP", "BIGINT"}
 	_testSqlDataTypeDatetime(t, name, dbtype, sqlc, sqlColTypes)
 }
 
@@ -2796,8 +2869,9 @@ func TestSql_DataTypeDatetime_Oracle(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"VARCHAR(8)",
-		"DATE", "TIMESTAMP(0)", "TIMESTAMP(0)", "TIMESTAMP(0) WITH TIME ZONE"}
+	sqlColTypes := []string{"NVARCHAR2(8)",
+		"DATE", "TIMESTAMP(0) WITH TIME ZONE", "DATE", "TIMESTAMP(0) WITH TIME ZONE",
+		"DATE", "TIMESTAMP(0) WITH TIME ZONE", "INTERVAL DAY TO SECOND"}
 	_testSqlDataTypeDatetime(t, name, dbtype, sqlc, sqlColTypes)
 }
 
@@ -2817,7 +2891,8 @@ func TestSql_DataTypeDatetime_Pgsql(t *testing.T) {
 	}
 
 	sqlColTypes := []string{"VARCHAR(8)",
-		"DATE", "TIME(0)", "TIMESTAMP(0)", "TIMESTAMP(0) WITH TIME ZONE"}
+		"DATE", "DATE", "TIME(0)", "TIME(0) WITH TIME ZONE",
+		"TIMESTAMP(0)", "TIMESTAMP(0) WITH TIME ZONE", "BIGINT"}
 	_testSqlDataTypeDatetime(t, name, dbtype, sqlc, sqlColTypes)
 }
 
@@ -2837,6 +2912,6 @@ func TestSql_DataTypeDatetime_Sqlite(t *testing.T) {
 	}
 
 	sqlColTypes := []string{"VARCHAR(8)",
-		"DATE", "TIME", "DATETIME", "TIMESTAMP"}
+		"DATE", "DATE", "TIME", "TIME", "DATETIME", "DATETIME", "BIGINT"}
 	_testSqlDataTypeDatetime(t, name, dbtype, sqlc, sqlColTypes)
 }
