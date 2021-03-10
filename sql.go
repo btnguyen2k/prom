@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/btnguyen2k/consu/reddo"
 )
 
 // DbFlavor specifies the flavor or database server/vendor.
@@ -470,12 +468,12 @@ func isValueTypeRawBytes(v interface{}) bool {
 	return t == rawBytesType || t == bytesArrType || t == uint8ArrType
 }
 
-func isValueTypeString(v interface{}) bool {
-	if v == nil {
-		return false
-	}
-	return reflect.TypeOf(v) == reddo.TypeString
-}
+// func isValueTypeString(v interface{}) bool {
+// 	if v == nil {
+// 		return false
+// 	}
+// 	return reflect.TypeOf(v) == reddo.TypeString
+// }
 
 // toIntIfValidInteger converts the input to int64 if:
 //   - the input is an integer/unsigned integer
@@ -606,19 +604,17 @@ func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.
 	loc := sc.ensureLocation()
 
 	str, ok := val.(string)
+	if !ok {
+		var bytes []byte
+		bytes, ok = val.([]byte)
+		if ok {
+			str = string(bytes)
+		}
+	}
 	if ok {
-		// date/time is fetched as string, with timezone info
+		// date/time is fetched as string/[]byte, with timezone info
 		var err error
 		result[v.Name()], err = time.Parse(dtlayoutTzz, str)
-		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
-		return err
-	}
-
-	bytes, ok := val.([]byte)
-	if ok {
-		// date/time is fetched as []byte, with timezone info
-		var err error
-		result[v.Name()], err = time.Parse(dtlayoutTzz, string(bytes))
 		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
 		return err
 	}
@@ -731,18 +727,22 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			if err != nil {
 				return nil, err
 			}
-		case isValueTypeRawBytes(vals[i]) && (sc.isNumberType(v) || sc.isStringType(v)):
-			switch {
-			case sc.isStringType(v):
-				// when string is loaded as []byte
-				result[v.Name()] = string(vals[i].([]byte))
-			case sc.isIntType(v):
-				// when number is loaded as []byte
-				result[v.Name()], _ = strconv.ParseInt(string(vals[i].([]byte)), 10, 64)
-			case sc.isFloatType(v):
-				// when number is loaded as []byte
-				result[v.Name()], _ = strconv.ParseFloat(string(vals[i].([]byte)), 64)
-			}
+		// case isValueTypeRawBytes(vals[i]) && (sc.isNumberType(v) || sc.isStringType(v)):
+		case isValueTypeRawBytes(vals[i]) && sc.isStringType(v):
+			// when string is loaded as []byte
+			result[v.Name()] = string(vals[i].([]byte))
+			
+			// switch {
+			// case sc.isStringType(v):
+			// 	// when string is loaded as []byte
+			// 	result[v.Name()] = string(vals[i].([]byte))
+			// case sc.isIntType(v):
+			// 	// when number is loaded as []byte
+			// 	result[v.Name()], _ = strconv.ParseInt(string(vals[i].([]byte)), 10, 64)
+			// case sc.isFloatType(v):
+			// 	// when number is loaded as []byte
+			// 	result[v.Name()], _ = strconv.ParseFloat(string(vals[i].([]byte)), 64)
+			// }
 		case sc.flavor == FlavorSqlite && sc.isDateTimeType(v):
 			// special care for SQLite's date/time types
 			if err := sc._scanSqliteDateTime(result, v, vals[i]); err != nil {
@@ -773,14 +773,25 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			if err := sc._transformOracleDateTime(result, v, vals[i]); err != nil {
 				return nil, err
 			}
-		case sc.flavor == FlavorOracle && strings.ToUpper(v.DatabaseTypeName()) == "NUMBER" && isValueTypeString(vals[i]):
-			// special care for Oracle's NUMBER type
-			_, scale, _ := v.DecimalSize()
-			if scale == 0 {
-				result[v.Name()], _ = strconv.ParseInt(vals[i].(string), 10, 64)
+		case sc.flavor == FlavorOracle && sc.isNumberType(v):
+			// special care for Oracle's number types
+			var err error
+			if sc.isIntType(v) {
+				result[v.Name()], err = toIntIfValidInteger(vals[i])
 			} else {
-				result[v.Name()], _ = strconv.ParseFloat(vals[i].(string), 64)
+				result[v.Name()], err = toFloatIfValidReal(vals[i])
 			}
+			if err != nil {
+				return nil, err
+			}
+		// case sc.flavor == FlavorOracle && strings.ToUpper(v.DatabaseTypeName()) == "NUMBER" && isValueTypeString(vals[i]):
+		// 	// special care for Oracle's NUMBER type
+		// 	_, scale, _ := v.DecimalSize()
+		// 	if scale == 0 {
+		// 		result[v.Name()], _ = strconv.ParseInt(vals[i].(string), 10, 64)
+		// 	} else {
+		// 		result[v.Name()], _ = strconv.ParseFloat(vals[i].(string), 64)
+		// 	}
 		case sc.flavor == FlavorPgSql && v.ScanType().Kind() == reflect.Interface && sc.isStringType(v):
 			// PostgreSQL's CHAR(1) is loaded as []byte old driver version
 			_v, ok := vals[i].([]byte)

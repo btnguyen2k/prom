@@ -140,6 +140,24 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 		} else if sqlc == nil {
 			t.Fatalf("%s failed: nil", name)
 		}
+		if sqlc.GetDriver() != info.driver {
+			t.Fatalf("%s failed: expected driver %#v but received %#v", name+"/"+k, info.driver, sqlc.GetDriver())
+		}
+		sqlc.SetDriver("_default_")
+		if sqlc.GetDriver() != "_default_" {
+			t.Fatalf("%s failed: expected driver %#v but received %#v", name+"/"+k, "_default_", sqlc.GetDriver())
+		}
+		// if sqlc.GetDsn() != info.dsn {
+		// 	t.Fatalf("%s failed: expected dsn %#v but received %#v", name+"/"+k, info.dsn, sqlc.GetDsn())
+		// }
+		sqlc.SetDsn("_default_")
+		if sqlc.GetDsn() != "_default_" {
+			t.Fatalf("%s failed: expected dsn %#v but received %#v", name+"/"+k, "_default_", sqlc.GetDsn())
+		}
+		sqlc.SetTimeoutMs(1234)
+		if sqlc.GetTimeoutMs() != 1234 {
+			t.Fatalf("%s failed: expected timeout %#v but received %#v", name+"/"+k, 1234, sqlc.GetDsn())
+		}
 		if sqlc.GetLocation() == nil {
 			t.Fatalf("%s failed: GetLocation returns nil", name+"/"+k)
 		}
@@ -152,6 +170,13 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 		sqlc.SetDbFlavor(FlavorDefault)
 		if sqlc.GetDbFlavor() != FlavorDefault {
 			t.Fatalf("%s failed: expected dbflavor %#v but received %#v", name+"/"+k, FlavorDefault, sqlc.GetDbFlavor())
+		}
+		if sqlc.GetSqlPoolOptions() == nil {
+			t.Fatalf("%s failed: sqlPoolOptions is nil", name+"/"+k)
+		}
+		sqlc.SetSqlPoolOptions(nil)
+		if sqlc.GetSqlPoolOptions() != nil {
+			t.Fatalf("%s failed: expect sqlPoolOptions to be nil", name+"/"+k)
 		}
 	}
 }
@@ -529,7 +554,7 @@ func TestSqlConnect_FetchRows(t *testing.T) {
 		case "pgsql", "postgresql":
 			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
 		case "cosmos", "cosmosdb":
-			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
+			sqlc, err = newSqlConnectCosmosdb(info.driver, info.url, timezoneSql, 10000, nil)
 		default:
 			t.Fatalf("%s failed: unknown database type [%s]", name, dbtype)
 		}
@@ -2914,4 +2939,392 @@ func TestSql_DataTypeDatetime_Sqlite(t *testing.T) {
 	sqlColTypes := []string{"VARCHAR(8)",
 		"DATE", "DATE", "TIME", "TIME", "DATETIME", "DATETIME", "BIGINT"}
 	_testSqlDataTypeDatetime(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+/*----------------------------------------------------------------------*/
+
+var sqlColNames_TestDataTypeNull = []string{"id",
+	"data_int", "data_float", "data_string", "data_money",
+	"data_date", "data_time", "data_datetime", "data_duration"}
+
+func _testSqlDataTypeNull(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTypes []string) {
+	tblName := "tbl_test"
+	rand.Seed(time.Now().UnixNano())
+
+	colNameList := sqlColNames_TestDataTypeNull
+
+	// init
+	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
+	if dbtype == "cosmos" || dbtype == "cosmosdb" {
+		if _, err := sqlc.GetDB().Exec(fmt.Sprintf("CREATE COLLECTION %s WITH pk=/%s", tblName, colNameList[0])); err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		}
+	} else {
+		sql := fmt.Sprintf("CREATE TABLE %s (", tblName)
+		for i := range colNameList {
+			sql += colNameList[i] + " " + colTypes[i] + ","
+		}
+		sql += fmt.Sprintf("PRIMARY KEY(%s))", colNameList[0])
+		if _, err := sqlc.GetDB().Exec(sql); err != nil {
+			t.Fatalf("%s failed: %s\n%s", name, err, sql)
+		}
+	}
+
+	type Row struct {
+		id           string
+		dataInt      *int64
+		dataFloat    *float64
+		dataString   *string
+		dataMoney    *float64
+		dataDate     *time.Time
+		dataTime     *time.Time
+		dataDatetime *time.Time
+		dataDuration *time.Duration
+	}
+	rowArr := make([]Row, 0)
+	numRows := 100
+
+	LOC, _ := time.LoadLocation(timezoneSql)
+	LOC2, _ := time.LoadLocation(timezoneSql2)
+
+	// insert some rows
+	sql := fmt.Sprintf("INSERT INTO %s (", tblName)
+	sql += strings.Join(colNameList, ",")
+	sql += ") VALUES ("
+	sql += _generatePlaceholders(len(colNameList), dbtype) + ")"
+	for i := 1; i <= numRows; i++ {
+		vInt := rand.Int63n(1024)
+		vFloat := math.Round(rand.Float64()*1e3) / 1e3
+		vString := strconv.Itoa(rand.Intn(1024))
+		vMoney := math.Round(rand.Float64()*1e2) / 1e2
+		vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", LOC)
+		vDatetime = vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute)
+		vDuration := time.Duration(rand.Int63n(1024)) * time.Second
+		row := Row{id: fmt.Sprintf("%03d", i)}
+		if i%2 == 0 {
+			row.dataInt = &vInt
+			row.dataFloat = &vFloat
+		}
+		if i%3 == 0 {
+			row.dataString = &vString
+		}
+		if i%4 == 0 {
+			row.dataMoney = &vMoney
+		}
+		if i%5 == 0 {
+			vDate := _startOfDay(vDatetime)
+			row.dataDate = &vDate
+			row.dataTime = &vDatetime
+			row.dataDatetime = &vDatetime
+		}
+		if i%6 == 0 {
+			row.dataDuration = &vDuration
+		}
+		rowArr = append(rowArr, row)
+		params := []interface{}{row.id, row.dataInt, row.dataFloat, row.dataString, row.dataMoney, row.dataDate, row.dataTime, row.dataDatetime, row.dataDuration}
+		if dbtype == "cosmos" || dbtype == "cosmosdb" {
+			params = append(params, row.id)
+		}
+		_, err := sqlc.GetDB().Exec(sql, params...)
+		if err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		}
+	}
+
+	// query some rows
+	sql = "SELECT * FROM %s ORDER BY id"
+	if dbtype == "cosmos" || dbtype == "cosmosdb" {
+		sql = "SELECT * FROM %s t ORDER BY t.id WITH cross_partition=true"
+	}
+	sql = fmt.Sprintf(sql, tblName)
+	dbRows, err := sqlc.GetDB().Query(sql)
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	defer dbRows.Close()
+	rows := make([]map[string]interface{}, 0)
+	err = sqlc.FetchRowsCallback(dbRows, func(row map[string]interface{}, err error) bool {
+		rows = append(rows, row)
+		return true
+	})
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+
+	for i, row := range rows {
+		for k, v := range row {
+			// transform to lower-cases
+			row[strings.ToLower(k)] = v
+		}
+		expected := rowArr[i]
+		{
+			f := "id"
+			e := expected.id
+			v, ok := row[f].(string)
+			if !ok || v != e {
+				t.Fatalf("%s failed: [%s] expected %#v but received %#v", name, f, e, row[f])
+			}
+		}
+		{
+			f := colNameList[1]
+			if (i+1)%2 == 0 {
+				e := expected.dataInt
+				v, err := _toIntIfInteger(row[f])
+				if dbtype == "cosmos" || dbtype == "cosmosdb" {
+					v, err = _toIntIfNumber(row[f])
+				}
+				if err != nil || v != *e {
+					t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+				}
+			} else if row[f] != (*int64)(nil) && ((dbtype == "cosmos" || dbtype == "cosmosdb") && row[f] != nil) {
+				t.Fatalf("%s failed: [%s] expected nil but received %#v(%T)", name, row["id"].(string)+"/"+f, row[f], row[f])
+			}
+		}
+		{
+			f := colNameList[2]
+			if (i+1)%2 == 0 {
+				e := expected.dataFloat
+				v, err := _toFloatIfReal(row[f])
+				if dbtype == "cosmos" || dbtype == "cosmosdb" {
+					v, err = _toFloatIfNumber(row[f])
+				}
+				if estr, vstr := fmt.Sprintf("%.3f", *e), fmt.Sprintf("%.3f", v); err != nil || vstr != estr {
+					t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], err)
+				}
+			} else if row[f] != (*float64)(nil) && ((dbtype == "cosmos" || dbtype == "cosmosdb") && row[f] != nil) {
+				t.Fatalf("%s failed: [%s] expected nil but received %#v(%T)", name, row["id"].(string)+"/"+f, row[f], row[f])
+			}
+		}
+		{
+			f := colNameList[3]
+			if (i+1)%3 == 0 {
+				e := expected.dataString
+				v, ok := row[f].(string)
+				if !ok || strings.TrimSpace(v) != strings.TrimSpace(*e) {
+					t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+				}
+			} else if row[f] != (*string)(nil) && ((dbtype == "cosmos" || dbtype == "cosmosdb") && row[f] != nil) {
+				t.Fatalf("%s failed: [%s] expected nil but received %#v(%T)", name, row["id"].(string)+"/"+f, row[f], row[f])
+			}
+		}
+		{
+			f := colNameList[4]
+			if (i+1)%4 == 0 {
+				e := expected.dataMoney
+				v, err := _toFloatIfReal(row[f])
+				if dbtype == "cosmos" || dbtype == "cosmosdb" {
+					v, err = _toFloatIfNumber(row[f])
+				}
+				if estr, vstr := fmt.Sprintf("%.2f", *e), fmt.Sprintf("%.2f", v); err != nil || vstr != estr {
+					t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], err)
+				}
+			} else if row[f] != (*float64)(nil) && ((dbtype == "cosmos" || dbtype == "cosmosdb") && row[f] != nil) {
+				t.Fatalf("%s failed: [%s] expected nil but received %#v(%T)", name, row["id"].(string)+"/"+f, row[f], row[f])
+			}
+		}
+		{
+			f := colNameList[5]
+			if (i+1)%5 == 0 {
+				layout := "2006-01-02"
+				e := expected.dataDate
+				v, ok := row[f].(time.Time)
+				if dbtype == "cosmos" || dbtype == "cosmosdb" {
+					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
+					v = t
+					ok = err == nil
+				}
+				if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+					t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
+				}
+				if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
+					t.Fatalf("%s failed: [%s]\nexpected %#v/%#v(%T)\nbut received %#v/%#v(%T) (Ok: %#v)", name,
+						row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e,
+						vstr, v.Format(time.RFC3339), row[f], ok)
+				}
+			} else if row[f] != (*time.Time)(nil) && ((dbtype == "cosmos" || dbtype == "cosmosdb") && row[f] != nil) {
+				t.Fatalf("%s failed: [%s] expected nil but received %#v(%T)", name, row["id"].(string)+"/"+f, row[f], row[f])
+			}
+		}
+		{
+			f := colNameList[6]
+			if (i+1)%5 == 0 {
+				layout := "15:04:05"
+				e := expected.dataTime
+				v, ok := row[f].(time.Time)
+				if dbtype == "cosmos" || dbtype == "cosmosdb" {
+					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
+					v = t
+					ok = err == nil
+				}
+				if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+					t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
+				}
+				if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
+					t.Fatalf("%s failed: [%s]\nexpected %#v/%#v(%T)\nbut received %#v/%#v(%T) (Ok: %#v)", name,
+						row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e,
+						vstr, v.Format(time.RFC3339), row[f], ok)
+				}
+			} else if row[f] != (*time.Time)(nil) && ((dbtype == "cosmos" || dbtype == "cosmosdb") && row[f] != nil) {
+				t.Fatalf("%s failed: [%s] expected nil but received %#v(%T)", name, row["id"].(string)+"/"+f, row[f], row[f])
+			}
+		}
+		{
+			f := colNameList[7]
+			if (i+1)%5 == 0 {
+				layout := time.RFC3339
+				e := expected.dataDatetime
+				v, ok := row[f].(time.Time)
+				if dbtype == "cosmos" || dbtype == "cosmosdb" {
+					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
+					v = t
+					ok = err == nil
+				}
+				if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+					t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
+				}
+				if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
+					t.Fatalf("%s failed: [%s]\nexpected %#v/%#v(%T)\nbut received %#v/%#v(%T) (Ok: %#v)", name,
+						row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e,
+						vstr, v.Format(time.RFC3339), row[f], ok)
+				}
+			} else if row[f] != (*time.Time)(nil) && ((dbtype == "cosmos" || dbtype == "cosmosdb") && row[f] != nil) {
+				t.Fatalf("%s failed: [%s] expected nil but received %#v(%T)", name, row["id"].(string)+"/"+f, row[f], row[f])
+			}
+		}
+		{
+			f := colNameList[8]
+			if (i+1)%6 == 0 {
+				e := expected.dataDuration
+				v, err := _toIntIfInteger(row[f])
+				if dbtype == "cosmos" || dbtype == "cosmosdb" {
+					v, err = _toIntIfNumber(row[f])
+				}
+				if err != nil || v != int64(*e) {
+					t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", name, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+				}
+			} else if row[f] != (*int64)(nil) && ((dbtype == "cosmos" || dbtype == "cosmosdb") && row[f] != nil) {
+				t.Fatalf("%s failed: [%s] expected nil but received %#v(%T)", name, row["id"].(string)+"/"+f, row[f], row[f])
+			}
+		}
+	}
+}
+
+func TestSql_DataTypeNull_Cosmos(t *testing.T) {
+	name := "TestSql_DataTypeNull_Cosmos"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap["cosmos"]
+	if !ok {
+		info, ok = urlMap["cosmosdb"]
+		if !ok {
+			t.Skipf("%s skipped", name)
+		}
+	}
+	sqlc, err := newSqlConnectCosmosdb(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	_testSqlDataTypeNull(t, name, "cosmos", sqlc, nil)
+}
+
+func TestSql_DataTypeNull_Mssql(t *testing.T) {
+	name := "TestSql_DataTypeNull_Mssql"
+	dbtype := "mssql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectMssql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"NVARCHAR(8)",
+		"INT", "DOUBLE PRECISION", "NVARCHAR(64)", "MONEY", "DATE", "TIME", "DATETIME2", "BIGINT"}
+	_testSqlDataTypeNull(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeNull_Mysql(t *testing.T) {
+	name := "TestSql_DataTypeNull_Mysql"
+	dbtype := "mysql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectMysql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"VARCHAR(8)",
+		"INT", "DOUBLE", "VARCHAR(64)", "DECIMAL(36,2)", "DATE", "TIME", "DATETIME", "BIGINT"}
+	_testSqlDataTypeNull(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeNull_Oracle(t *testing.T) {
+	name := "TestSql_DataTypeNull_Oracle"
+	dbtype := "oracle"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectOracle(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"NVARCHAR2(8)",
+		"INT", "DOUBLE PRECISION", "NVARCHAR2(64)", "NUMERIC(36,2)", "DATE", "TIMESTAMP(0)", "TIMESTAMP(0)", "INTERVAL DAY TO SECOND"}
+	_testSqlDataTypeNull(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeNull_Pgsql(t *testing.T) {
+	name := "TestSql_DataTypeNull_Pgsql"
+	dbtype := "pgsql"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectPgsql(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"VARCHAR(8)",
+		"INT", "DOUBLE PRECISION", "VARCHAR(64)", "NUMERIC(36,2)", "DATE", "TIME(0)", "TIMESTAMP(0)", "BIGINT"}
+	_testSqlDataTypeNull(t, name, dbtype, sqlc, sqlColTypes)
+}
+
+func TestSql_DataTypeNull_Sqlite(t *testing.T) {
+	name := "TestSql_DataTypeNull_Sqlite"
+	dbtype := "sqlite"
+	urlMap := sqlGetUrlFromEnv()
+	info, ok := urlMap[dbtype]
+	if !ok {
+		t.Skipf("%s skipped", name)
+	}
+	sqlc, err := newSqlConnectSqlite(info.driver, info.url, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", name, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	sqlColTypes := []string{"VARCHAR(8)",
+		"INT", "DOUBLE", "VARCHAR(64)", "DECIMAL(36,2)", "DATE", "TIME", "DATETIME", "BIGINT"}
+	_testSqlDataTypeNull(t, name, dbtype, sqlc, sqlColTypes)
 }
