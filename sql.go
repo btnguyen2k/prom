@@ -626,7 +626,7 @@ func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.
 		return nil
 	}
 
-	return errors.New(fmt.Sprintf("sqlite: cannot convert value %#v to time.Time", val))
+	return fmt.Errorf("sqlite: cannot convert value %#v to time.Time", val)
 }
 
 func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
@@ -731,7 +731,7 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 		case isValueTypeRawBytes(vals[i]) && sc.isStringType(v):
 			// when string is loaded as []byte
 			result[v.Name()] = string(vals[i].([]byte))
-			
+
 			// switch {
 			// case sc.isStringType(v):
 			// 	// when string is loaded as []byte
