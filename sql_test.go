@@ -682,7 +682,7 @@ func _toIntIfNumber(v interface{}) (int64, error) {
 	return 0, errors.New("input is not valid number")
 }
 
-var sqlColNames_TestDataTypeInt = []string{"id",
+var sqlColNamesTestDataTypeInt = []string{"id",
 	"data_int", "data_integer", "data_decimal", "data_number", "data_numeric",
 	"data_tinyint", "data_smallint", "data_mediumint", "data_bigint",
 	"data_int1", "data_int2", "data_int4", "data_int8"}
@@ -691,7 +691,7 @@ func _testSqlDataTypeInt(t *testing.T, name, dbtype string, sqlc *SqlConnect, co
 	tblName := "tbl_test"
 	rand.Seed(time.Now().UnixNano())
 
-	colNameList := sqlColNames_TestDataTypeInt
+	colNameList := sqlColNamesTestDataTypeInt
 
 	// init
 	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
@@ -1239,7 +1239,7 @@ func _toFloatIfNumber(v interface{}) (float64, error) {
 	return 0, errors.New("input is not valid number")
 }
 
-var sqlColNames_TestDataTypeReal = []string{"id",
+var sqlColNamesTestDataTypeReal = []string{"id",
 	"data_float", "data_double", "data_real",
 	"data_decimal", "data_number", "data_numeric",
 	"data_float32", "data_float64",
@@ -1249,7 +1249,7 @@ func _testSqlDataTypeReal(t *testing.T, name, dbtype string, sqlc *SqlConnect, c
 	tblName := "tbl_test"
 	rand.Seed(time.Now().UnixNano())
 
-	colNameList := sqlColNames_TestDataTypeReal
+	colNameList := sqlColNamesTestDataTypeReal
 
 	// init
 	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
@@ -1606,7 +1606,7 @@ func _testSqlDataTypeRealZero(t *testing.T, name, dbtype string, sqlc *SqlConnec
 	tblName := "tbl_test"
 	rand.Seed(time.Now().UnixNano())
 
-	colNameList := sqlColNames_TestDataTypeReal
+	colNameList := sqlColNamesTestDataTypeReal
 
 	// init
 	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
@@ -1961,7 +1961,7 @@ func TestSql_DataTypeRealZero_Sqlite(t *testing.T) {
 
 /*----------------------------------------------------------------------*/
 
-var sqlColNames_TestDataTypeString = []string{"id",
+var sqlColNamesTestDataTypeString = []string{"id",
 	"data_char", "data_varchar", "data_binchar", "data_text",
 	"data_uchar", "data_uvchar", "data_utext",
 	"data_clob", "data_uclob", "data_blob"}
@@ -1970,7 +1970,7 @@ func _testSqlDataTypeString(t *testing.T, name, dbtype string, sqlc *SqlConnect,
 	tblName := "tbl_test"
 	rand.Seed(time.Now().UnixNano())
 
-	colNameList := sqlColNames_TestDataTypeString
+	colNameList := sqlColNamesTestDataTypeString
 
 	// init
 	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
@@ -2308,14 +2308,14 @@ func TestSql_DataTypeString_Sqlite(t *testing.T) {
 
 /*----------------------------------------------------------------------*/
 
-var sqlColNames_TestDataTypeMoney = []string{"id",
+var sqlColNamesTestDataTypeMoney = []string{"id",
 	"data_money2", "data_money4", "data_money6", "data_money8"}
 
 func _testSqlDataTypeMoney(t *testing.T, name, dbtype string, sqlc *SqlConnect, colTypes []string) {
 	tblName := "tbl_test"
 	rand.Seed(time.Now().UnixNano())
 
-	colNameList := sqlColNames_TestDataTypeMoney
+	colNameList := sqlColNamesTestDataTypeMoney
 
 	// init
 	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
@@ -2586,7 +2586,7 @@ func _startOfDay(t time.Time) time.Time {
 	return t
 }
 
-var sqlColNames_TestDataTypeDatetime = []string{"id",
+var sqlColNamesTestDataTypeDatetime = []string{"id",
 	"data_date", "data_datez",
 	"data_time", "data_timez",
 	"data_datetime", "data_datetimez",
@@ -2596,7 +2596,7 @@ func _testSqlDataTypeDatetime(t *testing.T, name, dbtype string, sqlc *SqlConnec
 	tblName := "tbl_test"
 	rand.Seed(time.Now().UnixNano())
 
-	colNameList := sqlColNames_TestDataTypeDatetime
+	colNameList := sqlColNamesTestDataTypeDatetime
 
 	// init
 	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
@@ -2943,7 +2943,7 @@ func TestSql_DataTypeDatetime_Sqlite(t *testing.T) {
 
 /*----------------------------------------------------------------------*/
 
-var sqlColNames_TestDataTypeNull = []string{"id",
+var sqlColNamesTestDataTypeNull = []string{"id",
 	"data_int", "data_float", "data_string", "data_money",
 	"data_date", "data_time", "data_datetime", "data_duration"}
 
@@ -2951,7 +2951,7 @@ func _testSqlDataTypeNull(t *testing.T, name, dbtype string, sqlc *SqlConnect, c
 	tblName := "tbl_test"
 	rand.Seed(time.Now().UnixNano())
 
-	colNameList := sqlColNames_TestDataTypeNull
+	colNameList := sqlColNamesTestDataTypeNull
 
 	// init
 	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
