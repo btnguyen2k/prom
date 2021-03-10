@@ -1,5 +1,9 @@
 # prom release notes
 
+## 2021-03-10 - v0.2.11
+
+- prom for `database/sql`: bug fixes, enhancements and unit test rewritten.
+
 ## 2021-02-19 - v0.2.10
 
 - Quick fix for Oracle's `NUMBER` data type.
