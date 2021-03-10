@@ -6,11 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/btnguyen2k/consu/reddo"
 )
 
 // DbFlavor specifies the flavor or database server/vendor.
@@ -323,41 +322,49 @@ var rawBytesType = reflect.TypeOf(sql.RawBytes{})
 var bytesArrType = reflect.TypeOf([]byte{})
 var uint8ArrType = reflect.TypeOf([]uint8{})
 var timeType = reflect.TypeOf(time.Time{})
-var sqlNulTime = reflect.TypeOf(sql.NullTime{})
+var sqlNullTime = reflect.TypeOf(sql.NullTime{})
+var sqlNullInt32 = reflect.TypeOf(sql.NullInt32{})
+var sqlNullInt64 = reflect.TypeOf(sql.NullInt64{})
+var sqlNullFloat64 = reflect.TypeOf(sql.NullFloat64{})
 var dbIntTypes = map[string]map[DbFlavor]bool{
-	"TINYINT":   {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true},
-	"SMALLINT":  {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true},
-	"MEDIUMINT": {FlavorDefault: true, FlavorMySql: true},
-	"INT":       {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"TINYINT":   {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"SMALLINT":  {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"MEDIUMINT": {FlavorDefault: true, FlavorMySql: true, FlavorSqlite: true},
+	"INT":       {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
 	"INTEGER":   {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"BIGINT":    {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"INT2":      {FlavorDefault: true, FlavorPgSql: true},
+	"BIGINT":    {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"INT2":      {FlavorDefault: true, FlavorPgSql: true, FlavorSqlite: true},
 	"INT4":      {FlavorDefault: true, FlavorPgSql: true},
-	"INT8":      {FlavorDefault: true, FlavorPgSql: true},
+	"INT8":      {FlavorDefault: true, FlavorPgSql: true, FlavorSqlite: true},
 }
 var dbFloatTypes = map[string]map[DbFlavor]bool{
-	"FLOAT": {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"REAL":  {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	// "NUMBER":           {FlavorDefault: true, FlavorOracle: true},
+	"FLOAT":            {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"FLOAT4":           {FlavorDefault: true, FlavorPgSql: true},
+	"FLOAT8":           {FlavorDefault: true, FlavorPgSql: true},
+	"REAL":             {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"NUMBER":           {FlavorDefault: true, FlavorSqlite: true},
 	"NUMERIC":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"DECIMAL":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"DOUBLE":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"DECIMAL":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"DOUBLE":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
 	"DOUBLE PRECISION": {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
 	"BINARY_FLOAT":     {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
 	"BINARY_DOUBLE":    {FlavorDefault: true, FlavorOracle: true},
+	"MONEY":            {FlavorDefault: true, FlavorMsSql: true, FlavorPgSql: true},
+	"SMALLMONEY":       {FlavorDefault: true, FlavorMsSql: true},
+	"790":              {FlavorPgSql: true},
 }
 var dbStringTypes = map[string]map[DbFlavor]bool{
 	"CHAR":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"VARCHAR":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"VARCHAR":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
 	"TEXT":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"CHARACTER":         {FlavorDefault: true, FlavorPgSql: true, FlavorOracle: true},
+	"CHARACTER":         {FlavorDefault: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
 	"CHARACTER VARYING": {FlavorDefault: true, FlavorPgSql: true, FlavorOracle: true},
-	"NCHAR":             {FlavorDefault: true, FlavorMsSql: true, FlavorOracle: true},
-	"NVARCHAR":          {FlavorDefault: true, FlavorMsSql: true},
+	"NCHAR":             {FlavorDefault: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"NVARCHAR":          {FlavorDefault: true, FlavorMsSql: true, FlavorSqlite: true},
 	"NTEXT":             {FlavorDefault: true, FlavorMsSql: true},
 	"VARCHAR2":          {FlavorDefault: true, FlavorOracle: true},
 	"NVARCHAR2":         {FlavorDefault: true, FlavorOracle: true},
-	"CLOB":              {FlavorDefault: true, FlavorOracle: true},
+	"CLOB":              {FlavorDefault: true, FlavorOracle: true, FlavorSqlite: true},
 	"NCLOB":             {FlavorDefault: true, FlavorOracle: true},
 	"LONG":              {FlavorDefault: true, FlavorOracle: true},
 	"BPCHAR":            {FlavorDefault: true, FlavorPgSql: true},
@@ -365,20 +372,52 @@ var dbStringTypes = map[string]map[DbFlavor]bool{
 var dbDateTimeTypes = map[string]map[DbFlavor]bool{
 	"1266":                           {FlavorDefault: true, FlavorPgSql: true},
 	"TIME":                           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"DATE":                           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"DATE":                           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
 	"YEAR":                           {FlavorDefault: true, FlavorMySql: true},
-	"DATETIME":                       {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true},
+	"DATETIME":                       {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
 	"DATETIME2":                      {FlavorDefault: true, FlavorMsSql: true},
 	"DATETIMEOFFSET":                 {FlavorDefault: true, FlavorMsSql: true},
 	"SMALLDATETIME":                  {FlavorDefault: true, FlavorMsSql: true},
-	"TIMESTAMP":                      {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true},
+	"TIMESTAMP":                      {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
 	"TIMESTAMP WITH TIME ZONE":       {FlavorDefault: true, FlavorOracle: true},
 	"TIMESTAMP WITH LOCAL TIME ZONE": {FlavorDefault: true, FlavorOracle: true},
 }
 
+var reDbTypeName = regexp.MustCompile(`^(?i)(.*?)\(.*$`)
+
+func _normalizeDbTypeName(ct *sql.ColumnType) string {
+	rawDbTypeName := ct.DatabaseTypeName()
+	if matches := reDbTypeName.FindStringSubmatch(rawDbTypeName); len(matches) > 1 {
+		return strings.ToUpper(strings.TrimSpace(matches[1]))
+	}
+	return rawDbTypeName
+}
+
+func (sc *SqlConnect) isNumberType(col *sql.ColumnType) bool {
+	dbTypeName := _normalizeDbTypeName(col)
+	if sc.flavor == FlavorOracle && dbTypeName == "NUMBER" {
+		// special case for Oracle
+		return true
+	}
+	m, ok := dbIntTypes[dbTypeName]
+	if !ok {
+		m, ok = dbFloatTypes[dbTypeName]
+	}
+	if !ok {
+		return false
+	}
+	_, ok = m[sc.flavor]
+	return ok
+}
+
 func (sc *SqlConnect) isIntType(col *sql.ColumnType) bool {
-	name := strings.ToUpper(col.DatabaseTypeName())
-	m, ok := dbIntTypes[name]
+	dbTypeName := _normalizeDbTypeName(col)
+	if sc.flavor == FlavorOracle && dbTypeName == "NUMBER" {
+		// special case for Oracle
+		_, scale, _ := col.DecimalSize()
+		return scale == 0
+	}
+	m, ok := dbIntTypes[dbTypeName]
 	if !ok {
 		return false
 	}
@@ -387,8 +426,13 @@ func (sc *SqlConnect) isIntType(col *sql.ColumnType) bool {
 }
 
 func (sc *SqlConnect) isFloatType(col *sql.ColumnType) bool {
-	name := strings.ToUpper(col.DatabaseTypeName())
-	m, ok := dbFloatTypes[name]
+	dbTypeName := _normalizeDbTypeName(col)
+	if sc.flavor == FlavorOracle && dbTypeName == "NUMBER" {
+		// special case for Oracle
+		_, scale, _ := col.DecimalSize()
+		return scale != 0
+	}
+	m, ok := dbFloatTypes[dbTypeName]
 	if !ok {
 		return false
 	}
@@ -397,8 +441,8 @@ func (sc *SqlConnect) isFloatType(col *sql.ColumnType) bool {
 }
 
 func (sc *SqlConnect) isStringType(col *sql.ColumnType) bool {
-	name := strings.ToUpper(col.DatabaseTypeName())
-	m, ok := dbStringTypes[name]
+	dbTypeName := _normalizeDbTypeName(col)
+	m, ok := dbStringTypes[dbTypeName]
 	if !ok {
 		return false
 	}
@@ -407,8 +451,8 @@ func (sc *SqlConnect) isStringType(col *sql.ColumnType) bool {
 }
 
 func (sc *SqlConnect) isDateTimeType(col *sql.ColumnType) bool {
-	name := strings.ToUpper(col.DatabaseTypeName())
-	m, ok := dbDateTimeTypes[name]
+	dbTypeName := _normalizeDbTypeName(col)
+	m, ok := dbDateTimeTypes[dbTypeName]
 	if !ok {
 		return false
 	}
@@ -416,13 +460,63 @@ func (sc *SqlConnect) isDateTimeType(col *sql.ColumnType) bool {
 	return ok
 }
 
-func isRawBytesType(v interface{}) bool {
+func isValueTypeRawBytes(v interface{}) bool {
+	if v == nil {
+		return false
+	}
 	t := reflect.TypeOf(v)
 	return t == rawBytesType || t == bytesArrType || t == uint8ArrType
 }
 
-func isStringType(v interface{}) bool {
-	return reflect.TypeOf(v) == reddo.TypeString
+// func isValueTypeString(v interface{}) bool {
+// 	if v == nil {
+// 		return false
+// 	}
+// 	return reflect.TypeOf(v) == reddo.TypeString
+// }
+
+// toIntIfValidInteger converts the input to int64 if:
+//   - the input is an integer/unsigned integer
+//   - a string or []byte representing an integer/unsigned integer
+func toIntIfValidInteger(v interface{}) (int64, error) {
+	if v == nil {
+		return 0, errors.New("input is nil")
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return rv.Int(), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return int64(rv.Uint()), nil
+	case reflect.String:
+		return strconv.ParseInt(rv.String(), 10, 64)
+	case rawBytesType.Kind(), bytesArrType.Kind(), uint8ArrType.Kind():
+		return strconv.ParseInt(string(rv.Bytes()), 10, 64)
+	}
+	return 0, errors.New("input is not a valid integer")
+}
+
+// toFloatIfValidReal converts the input to float64 if:
+//   - the input is a floating point/real number or integer
+//   - a string or []byte representing a floating point/real number
+func toFloatIfValidReal(v interface{}) (float64, error) {
+	if v == nil {
+		return 0.0, errors.New("input is nil")
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return float64(rv.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return float64(rv.Uint()), nil
+	case reflect.Float32, reflect.Float64:
+		return rv.Float(), nil
+	case reflect.String:
+		return strconv.ParseFloat(rv.String(), 64)
+	case rawBytesType.Kind(), bytesArrType.Kind(), uint8ArrType.Kind():
+		return strconv.ParseFloat(string(rv.Bytes()), 64)
+	}
+	return 0, errors.New("input is not a valid floating point number")
 }
 
 const (
@@ -436,7 +530,8 @@ func (sc *SqlConnect) _scanMysqlDateTimeFromRawBytes(result map[string]interface
 	// MySQL's date/time types do not support timezone, treat the value as "in-location"
 	loc := sc.ensureLocation()
 	var err error
-	switch strings.ToUpper(v.DatabaseTypeName()) {
+	dbTypeName := _normalizeDbTypeName(v)
+	switch dbTypeName {
 	case "TIME":
 		result[v.Name()], err = time.ParseInLocation(dtlayout, fmt.Sprintf("2006-01-02 %s", val), loc)
 	case "DATE":
@@ -454,7 +549,8 @@ func (sc *SqlConnect) _scanMysqlDateTimeFromRawBytes(result map[string]interface
 func (sc *SqlConnect) _scanPgsqlDateTimeFromString(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
 	loc := sc.ensureLocation()
 	var err error
-	switch strings.ToUpper(v.DatabaseTypeName()) {
+	dbTypeName := _normalizeDbTypeName(v)
+	switch dbTypeName {
 	case "TIME":
 		// TIME does not support timezone, treated the value as "in-location"
 		result[v.Name()], err = time.ParseInLocation(dtlayout, fmt.Sprintf("2006-01-02 %s", val), loc)
@@ -472,7 +568,8 @@ func (sc *SqlConnect) _transformPgsqlDateTime(result map[string]interface{}, v *
 	loc := sc.ensureLocation()
 	result[v.Name()] = val.(time.Time)
 	var err error
-	switch strings.ToUpper(v.DatabaseTypeName()) {
+	dbTypeName := _normalizeDbTypeName(v)
+	switch dbTypeName {
 	case "DATE", "TIMESTAMP":
 		// DATE/TIMESTAMP does not support timezone, treated the value as "in-location"
 		result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), loc)
@@ -487,7 +584,8 @@ func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *
 	loc := sc.ensureLocation()
 	result[v.Name()] = val.(time.Time)
 	var err error
-	switch strings.ToUpper(v.DatabaseTypeName()) {
+	dbTypeName := _normalizeDbTypeName(v)
+	switch dbTypeName {
 	case "TIME":
 		// TIME does not support timezone, treated the value as "in-location"
 		temp := val.(time.Time).Format("15:04:05")
@@ -502,20 +600,41 @@ func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *
 	return err
 }
 
-func (sc *SqlConnect) _scanSqliteDateTimeFromString(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// SQLite store date/time as string, with timezone info
+func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
 	loc := sc.ensureLocation()
-	var err error
-	result[v.Name()], err = time.Parse(dtlayoutTzz, val.(string))
-	result[v.Name()] = result[v.Name()].(time.Time).In(loc)
-	return err
+
+	str, ok := val.(string)
+	if !ok {
+		var bytes []byte
+		bytes, ok = val.([]byte)
+		if ok {
+			str = string(bytes)
+		}
+	}
+	if ok {
+		// date/time is fetched as string/[]byte, with timezone info
+		var err error
+		result[v.Name()], err = time.Parse(dtlayoutTzz, str)
+		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+		return err
+	}
+
+	time, ok := val.(time.Time)
+	if ok {
+		// date/time is fetched as time.Time, with timezone info
+		result[v.Name()] = time.In(loc)
+		return nil
+	}
+
+	return errors.New(fmt.Sprintf("sqlite: cannot convert value %#v to time.Time", val))
 }
 
 func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
 	loc := sc.ensureLocation()
 	result[v.Name()] = val.(time.Time)
 	var err error
-	switch strings.ToUpper(v.DatabaseTypeName()) {
+	dbTypeName := _normalizeDbTypeName(v)
+	switch dbTypeName {
 	case "DATE":
 		// FIXME: not sure if it's behavior of Oracle or godror but this seems wrong!
 		// DATE does not support timezone, but Oracle converts DATE to UTC before storing.
@@ -529,6 +648,20 @@ func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v 
 		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
 	}
 	return err
+}
+
+func (sc *SqlConnect) _scanNilValue(result map[string]interface{}, v *sql.ColumnType) error {
+	switch {
+	case sc.isIntType(v):
+		result[v.Name()] = (*int64)(nil)
+	case sc.isFloatType(v):
+		result[v.Name()] = (*float64)(nil)
+	case sc.isStringType(v):
+		result[v.Name()] = (*string)(nil)
+	case sc.isDateTimeType(v):
+		result[v.Name()] = (*time.Time)(nil)
+	}
+	return nil
 }
 
 func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType) (map[string]interface{}, error) {
@@ -546,60 +679,120 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 	}
 	result := map[string]interface{}{}
 	for i, v := range colsAndTypes {
-		// if strings.ToUpper(v.Name()) == "DATA_FLOAT3" || strings.ToUpper(v.Name()) == "DATA_INT" {
-		// 	fmt.Printf("%s/%s/%s/%#v - %s\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
+		// if v.Name() == "data_datetimez" {
+		// 	fmt.Printf("Column: %s / DbType: %s / GoType: %s / Value: %#v(%T)\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
 		// 	fmt.Println(v.DecimalSize())
-		// 	// 	// t, e := time.ParseInLocation("15:04:05", fmt.Sprintf("%s", vals[i]), loc)
-		// 	// 	// fmt.Println(t, e)
+		// 	// fmt.Println(v.ScanType().Name())
 		// }
-		if sc.isIntType(v) && isRawBytesType(vals[i]) {
-			// when number is loaded as []byte
-			result[v.Name()], _ = strconv.ParseInt(string(vals[i].([]byte)), 10, 64)
-		} else if sc.isFloatType(v) && isRawBytesType(vals[i]) {
-			// when number is loaded as []byte
-			result[v.Name()], _ = strconv.ParseFloat(string(vals[i].([]byte)), 64)
-		} else if sc.isStringType(v) && isRawBytesType(vals[i]) {
-			// when string is loaded as []byte
-			result[v.Name()] = string(vals[i].([]byte))
-		} else if sc.flavor == FlavorSqlite && sc.isDateTimeType(v) {
-			// special care for SQLite's date/time types
-			if err := sc._scanSqliteDateTimeFromString(result, v, vals[i]); err != nil {
+		switch {
+		case vals[i] == nil:
+			// special care for nil value
+			if err := sc._scanNilValue(result, v); err != nil {
 				return nil, err
 			}
-		} else if sc.flavor == FlavorMySql && sc.isDateTimeType(v) && isRawBytesType(vals[i]) {
+		case sc.flavor == FlavorOracle && sc.isStringType(v) && vals[i] == "":
+			// special care for Oracle's empty string
+			if err := sc._scanNilValue(result, v); err != nil {
+				return nil, err
+			}
+		case sc.flavor == FlavorSqlite && sc.isNumberType(v):
+			var err error
+			if sc.isFloatType(v) {
+				result[v.Name()], err = toFloatIfValidReal(vals[i])
+			} else {
+				result[v.Name()], err = toIntIfValidInteger(vals[i])
+			}
+			if err != nil {
+				return nil, err
+			}
+		case (sc.flavor == FlavorMsSql || sc.flavor == FlavorMySql || sc.flavor == FlavorPgSql) && sc.isNumberType(v):
+			isRealNumber := v.ScanType() != nil && (v.ScanType().Name() == "float32" || v.ScanType().Name() == "float64")
+			dbTypeName := strings.ToUpper(v.DatabaseTypeName())
+			isRealNumber = isRealNumber || dbTypeName == "MONEY" || dbTypeName == "SMALLMONEY"
+			if sc.flavor == FlavorPgSql && dbTypeName == "790" {
+				// PostgreSQL type 790 is type "MONEY"
+				isRealNumber = true
+				v := fmt.Sprintf("%s", vals[i])
+				v = regexp.MustCompile(`[^\d\.]+`).ReplaceAllString(v, "")
+				vals[i] = v
+			}
+			_, scale, _ := v.DecimalSize()
+			isRealNumber = isRealNumber || scale != 0
+			var err error
+			if isRealNumber {
+				result[v.Name()], err = toFloatIfValidReal(vals[i])
+			} else {
+				result[v.Name()], err = toIntIfValidInteger(vals[i])
+			}
+			if err != nil {
+				return nil, err
+			}
+		// case isValueTypeRawBytes(vals[i]) && (sc.isNumberType(v) || sc.isStringType(v)):
+		case isValueTypeRawBytes(vals[i]) && sc.isStringType(v):
+			// when string is loaded as []byte
+			result[v.Name()] = string(vals[i].([]byte))
+			
+			// switch {
+			// case sc.isStringType(v):
+			// 	// when string is loaded as []byte
+			// 	result[v.Name()] = string(vals[i].([]byte))
+			// case sc.isIntType(v):
+			// 	// when number is loaded as []byte
+			// 	result[v.Name()], _ = strconv.ParseInt(string(vals[i].([]byte)), 10, 64)
+			// case sc.isFloatType(v):
+			// 	// when number is loaded as []byte
+			// 	result[v.Name()], _ = strconv.ParseFloat(string(vals[i].([]byte)), 64)
+			// }
+		case sc.flavor == FlavorSqlite && sc.isDateTimeType(v):
+			// special care for SQLite's date/time types
+			if err := sc._scanSqliteDateTime(result, v, vals[i]); err != nil {
+				return nil, err
+			}
+		case sc.flavor == FlavorMySql && sc.isDateTimeType(v) && isValueTypeRawBytes(vals[i]):
 			// MySQL's TIME/DATE/DATETIME/TIMESTAMP is loaded as []byte
 			if err := sc._scanMysqlDateTimeFromRawBytes(result, v, vals[i]); err != nil {
 				return nil, err
 			}
-		} else if sc.flavor == FlavorPgSql && sc.isDateTimeType(v) && v.ScanType().Kind() == reflect.String {
+		case sc.flavor == FlavorPgSql && sc.isDateTimeType(v) && v.ScanType().Kind() == reflect.String:
 			// PostgreSQL's TIME is loaded as string
 			if err := sc._scanPgsqlDateTimeFromString(result, v, vals[i]); err != nil {
 				return nil, err
 			}
-		} else if sc.flavor == FlavorPgSql && v.ScanType().Kind() == timeType.Kind() {
+		case sc.flavor == FlavorPgSql && v.ScanType().Kind() == timeType.Kind():
 			// special care for PostgreSQL's date/time types
 			if err := sc._transformPgsqlDateTime(result, v, vals[i]); err != nil {
 				return nil, err
 			}
-		} else if sc.flavor == FlavorMsSql && v.ScanType().Kind() == timeType.Kind() {
+		case sc.flavor == FlavorMsSql && v.ScanType().Kind() == timeType.Kind():
 			// special care for MSSQL's date/time types
 			if err := sc._transformMssqlDateTime(result, v, vals[i]); err != nil {
 				return nil, err
 			}
-		} else if sc.flavor == FlavorOracle && v.ScanType().Kind() == sqlNulTime.Kind() {
+		case sc.flavor == FlavorOracle && v.ScanType().Kind() == sqlNullTime.Kind():
 			// special care for Oracle's date/time types
 			if err := sc._transformOracleDateTime(result, v, vals[i]); err != nil {
 				return nil, err
 			}
-		} else if sc.flavor == FlavorOracle && strings.ToUpper(v.DatabaseTypeName()) == "NUMBER" && isStringType(vals[i]) {
-			// special care for Oracle's NUMBER type
-			_, scale, _ := v.DecimalSize()
-			if scale == 0 {
-				result[v.Name()], _ = strconv.ParseInt(vals[i].(string), 10, 64)
+		case sc.flavor == FlavorOracle && sc.isNumberType(v):
+			// special care for Oracle's number types
+			var err error
+			if sc.isIntType(v) {
+				result[v.Name()], err = toIntIfValidInteger(vals[i])
 			} else {
-				result[v.Name()], _ = strconv.ParseFloat(vals[i].(string), 64)
+				result[v.Name()], err = toFloatIfValidReal(vals[i])
 			}
-		} else if sc.flavor == FlavorPgSql && v.ScanType().Kind() == reflect.Interface && sc.isStringType(v) {
+			if err != nil {
+				return nil, err
+			}
+		// case sc.flavor == FlavorOracle && strings.ToUpper(v.DatabaseTypeName()) == "NUMBER" && isValueTypeString(vals[i]):
+		// 	// special care for Oracle's NUMBER type
+		// 	_, scale, _ := v.DecimalSize()
+		// 	if scale == 0 {
+		// 		result[v.Name()], _ = strconv.ParseInt(vals[i].(string), 10, 64)
+		// 	} else {
+		// 		result[v.Name()], _ = strconv.ParseFloat(vals[i].(string), 64)
+		// 	}
+		case sc.flavor == FlavorPgSql && v.ScanType().Kind() == reflect.Interface && sc.isStringType(v):
 			// PostgreSQL's CHAR(1) is loaded as []byte old driver version
 			_v, ok := vals[i].([]byte)
 			if ok {
@@ -607,7 +800,7 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			} else {
 				result[v.Name()] = vals[i].(string)
 			}
-		} else {
+		default:
 			result[v.Name()] = vals[i]
 		}
 	}
@@ -644,15 +837,16 @@ func (sc *SqlConnect) FetchRowsCallback(rows *sql.Rows, callback func(row map[st
 		return err
 	}
 	var next = true
+	var rowData map[string]interface{}
 	for next && rows.Next() {
-		if rowData, err := sc.fetchOneRow(rows, colTypes); err != nil {
+		if rowData, err = sc.fetchOneRow(rows, colTypes); err != nil {
 			next = callback(nil, err)
-			// if !next {
-			// 	return err
-			// }
 		} else {
 			next = callback(rowData, nil)
 		}
+	}
+	if err != nil {
+		return err
 	}
 	return rows.Err()
 }
