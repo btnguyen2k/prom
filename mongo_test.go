@@ -262,17 +262,17 @@ func TestMongoConnect_CreateIndexes1(t *testing.T) {
 	fieldMapTo := "to"
 	indexes := []interface{}{
 		map[string]interface{}{
-			"key": map[string]interface{}{
-				fieldMapNamespace: 1,
-				fieldMapFrom:      1,
+			"key": bson.D{
+				{fieldMapNamespace, 1},
+				{fieldMapFrom, 1},
 			},
 			"name":   "uidx_from",
 			"unique": true,
 		},
 		map[string]interface{}{
-			"key": map[string]interface{}{
-				fieldMapNamespace: 1,
-				fieldMapTo:        1,
+			"key": bson.D{
+				{fieldMapNamespace, 1},
+				{fieldMapTo, 1},
 			},
 			"name": "idx_to",
 		},
@@ -328,17 +328,17 @@ func TestMongoConnect_CreateIndexes2(t *testing.T) {
 	idxName := "idx_to"
 	indexes := []interface{}{
 		map[string]interface{}{
-			"key": map[string]interface{}{
-				fieldMapNamespace: 1,
-				fieldMapFrom:      1,
+			"key": bson.D{
+				{fieldMapNamespace, 1},
+				{fieldMapFrom, 1},
 			},
 			"name":   "uidx_from",
 			"unique": true,
 		},
 		mongo.IndexModel{
-			Keys: map[string]interface{}{
-				fieldMapNamespace: 1,
-				fieldMapTo:        1,
+			Keys: bson.D{
+				{fieldMapNamespace, 1},
+				{fieldMapTo, 1},
 			},
 			Options: &options.IndexOptions{Name: &idxName},
 		},
@@ -396,16 +396,16 @@ func TestMongoConnect_CreateIndexes3(t *testing.T) {
 	idxName := "idx_to"
 	indexes := []interface{}{
 		mongo.IndexModel{
-			Keys: map[string]interface{}{
-				fieldMapNamespace: 1,
-				fieldMapFrom:      1,
+			Keys: bson.D{
+				{fieldMapNamespace, 1},
+				{fieldMapFrom, 1},
 			},
 			Options: &options.IndexOptions{Name: &uidxName, Unique: &isUnique},
 		},
 		mongo.IndexModel{
-			Keys: map[string]interface{}{
-				fieldMapNamespace: 1,
-				fieldMapTo:        1,
+			Keys: bson.D{
+				{fieldMapNamespace, 1},
+				{fieldMapTo, 1},
 			},
 			Options: &options.IndexOptions{Name: &idxName},
 		},
