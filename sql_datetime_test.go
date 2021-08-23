@@ -165,7 +165,7 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 				v = t
 				ok = err == nil
 			}
-			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
 			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
@@ -184,7 +184,7 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 				v = t
 				ok = err == nil
 			}
-			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
 			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
@@ -201,7 +201,7 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 				v = t
 				ok = err == nil
 			}
-			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
 			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
@@ -218,7 +218,7 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 				v = t
 				ok = err == nil
 			}
-			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
 			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
@@ -235,7 +235,7 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 				v = t
 				ok = err == nil
 			}
-			if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
 			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
@@ -617,7 +617,7 @@ func _testSqlDataTypeNull(t *testing.T, name string, sqlc *SqlConnect, colTypes 
 					v = t
 					ok = err == nil
 				}
-				if eloc, vloc := e.Location(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
+				if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 					t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 				}
 				if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
