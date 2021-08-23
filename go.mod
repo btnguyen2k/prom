@@ -15,5 +15,5 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/onsi/ginkgo v1.15.1 // indirect
 	github.com/onsi/gomega v1.11.0 // indirect
-	go.mongodb.org/mongo-driver v1.5.0
+	go.mongodb.org/mongo-driver v1.5.1
 )
