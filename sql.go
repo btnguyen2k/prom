@@ -49,12 +49,13 @@ var defaultSqlPoolOptions = &SqlPoolOptions{ConnMaxLifetime: 1 * time.Hour, MaxI
 
 // SqlConnect holds a database/sql DB instance (https://golang.org/pkg/database/sql/#DB) that can be shared within the application.
 type SqlConnect struct {
-	driver, dsn string          // driver and data source name (DSN)
-	poolOptions *SqlPoolOptions // connection pool options
-	timeoutMs   int             // default timeout for db operations, in milliseconds
-	flavor      DbFlavor        // database flavor
-	db          *sql.DB         // database instance
-	loc         *time.Location  // timezone location to parse date/time data, new since v0.1.2
+	driver, dsn    string          // driver and data source name (DSN)
+	poolOptions    *SqlPoolOptions // connection pool options
+	timeoutMs      int             // default timeout for db operations, in milliseconds
+	flavor         DbFlavor        // database flavor
+	db             *sql.DB         // database instance
+	loc            *time.Location  // timezone location to parse date/time data, new since v0.1.2
+	mysqlParseTime bool            // set to 'true' if specifying parseTime=true in MySQL connection string, new since v0.2.12
 }
 
 // NewSqlConnect constructs a new SqlConnect instance.
@@ -234,6 +235,25 @@ func (sc *SqlConnect) ensureLocation() *time.Location {
 		sc.loc = time.UTC
 	}
 	return sc.loc
+}
+
+// GetMysqlParseTime returns the flag mysqlParseTime's value.
+//
+// Flag 'mysqlParseTime' is 'true' if MySQL connection string contains parseTime=true.
+//
+// Available: since v0.2.12
+func (sc *SqlConnect) GetMysqlParseTime() bool {
+	return sc.mysqlParseTime
+}
+
+// SetMysqlParseTime sets the flag mysqlParseTime's value.
+//
+// Flag 'mysqlParseTime' is 'true' if MySQL connection string contains parseTime=true.
+//
+// Available: since v0.2.12
+func (sc *SqlConnect) SetMysqlParseTime(value bool) *SqlConnect {
+	sc.mysqlParseTime = value
+	return sc
 }
 
 // NewContext creates a new context with specified timeout in milliseconds.
@@ -527,18 +547,24 @@ const (
 )
 
 func (sc *SqlConnect) _scanMysqlDateTimeFromRawBytes(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// MySQL's date/time types do not support timezone, treat the value as "in-location"
+	// fmt.Println(v.Name(), sc.loc.String(), string(val.([]byte)))
 	loc := sc.ensureLocation()
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
 	switch dbTypeName {
 	case "TIME":
+		// MySQL's TIME type do not support timezone, treat the value as "in-location"
 		result[v.Name()], err = time.ParseInLocation(dtlayout, fmt.Sprintf("2006-01-02 %s", val), loc)
 	case "DATE":
+		// MySQL's DATE type do not support timezone, treat the value as "in-location"
 		result[v.Name()], err = time.ParseInLocation("2006-01-02", string(val.([]byte)), loc)
 	case "DATETIME":
+		// MySQL's DATETIME type do not support timezone, treat the value as "in-location"
 		result[v.Name()], err = time.ParseInLocation(dtlayout, string(val.([]byte)), loc)
 	case "TIMESTAMP":
+		// MySQL's TIMESTAMP is converted and stored as UTC
+		// since this code is reached only when parseTime=false, time timestamp value is not
+		// automatically converted to connection's timezone/location.
 		result[v.Name()], err = time.ParseInLocation(dtlayout, string(val.([]byte)), loc)
 	default:
 		err = errors.New("unknown date/time column type " + v.DatabaseTypeName())
@@ -581,8 +607,8 @@ func (sc *SqlConnect) _transformPgsqlDateTime(result map[string]interface{}, v *
 }
 
 func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	// fmt.Println(v.Name(), sc.loc.String(), val.(time.Time).Format(time.RFC3339))
 	loc := sc.ensureLocation()
-	result[v.Name()] = val.(time.Time)
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
 	switch dbTypeName {
@@ -594,15 +620,15 @@ func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *
 		// DATE/DATETIME/DATETIME2 does not support timezone, treated the value as "in-location"
 		result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), loc)
 	default:
-		// assume other types support timezone,convert to the target timezone/location
+		// assume other types support timezone, convert to the target timezone/location
 		result[v.Name()] = val.(time.Time).In(loc)
 	}
 	return err
 }
 
 func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	// fmt.Printf("%s / %s / %s (%T)\n", v.Name(), sc.loc.String(), val, val)
 	loc := sc.ensureLocation()
-
 	str, ok := val.(string)
 	if !ok {
 		var bytes []byte
@@ -616,6 +642,7 @@ func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.
 		var err error
 		result[v.Name()], err = time.Parse(dtlayoutTzz, str)
 		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+		// fmt.Println("\t", v.Name(), sc.loc.String(), result[v.Name()].(time.Time).Format(dtlayoutTzz))
 		return err
 	}
 
@@ -630,8 +657,8 @@ func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.
 }
 
 func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	// fmt.Println(v.Name(), v.ScanType(), v.DatabaseTypeName(), sc.loc.String(), val.(time.Time).Format(time.RFC3339))
 	loc := sc.ensureLocation()
-	result[v.Name()] = val.(time.Time)
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
 	switch dbTypeName {
@@ -644,7 +671,7 @@ func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v 
 		// FIXME: not sure if it's behavior of Oracle or godror but this seems wrong!
 		// first "parse in UTC" and then convert to the target timezone/location
 		// assume other types support timezone,convert to the target timezone/location
-		result[v.Name()], err = time.Parse(dtlayoutNano, val.(time.Time).Format(dtlayoutNano))
+		result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), time.UTC)
 		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
 	}
 	return err
