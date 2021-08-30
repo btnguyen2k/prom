@@ -26,11 +26,7 @@ func _changeLoc(t time.Time, loc *time.Location) time.Time {
 	return _t
 }
 
-var sqlColNamesTestDataTypeDatetime = []string{"id",
-	"data_date", "data_datez",
-	"data_time", "data_timez",
-	"data_datetime", "data_datetimez",
-	"data_duration"}
+var sqlColNamesTestDataTypeDatetime = []string{"id", "data_date", "data_time", "data_datetime", "data_datetimez", "data_duration"}
 
 func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTypes []string) {
 	tblName := "tbl_test"
@@ -58,9 +54,7 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 	type Row struct {
 		id            string
 		dataDate      time.Time
-		dataDatez     time.Time
 		dataTime      time.Time
-		dataTimez     time.Time
 		dataDatetime  time.Time
 		dataDatetimez time.Time
 		dataDuration  time.Duration
@@ -77,21 +71,17 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 	sql += ") VALUES ("
 	sql += _generatePlaceholders(len(colNameList), sqlc) + ")"
 	for i := 1; i <= numRows; i++ {
-		vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", LOC)
-		vDatetime = vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute)
+		vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", time.UTC)
 		row := Row{
 			id:            fmt.Sprintf("%03d", i),
-			dataDate:      _startOfDay(vDatetime.In(time.UTC)), // no timezone support --> convert to UTC, and remove the "time" part
-			dataDatez:     _startOfDay(vDatetime),              // remove the "time" part
-			dataTime:      vDatetime.In(time.UTC),              // no timezone support --> convert to UTC
-			dataTimez:     vDatetime,
-			dataDatetime:  vDatetime.In(time.UTC), // no timezone support --> convert to UTC
+			dataDate:      _startOfDay(vDatetime),          // no timezone support
+			dataTime:      _changeLoc(vDatetime, sqlc.loc), // no timezone support
+			dataDatetime:  _changeLoc(vDatetime, sqlc.loc), // no timezone support
 			dataDatetimez: vDatetime,
 			dataDuration:  time.Duration(rand.Int63n(1024)) * time.Second,
 		}
 		rowArr = append(rowArr, row)
-		params := []interface{}{row.id, row.dataDate, row.dataDatez, row.dataTime, row.dataTimez,
-			row.dataDatetime, row.dataDatetimez, row.dataDuration}
+		params := []interface{}{row.id, row.dataDate, row.dataTime, row.dataDatetime, row.dataDatetimez, row.dataDuration}
 		if sqlc.flavor == FlavorCosmosDb {
 			params = append(params, row.id)
 		}
@@ -99,6 +89,13 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 		if err != nil {
 			t.Fatalf("%s failed: %s", name, err)
 		}
+		// fmt.Printf("Original: %s - %s - %s / D: %s / T: %s / DT: %s / DTz: %s\n",
+		// 	vDatetime.Format(time.RFC3339), vDatetime.In(time.UTC).Format(time.RFC3339), vDatetime.In(sqlc.loc).Format(time.RFC3339),
+		// 	row.dataDate.Format(time.RFC3339),
+		// 	row.dataTime.Format(time.RFC3339),
+		// 	row.dataDatetime.Format(time.RFC3339),
+		// 	row.dataDatetimez.Format(time.RFC3339))
+		// break
 	}
 
 	// query some rows
@@ -156,8 +153,8 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 			}
 		}
 		{
-			layout := "2006-01-02"
-			e := expected.dataDatez
+			layout := "15:04:05"
+			e := expected.dataTime
 			f := colNameList[2]
 			v, ok := row[f].(time.Time)
 			if sqlc.flavor == FlavorCosmosDb {
@@ -168,6 +165,9 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
+			if sqlc.flavor != FlavorOracle && sqlc.flavor != FlavorSqlite {
+				v = _changeLoc(v, e.Location())
+			}
 			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 				t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", name,
 					row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
@@ -175,8 +175,8 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 			}
 		}
 		{
-			layout := "15:04:05"
-			e := expected.dataTime
+			layout := time.RFC3339
+			e := expected.dataDatetime
 			f := colNameList[3]
 			v, ok := row[f].(time.Time)
 			if sqlc.flavor == FlavorCosmosDb {
@@ -187,13 +187,18 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
+			if sqlc.flavor != FlavorOracle && sqlc.flavor != FlavorSqlite {
+				v = _changeLoc(v, e.Location())
+			}
 			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
-				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
+				t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", name,
+					row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
+					vstr, v.Format(time.RFC3339), v.In(LOC2).Format(time.RFC3339), row[f], ok)
 			}
 		}
 		{
-			layout := "15:04:05"
-			e := expected.dataTimez
+			layout := time.RFC3339
+			e := expected.dataDatetimez
 			f := colNameList[4]
 			v, ok := row[f].(time.Time)
 			if sqlc.flavor == FlavorCosmosDb {
@@ -205,46 +210,16 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 			}
 			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
-				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
-			}
-		}
-		{
-			layout := time.RFC3339
-			e := expected.dataDatetime
-			f := colNameList[5]
-			v, ok := row[f].(time.Time)
-			if sqlc.flavor == FlavorCosmosDb {
-				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-				v = t
-				ok = err == nil
-			}
-			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
-				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
-			}
-			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
-				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
-			}
-		}
-		{
-			layout := time.RFC3339
-			e := expected.dataDatetimez
-			f := colNameList[6]
-			v, ok := row[f].(time.Time)
-			if sqlc.flavor == FlavorCosmosDb {
-				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-				v = t
-				ok = err == nil
-			}
-			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
-				t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
-			}
-			if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
-				t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (Ok: %#v)", name, row["id"].(string)+"/"+f, estr, e, vstr, row[f], ok)
+				t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nreceived %#v/%#v/%#v(%T) (Ok: %#v)",
+					name, row["id"].(string)+"/"+f,
+					estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
+					vstr, v.Format(time.RFC3339), v.In(LOC2).Format(time.RFC3339), row[f],
+					ok)
 			}
 		}
 		{
 			e := expected.dataDuration
-			f := colNameList[7]
+			f := colNameList[5]
 			v, err := _toIntIfInteger(row[f])
 			if sqlc.flavor == FlavorCosmosDb {
 				v, err = _toIntIfNumber(row[f])
@@ -291,8 +266,7 @@ func TestSql_DataTypeDatetime_Mssql(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"NVARCHAR(8)",
-		"DATE", "DATE", "TIME", "TIME", "DATETIME2", "DATETIMEOFFSET", "BIGINT"}
+	sqlColTypes := []string{"NVARCHAR(8)", "DATE", "TIME", "DATETIME2", "DATETIMEOFFSET", "BIGINT"}
 	_testSqlDataTypeDatetime(t, name, sqlc, sqlColTypes)
 }
 
@@ -311,8 +285,7 @@ func TestSql_DataTypeDatetime_Mysql(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"VARCHAR(8)",
-		"DATE", "TIMESTAMP", "TIME", "TIMESTAMP", "DATETIME", "TIMESTAMP", "BIGINT"}
+	sqlColTypes := []string{"VARCHAR(8)", "DATE", "TIME", "DATETIME", "TIMESTAMP", "BIGINT"}
 	_testSqlDataTypeDatetime(t, name, sqlc, sqlColTypes)
 }
 
@@ -331,9 +304,7 @@ func TestSql_DataTypeDatetime_Oracle(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"NVARCHAR2(8)",
-		"DATE", "TIMESTAMP(0) WITH TIME ZONE", "DATE", "TIMESTAMP(0) WITH TIME ZONE",
-		"DATE", "TIMESTAMP(0) WITH TIME ZONE", "INTERVAL DAY TO SECOND"}
+	sqlColTypes := []string{"NVARCHAR2(8)", "DATE", "DATE", "DATE", "TIMESTAMP(0) WITH TIME ZONE", "INTERVAL DAY TO SECOND"}
 	_testSqlDataTypeDatetime(t, name, sqlc, sqlColTypes)
 }
 
@@ -352,9 +323,7 @@ func TestSql_DataTypeDatetime_Pgsql(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"VARCHAR(8)",
-		"DATE", "DATE", "TIME(0)", "TIME(0) WITH TIME ZONE",
-		"TIMESTAMP(0)", "TIMESTAMP(0) WITH TIME ZONE", "BIGINT"}
+	sqlColTypes := []string{"VARCHAR(8)", "DATE", "TIME(0)", "TIMESTAMP(0)", "TIMESTAMP(0) WITH TIME ZONE", "BIGINT"}
 	_testSqlDataTypeDatetime(t, name, sqlc, sqlColTypes)
 }
 
@@ -373,8 +342,7 @@ func TestSql_DataTypeDatetime_Sqlite(t *testing.T) {
 		t.Fatalf("%s failed: nil", name)
 	}
 
-	sqlColTypes := []string{"VARCHAR(8)",
-		"DATE", "DATE", "TIME", "TIME", "DATETIME", "DATETIME", "BIGINT"}
+	sqlColTypes := []string{"VARCHAR(8)", "DATE", "TIME", "DATETIME", "DATETIME", "BIGINT"}
 	_testSqlDataTypeDatetime(t, name, sqlc, sqlColTypes)
 }
 
@@ -435,7 +403,6 @@ func _testSqlDataTypeNull(t *testing.T, name string, sqlc *SqlConnect, colTypes 
 		vString := strconv.Itoa(rand.Intn(1024))
 		vMoney := math.Round(rand.Float64()*1e2) / 1e2
 		vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", time.UTC)
-		vDatetime = vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute)
 		vDuration := time.Duration(rand.Int63n(1024)) * time.Second
 		row := Row{id: fmt.Sprintf("%03d", i)}
 		if i%2 == 0 {
@@ -449,10 +416,12 @@ func _testSqlDataTypeNull(t *testing.T, name string, sqlc *SqlConnect, colTypes 
 			row.dataMoney = &vMoney
 		}
 		if i%5 == 0 {
-			vDate := _startOfDay(vDatetime)
-			row.dataDate = &vDate
-			row.dataTime = &vDatetime
-			row.dataDatetime = &vDatetime
+			_vDate := _startOfDay(vDatetime)              // assume no timezone support
+			_vTime := _changeLoc(vDatetime, sqlc.loc)     // assume no timezone support
+			_vDatetime := _changeLoc(vDatetime, sqlc.loc) // assume no timezone support
+			row.dataDate = &_vDate
+			row.dataTime = &_vTime
+			row.dataDatetime = &_vDatetime
 		}
 		if i%6 == 0 {
 			row.dataDuration = &vDuration
@@ -466,6 +435,14 @@ func _testSqlDataTypeNull(t *testing.T, name string, sqlc *SqlConnect, colTypes 
 		if err != nil {
 			t.Fatalf("%s failed: %s", name, err)
 		}
+		// if i == 5 {
+		// 	fmt.Printf("Original: %s - %s - %s / D: %s / T: %s / DT: %s\n",
+		// 		vDatetime.Format(time.RFC3339), vDatetime.In(time.UTC).Format(time.RFC3339), vDatetime.In(sqlc.loc).Format(time.RFC3339),
+		// 		row.dataDate.Format(time.RFC3339),
+		// 		row.dataTime.Format(time.RFC3339),
+		// 		row.dataDatetime.Format(time.RFC3339))
+		// 	break
+		// }
 	}
 
 	// query some rows
@@ -597,10 +574,14 @@ func _testSqlDataTypeNull(t *testing.T, name string, sqlc *SqlConnect, colTypes 
 				if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 					t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 				}
+				if sqlc.flavor != FlavorOracle && sqlc.flavor != FlavorSqlite {
+					v = _changeLoc(v, e.Location())
+				}
 				if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
-					t.Fatalf("%s failed: [%s]\nexpected %#v/%#v(%T)\nbut received %#v/%#v(%T) (Ok: %#v)", name,
-						row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e,
-						vstr, v.Format(time.RFC3339), row[f], ok)
+					fmt.Printf("Expected: %s / %s (UTC) / %s (%s) / %s (%s)\n", e.Location(), e.In(time.UTC), e.In(LOC), LOC, e.In(LOC2), LOC2)
+					t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", name,
+						"row:"+row["id"].(string)+"/field:"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
+						vstr, v.Format(time.RFC3339), v.In(LOC2).Format(time.RFC3339), row[f], ok)
 				}
 			} else if row[f] != (*time.Time)(nil) && ((sqlc.flavor == FlavorCosmosDb) && row[f] != nil) {
 				t.Fatalf("%s failed: [%s] expected nil but received %#v(%T)", name, row["id"].(string)+"/"+f, row[f], row[f])
@@ -619,6 +600,9 @@ func _testSqlDataTypeNull(t *testing.T, name string, sqlc *SqlConnect, colTypes 
 				}
 				if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 					t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", name, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
+				}
+				if sqlc.flavor != FlavorOracle && sqlc.flavor != FlavorSqlite {
+					v = _changeLoc(v, e.Location())
 				}
 				if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 					t.Fatalf("%s failed: [%s]\nexpected %#v/%#v(%T)\nbut received %#v/%#v(%T) (Ok: %#v)", name,
@@ -814,7 +798,7 @@ func _testSqlTimezone(t *testing.T, name string, sqlc, sqlc2 *SqlConnect, colTyp
 	sql += _generatePlaceholders(len(colNameList), sqlc) + ")"
 	for i := 1; i <= numRows; i++ {
 		vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", LOC)
-		vDatetime = vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute)
+		// vDatetime = vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute)
 		row := Row{
 			id:            fmt.Sprintf("%03d", i),
 			dataDate:      _startOfDay(vDatetime),          // no timezone support
@@ -944,7 +928,8 @@ func _testSqlTimezone(t *testing.T, name string, sqlc, sqlc2 *SqlConnect, colTyp
 					v = t
 					ok = err == nil
 				}
-				if conn.flavor == FlavorMySql && !conn.mysqlParseTime {
+				if conn.flavor == FlavorMySql {
+					// currently, the Go driver treats parseTime=false for "TIME" column
 					v = _changeLoc(v, e.Location())
 				}
 				if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {

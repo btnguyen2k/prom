@@ -547,7 +547,7 @@ const (
 )
 
 func (sc *SqlConnect) _scanMysqlDateTimeFromRawBytes(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// fmt.Println(v.Name(), sc.loc.String(), string(val.([]byte)))
+	// fmt.Printf("%s / %s / %s (%s) / %s\n", v.Name(), v.DatabaseTypeName(), sc.loc, time.Now().In(sc.loc).Format("Z07:00"), val)
 	loc := sc.ensureLocation()
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
