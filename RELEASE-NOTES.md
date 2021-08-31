@@ -1,5 +1,9 @@
 # prom release notes
 
+## 2021-08-30 - v0.2.12
+
+- prom for `database/sql`: bug fixes & enhancements with date/time types.
+
 ## 2021-03-10 - v0.2.11
 
 - prom for `database/sql`: bug fixes, enhancements and unit test rewritten.
