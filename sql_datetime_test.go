@@ -62,7 +62,7 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 	rowArr := make([]Row, 0)
 	numRows := 100
 
-	LOC, _ := time.LoadLocation(timezoneSql)
+	// LOC, _ := time.LoadLocation(timezoneSql)
 	LOC2, _ := time.LoadLocation(timezoneSql2)
 
 	// insert some rows
@@ -74,9 +74,9 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 		vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", time.UTC)
 		row := Row{
 			id:            fmt.Sprintf("%03d", i),
-			dataDate:      _startOfDay(vDatetime),          // no timezone support
-			dataTime:      _changeLoc(vDatetime, sqlc.loc), // no timezone support
-			dataDatetime:  _changeLoc(vDatetime, sqlc.loc), // no timezone support
+			dataDate:      _changeLoc(_startOfDay(vDatetime), sqlc.loc), // no timezone support
+			dataTime:      _changeLoc(vDatetime, sqlc.loc),              // no timezone support
+			dataDatetime:  _changeLoc(vDatetime, sqlc.loc),              // no timezone support
 			dataDatetimez: vDatetime,
 			dataDuration:  time.Duration(rand.Int63n(1024)) * time.Second,
 		}
@@ -138,8 +138,8 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 			f := colNameList[1]
 			v, ok := row[f].(time.Time)
 			if sqlc.flavor == FlavorCosmosDb {
-				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-				v = t
+				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+				v = _changeLoc(t, sqlc.loc)
 				ok = err == nil
 			}
 			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
@@ -158,8 +158,8 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 			f := colNameList[2]
 			v, ok := row[f].(time.Time)
 			if sqlc.flavor == FlavorCosmosDb {
-				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-				v = t
+				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+				v = _changeLoc(t, sqlc.loc)
 				ok = err == nil
 			}
 			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
@@ -180,8 +180,8 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 			f := colNameList[3]
 			v, ok := row[f].(time.Time)
 			if sqlc.flavor == FlavorCosmosDb {
-				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-				v = t
+				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+				v = _changeLoc(t, sqlc.loc)
 				ok = err == nil
 			}
 			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
@@ -202,8 +202,8 @@ func _testSqlDataTypeDatetime(t *testing.T, name string, sqlc *SqlConnect, colTy
 			f := colNameList[4]
 			v, ok := row[f].(time.Time)
 			if sqlc.flavor == FlavorCosmosDb {
-				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-				v = t
+				t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+				v = t.In(sqlc.loc)
 				ok = err == nil
 			}
 			if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
@@ -416,9 +416,9 @@ func _testSqlDataTypeNull(t *testing.T, name string, sqlc *SqlConnect, colTypes 
 			row.dataMoney = &vMoney
 		}
 		if i%5 == 0 {
-			_vDate := _startOfDay(vDatetime)              // assume no timezone support
-			_vTime := _changeLoc(vDatetime, sqlc.loc)     // assume no timezone support
-			_vDatetime := _changeLoc(vDatetime, sqlc.loc) // assume no timezone support
+			_vDate := _changeLoc(_startOfDay(vDatetime), sqlc.loc) // assume no timezone support
+			_vTime := _changeLoc(vDatetime, sqlc.loc)              // assume no timezone support
+			_vDatetime := _changeLoc(vDatetime, sqlc.loc)          // assume no timezone support
 			row.dataDate = &_vDate
 			row.dataTime = &_vTime
 			row.dataDatetime = &_vDatetime
@@ -543,8 +543,8 @@ func _testSqlDataTypeNull(t *testing.T, name string, sqlc *SqlConnect, colTypes 
 				e := expected.dataDate
 				v, ok := row[f].(time.Time)
 				if sqlc.flavor == FlavorCosmosDb {
-					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-					v = t
+					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+					v = _changeLoc(t, sqlc.loc)
 					ok = err == nil
 				}
 				if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
@@ -567,8 +567,8 @@ func _testSqlDataTypeNull(t *testing.T, name string, sqlc *SqlConnect, colTypes 
 				e := expected.dataTime
 				v, ok := row[f].(time.Time)
 				if sqlc.flavor == FlavorCosmosDb {
-					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-					v = t
+					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+					v = _changeLoc(t, sqlc.loc)
 					ok = err == nil
 				}
 				if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
@@ -594,8 +594,8 @@ func _testSqlDataTypeNull(t *testing.T, name string, sqlc *SqlConnect, colTypes 
 				e := expected.dataDatetime
 				v, ok := row[f].(time.Time)
 				if sqlc.flavor == FlavorCosmosDb {
-					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-					v = t
+					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+					v = _changeLoc(t, sqlc.loc)
 					ok = err == nil
 				}
 				if eloc, vloc := sqlc.loc, v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
@@ -798,19 +798,18 @@ func _testSqlTimezone(t *testing.T, name string, sqlc, sqlc2 *SqlConnect, colTyp
 	sql += _generatePlaceholders(len(colNameList), sqlc) + ")"
 	for i := 1; i <= numRows; i++ {
 		vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", LOC)
-		// vDatetime = vDatetime.Add(time.Duration(rand.Intn(1024)) * time.Minute)
 		row := Row{
 			id:            fmt.Sprintf("%03d", i),
-			dataDate:      _startOfDay(vDatetime),          // no timezone support
-			dataTime:      _changeLoc(vDatetime, time.UTC), // no timezone support --> move to UTC
-			dataDatetime:  _changeLoc(vDatetime, time.UTC), // no timezone support --> convert to UTC
+			dataDate:      _changeLoc(_startOfDay(vDatetime), sqlc.loc), // no timezone support
+			dataTime:      _changeLoc(vDatetime, sqlc.loc),              // no timezone support
+			dataDatetime:  _changeLoc(vDatetime, sqlc.loc),              // no timezone support
 			dataDatetimez: vDatetime,
 		}
-		if sqlc.flavor == FlavorMySql {
-			// special care for MySQL (not sure if it's behavior of MySQL server or go-sql-driver/mysql)
-			row.dataTime = row.dataTime.In(sqlc.loc)
-			row.dataDatetime = row.dataDatetime.In(sqlc.loc)
-		}
+		// if sqlc.flavor == FlavorMySql {
+		// 	// special care for MySQL (not sure if it's behavior of MySQL server or go-sql-driver/mysql)
+		// 	row.dataTime = row.dataTime.In(sqlc.loc)
+		// 	row.dataDatetime = row.dataDatetime.In(sqlc.loc)
+		// }
 		rowArr = append(rowArr, row)
 		params := []interface{}{row.id, row.dataDate, row.dataTime, row.dataDatetime, row.dataDatetimez}
 		if sqlc.flavor == FlavorCosmosDb {
@@ -869,8 +868,8 @@ func _testSqlTimezone(t *testing.T, name string, sqlc, sqlc2 *SqlConnect, colTyp
 				f := colNameList[1]
 				v, ok := row[f].(time.Time)
 				if conn.flavor == FlavorCosmosDb {
-					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), conn.loc)
-					v = t
+					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+					v = _changeLoc(t, sqlc.loc)
 					ok = err == nil
 				}
 				v = _changeLoc(v, e.Location())
@@ -886,8 +885,8 @@ func _testSqlTimezone(t *testing.T, name string, sqlc, sqlc2 *SqlConnect, colTyp
 				f := colNameList[2]
 				v, ok := row[f].(time.Time)
 				if conn.flavor == FlavorCosmosDb {
-					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-					v = t
+					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+					v = _changeLoc(t, sqlc.loc)
 					ok = err == nil
 				}
 				if conn.flavor != FlavorOracle && conn.flavor != FlavorSqlite {
@@ -905,8 +904,8 @@ func _testSqlTimezone(t *testing.T, name string, sqlc, sqlc2 *SqlConnect, colTyp
 				f := colNameList[3]
 				v, ok := row[f].(time.Time)
 				if conn.flavor == FlavorCosmosDb {
-					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-					v = t
+					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+					v = _changeLoc(t, sqlc.loc)
 					ok = err == nil
 				}
 				if conn.flavor != FlavorOracle && conn.flavor != FlavorSqlite {
@@ -924,8 +923,8 @@ func _testSqlTimezone(t *testing.T, name string, sqlc, sqlc2 *SqlConnect, colTyp
 				f := colNameList[4]
 				v, ok := row[f].(time.Time)
 				if conn.flavor == FlavorCosmosDb {
-					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), LOC)
-					v = t
+					t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.loc)
+					v = t.In(sqlc.loc)
 					ok = err == nil
 				}
 				if conn.flavor == FlavorMySql {
