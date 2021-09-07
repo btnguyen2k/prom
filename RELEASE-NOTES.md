@@ -1,12 +1,18 @@
 # prom release notes
 
+## 2021-09-06 - v0.2.13
+
+- ['Prom' for the official Go driver for MongoDB](mongo.md):
+  - New exported variables: `MongoPoolOptsLongDistance`, `MongoPoolOptsGeneral` and MongoPoolOptsFailFast`.
+  - Default pool options are now `MongoPoolOptsGeneral`.
+
 ## 2021-08-30 - v0.2.12
 
-- prom for `database/sql`: bug fixes & enhancements with date/time types.
+- ['Prom' for database/sql](sql.md): bug fixes & enhancements with date/time types.
 
 ## 2021-03-10 - v0.2.11
 
-- prom for `database/sql`: bug fixes, enhancements and unit test rewritten.
+- ['Prom' for database/sql](sql.md): bug fixes, enhancements and unit test rewritten.
 
 ## 2021-02-19 - v0.2.10
 

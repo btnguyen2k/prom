@@ -46,12 +46,31 @@ type MongoPoolOpts struct {
 }
 
 var (
-	defaultMongoPoolOpts = &MongoPoolOpts{
-		// fast-failed options
+	// MongoPoolOptsLongDistance is MongoPoolOpts configured for the case client and MongoDB are far apart.
+	// available since v0.2.13
+	MongoPoolOptsLongDistance = &MongoPoolOpts{
+		ConnectTimeout:         3000 * time.Millisecond,
+		SocketTimeout:          5000 * time.Millisecond,
+		ServerSelectionTimeout: 10000 * time.Millisecond,
+	}
+
+	// MongoPoolOptsFailFast is MongoPoolOpts configured for the case client and MongoDB are close, and we want to fail fast when error.
+	// available since v0.2.13
+	MongoPoolOptsFailFast = &MongoPoolOpts{
 		ConnectTimeout:         50 * time.Millisecond,
 		SocketTimeout:          250 * time.Millisecond,
 		ServerSelectionTimeout: 1000 * time.Millisecond,
 	}
+
+	// MongoPoolOptsGeneral is MongoPoolOpts configured for general use cases.
+	// available since v0.2.13
+	MongoPoolOptsGeneral = &MongoPoolOpts{
+		ConnectTimeout:         1000 * time.Millisecond,
+		SocketTimeout:          3000 * time.Millisecond,
+		ServerSelectionTimeout: 5000 * time.Millisecond,
+	}
+
+	defaultMongoPoolOpts = MongoPoolOptsLongDistance
 )
 
 // NewMongoConnect constructs a new MongoConnect instance.
