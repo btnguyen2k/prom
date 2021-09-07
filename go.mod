@@ -14,5 +14,5 @@ require (
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/onsi/gomega v1.16.0 // indirect
-	go.mongodb.org/mongo-driver v1.7.1
+	go.mongodb.org/mongo-driver v1.7.2
 )
