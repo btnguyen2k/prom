@@ -1,5 +1,11 @@
 # prom release notes
 
+## 2021-09-22 - v0.2.14
+
+- Added helper functions:
+  - `AwsDynamodbWaitForGsiStatus`: periodically check if table's GSI status reaches a desired value, or timeout.
+  - `AwsDynamodbWaitForTableStatus`: periodically check if table's status reaches a desired value, or timeout.
+
 ## 2021-09-06 - v0.2.13
 
 - ['Prom' for the official Go driver for MongoDB](mongo.md):

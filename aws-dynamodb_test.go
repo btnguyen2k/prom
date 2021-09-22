@@ -474,34 +474,34 @@ func TestAwsDynamodbConnect_GetDb(t *testing.T) {
 	}
 }
 
-func inSlide(item string, slide []string) bool {
-	for _, s := range slide {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
+// func inSlide(item string, slide []string) bool {
+// 	for _, s := range slide {
+// 		if item == s {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
-func waitForGsi(adc *AwsDynamodbConnect, table, index string, statusList []string, delay int) {
-	for status, err := adc.GetGlobalSecondaryIndexStatus(nil, table, index); !inSlide(status, statusList) && err == nil; {
-		fmt.Printf("\tGSI [%s] on table [%s] status: %v - %e\n", index, table, status, err)
-		if delay > 0 {
-			time.Sleep(time.Duration(delay) * time.Second)
-		}
-		status, err = adc.GetGlobalSecondaryIndexStatus(nil, table, index)
-	}
-}
-
-func waitForTable(adc *AwsDynamodbConnect, table string, statusList []string, delay int) {
-	for status, err := adc.GetTableStatus(nil, table); !inSlide(status, statusList) && err == nil; {
-		fmt.Printf("\tTable [%s] status: %v - %e\n", table, status, err)
-		if delay > 0 {
-			time.Sleep(time.Duration(delay) * time.Second)
-		}
-		status, err = adc.GetTableStatus(nil, table)
-	}
-}
+// func waitForGsi(adc *AwsDynamodbConnect, table, index string, statusList []string, delay int) {
+// 	for status, err := adc.GetGlobalSecondaryIndexStatus(nil, table, index); !inSlide(status, statusList) && err == nil; {
+// 		fmt.Printf("\tGSI [%s] on table [%s] status: %v - %e\n", index, table, status, err)
+// 		if delay > 0 {
+// 			time.Sleep(time.Duration(delay) * time.Second)
+// 		}
+// 		status, err = adc.GetGlobalSecondaryIndexStatus(nil, table, index)
+// 	}
+// }
+//
+// func waitForTable(adc *AwsDynamodbConnect, table string, statusList []string, delay int) {
+// 	for status, err := adc.GetTableStatus(nil, table); !inSlide(status, statusList) && err == nil; {
+// 		fmt.Printf("\tTable [%s] status: %v - %e\n", table, status, err)
+// 		if delay > 0 {
+// 			time.Sleep(time.Duration(delay) * time.Second)
+// 		}
+// 		status, err = adc.GetTableStatus(nil, table)
+// 	}
+// }
 
 func prepareAwsDynamodbTable(adc *AwsDynamodbConnect, table string) error {
 	err := adc.DeleteTable(nil, table)
@@ -509,7 +509,8 @@ func prepareAwsDynamodbTable(adc *AwsDynamodbConnect, table string) error {
 		return err
 	}
 	fmt.Printf("\tDeleted table [%s]\n", table)
-	waitForTable(adc, table, []string{""}, 1)
+	AwsDynamodbWaitForTableStatus(adc, table, []string{""}, 5*time.Second, 60*time.Second)
+	// waitForTable(adc, table, []string{""}, 1)
 
 	err = adc.CreateTable(nil, table, 2, 2,
 		[]AwsDynamodbNameAndType{{"username", AwsAttrTypeString}, {"email", AwsAttrTypeString}},
@@ -517,7 +518,8 @@ func prepareAwsDynamodbTable(adc *AwsDynamodbConnect, table string) error {
 	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
 		return err
 	}
-	waitForTable(adc, table, []string{"ACTIVE"}, 1)
+	AwsDynamodbWaitForTableStatus(adc, table, []string{"ACTIVE"}, 5*time.Second, 60*time.Second)
+	// waitForTable(adc, table, []string{"ACTIVE"}, 1)
 	return nil
 }
 
@@ -592,7 +594,8 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 		t.Fatalf("%s failed: table [%s] not found", name+"/HasTable", testDynamodbTableName)
 	}
 	fmt.Printf("\tCreated table [%s]\n", testDynamodbTableName)
-	waitForTable(adc, testDynamodbTableName, []string{"ACTIVE"}, 1)
+	AwsDynamodbWaitForTableStatus(adc, testDynamodbTableName, []string{"ACTIVE"}, 5*time.Second, 60*time.Second)
+	// waitForTable(adc, testDynamodbTableName, []string{"ACTIVE"}, 1)
 
 	if os.Getenv(dynamodbTestGsiName) != "" {
 		testDynamodbGsiName = os.Getenv(dynamodbTestGsiName)
@@ -603,7 +606,8 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 			t.Fatalf("%s failed: error [%e]", name+"/DeleteGlobalSecondaryIndex", err)
 		}
 		fmt.Printf("\tDeleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
-		waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 1)
+		AwsDynamodbWaitForGsiStatus(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 5*time.Second, 60*time.Second)
+		// waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 1)
 	}
 
 	err = adc.CreateGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName, 1, 1,
@@ -613,7 +617,8 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 		t.Fatalf("%s failed: error [%e]", name+"/CreateGlobalSecondaryIndex", err)
 	}
 	fmt.Printf("\tCreated GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
-	waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{"ACTIVE", "CREATING"}, 5)
+	AwsDynamodbWaitForGsiStatus(adc, testDynamodbTableName, testDynamodbGsiName, []string{"ACTIVE", "CREATING"}, 5*time.Second, 60*time.Second)
+	// waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{"ACTIVE", "CREATING"}, 5)
 
 	time.Sleep(10 * time.Second)
 
@@ -622,14 +627,16 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 		t.Fatalf("%s failed: error [%e]", name+"/DeleteGlobalSecondaryIndex", err)
 	}
 	fmt.Printf("\tDeleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
-	waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 1)
+	AwsDynamodbWaitForGsiStatus(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 5*time.Second, 60*time.Second)
+	// waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 1)
 
 	err = adc.DeleteTable(nil, testDynamodbTableName)
 	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
 		t.Fatalf("%s failed: error [%e]", name+"/DeleteTable", err)
 	}
 	fmt.Printf("\tDeleted table [%s]\n", testDynamodbTableName)
-	waitForTable(adc, testDynamodbTableName, []string{""}, 1)
+	AwsDynamodbWaitForTableStatus(adc, testDynamodbTableName, []string{""}, 5*time.Second, 60*time.Second)
+	// waitForTable(adc, testDynamodbTableName, []string{""}, 1)
 	ok, err = adc.HasTable(nil, testDynamodbTableName)
 	if err != nil {
 		t.Fatalf("%s failed: error [%e]", name+"/HasTable", err)
@@ -1287,7 +1294,7 @@ func TestAwsDynamodbConnect_QueryItems(t *testing.T) {
 		t.Fatalf("%s failed: error [%e]", name+"/QueryItems", err)
 	}
 	for _, qi := range queriesItems {
-		fmt.Printf("Item: %#v\n", qi)
+		// fmt.Printf("Item: %#v\n", qi)
 		id := qi["email"].(string)
 		item := itemsMap[id]
 		var m map[string]interface{} = qi
