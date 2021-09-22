@@ -16,17 +16,17 @@ import (
 	"github.com/btnguyen2k/consu/reddo"
 )
 
-// AwsDynamodbConsistentReadLevel specifies the level of read consistency.
+// // AwsDynamodbConsistentReadLevel specifies the level of read consistency.
+// //
+// // Available: since v0.2.6
+// type AwsDynamodbConsistentReadLevel int
 //
-// Available: since v0.2.6
-type AwsDynamodbConsistentReadLevel int
-
-// Predefined levels of read consistency.
-//
-// Available: since v0.2.6
-const (
-	AwsDynamodbConsistentReadLevelNone AwsDynamodbConsistentReadLevel = iota
-)
+// // Predefined levels of read consistency.
+// //
+// // Available: since v0.2.6
+// const (
+// 	AwsDynamodbConsistentReadLevelNone AwsDynamodbConsistentReadLevel = iota
+// )
 
 const (
 	// AwsDynamodbNoIndex indicates that no index will be used
@@ -47,6 +47,70 @@ const (
 	// AwsKeyTypeSort is alias name of AWS DynamoDB key type "sort/range"
 	AwsKeyTypeSort = "RANGE"
 )
+
+var (
+	// ErrTimeout is returned by AwsDynamodbWaitForTableStatus or AwsDynamodbWaitForGsiStatus to indicate that timeout occurred before we reach the desired status.
+	ErrTimeout = errors.New("timeout while waiting for status")
+)
+
+func _awsDynamodbInSlide(item string, slide []string) bool {
+	for _, s := range slide {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+// AwsDynamodbWaitForGsiStatus periodically checks if table's GSI status reaches a desired value, or timeout.
+//   - statusList: list of desired statuses. This function returns nil if one of the desired statuses is reached.
+//   - delay: sleep for this amount of time after each status check. Supplied value of 0 or negative means 'no sleep'.
+//   - timeout: the total time should not exceed this amount. If timeout occur, this function returns ErrTimeout. Supplied value of 0 or negative means 'no timeout'!
+//
+// Available since v0.2.14
+func AwsDynamodbWaitForGsiStatus(adc *AwsDynamodbConnect, tableName, gsiName string, statusList []string, delay, timeout time.Duration) error {
+	start := time.Now()
+	for status, err := adc.GetGlobalSecondaryIndexStatus(nil, tableName, gsiName); ; status, err = adc.GetGlobalSecondaryIndexStatus(nil, tableName, gsiName) {
+		if err != nil {
+			return err
+		}
+		if _awsDynamodbInSlide(status, statusList) {
+			return nil
+		}
+		if delay.Milliseconds() > 0 {
+			time.Sleep(delay)
+		}
+		if timeout.Milliseconds() > 0 && time.Now().Sub(start) > timeout {
+			return ErrTimeout
+		}
+	}
+	return nil
+}
+
+// AwsDynamodbWaitForTableStatus periodically checks if table's status reaches a desired value, or timeout.
+//   - statusList: list of desired statuses. This function returns nil if one of the desired statuses is reached.
+//   - delay: sleep for this amount of time after each status check. Supplied value of 0 or negative means 'no sleep'.
+//   - timeout: the total time should not exceed this amount. If timeout occur, this function returns ErrTimeout. Supplied value of 0 or negative means 'no timeout'!
+//
+// Available since v0.2.14
+func AwsDynamodbWaitForTableStatus(adc *AwsDynamodbConnect, tableName string, statusList []string, delay, timeout time.Duration) error {
+	start := time.Now()
+	for status, err := adc.GetTableStatus(nil, tableName); ; status, err = adc.GetTableStatus(nil, tableName) {
+		if err != nil {
+			return err
+		}
+		if _awsDynamodbInSlide(status, statusList) {
+			return nil
+		}
+		if delay.Milliseconds() > 0 {
+			time.Sleep(delay)
+		}
+		if timeout.Milliseconds() > 0 && time.Now().Sub(start) > timeout {
+			return ErrTimeout
+		}
+	}
+	return nil
+}
 
 // AwsDynamodbItem defines a generic structure for DynamoDB item.
 type AwsDynamodbItem map[string]interface{}
