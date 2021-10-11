@@ -474,35 +474,6 @@ func TestAwsDynamodbConnect_GetDb(t *testing.T) {
 	}
 }
 
-// func inSlide(item string, slide []string) bool {
-// 	for _, s := range slide {
-// 		if item == s {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
-
-// func waitForGsi(adc *AwsDynamodbConnect, table, index string, statusList []string, delay int) {
-// 	for status, err := adc.GetGlobalSecondaryIndexStatus(nil, table, index); !inSlide(status, statusList) && err == nil; {
-// 		fmt.Printf("\tGSI [%s] on table [%s] status: %v - %e\n", index, table, status, err)
-// 		if delay > 0 {
-// 			time.Sleep(time.Duration(delay) * time.Second)
-// 		}
-// 		status, err = adc.GetGlobalSecondaryIndexStatus(nil, table, index)
-// 	}
-// }
-//
-// func waitForTable(adc *AwsDynamodbConnect, table string, statusList []string, delay int) {
-// 	for status, err := adc.GetTableStatus(nil, table); !inSlide(status, statusList) && err == nil; {
-// 		fmt.Printf("\tTable [%s] status: %v - %e\n", table, status, err)
-// 		if delay > 0 {
-// 			time.Sleep(time.Duration(delay) * time.Second)
-// 		}
-// 		status, err = adc.GetTableStatus(nil, table)
-// 	}
-// }
-
 func prepareAwsDynamodbTable(adc *AwsDynamodbConnect, table string) error {
 	err := adc.DeleteTable(nil, table)
 	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
@@ -510,7 +481,6 @@ func prepareAwsDynamodbTable(adc *AwsDynamodbConnect, table string) error {
 	}
 	fmt.Printf("\tDeleted table [%s]\n", table)
 	AwsDynamodbWaitForTableStatus(adc, table, []string{""}, 5*time.Second, 60*time.Second)
-	// waitForTable(adc, table, []string{""}, 1)
 
 	err = adc.CreateTable(nil, table, 2, 2,
 		[]AwsDynamodbNameAndType{{"username", AwsAttrTypeString}, {"email", AwsAttrTypeString}},
@@ -519,7 +489,6 @@ func prepareAwsDynamodbTable(adc *AwsDynamodbConnect, table string) error {
 		return err
 	}
 	AwsDynamodbWaitForTableStatus(adc, table, []string{"ACTIVE"}, 5*time.Second, 60*time.Second)
-	// waitForTable(adc, table, []string{"ACTIVE"}, 1)
 	return nil
 }
 
@@ -595,7 +564,6 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 	}
 	fmt.Printf("\tCreated table [%s]\n", testDynamodbTableName)
 	AwsDynamodbWaitForTableStatus(adc, testDynamodbTableName, []string{"ACTIVE"}, 5*time.Second, 60*time.Second)
-	// waitForTable(adc, testDynamodbTableName, []string{"ACTIVE"}, 1)
 
 	if os.Getenv(dynamodbTestGsiName) != "" {
 		testDynamodbGsiName = os.Getenv(dynamodbTestGsiName)
@@ -607,7 +575,6 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 		}
 		fmt.Printf("\tDeleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
 		AwsDynamodbWaitForGsiStatus(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 5*time.Second, 60*time.Second)
-		// waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 1)
 	}
 
 	err = adc.CreateGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName, 1, 1,
@@ -618,7 +585,6 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 	}
 	fmt.Printf("\tCreated GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
 	AwsDynamodbWaitForGsiStatus(adc, testDynamodbTableName, testDynamodbGsiName, []string{"ACTIVE", "CREATING"}, 5*time.Second, 60*time.Second)
-	// waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{"ACTIVE", "CREATING"}, 5)
 
 	time.Sleep(10 * time.Second)
 
@@ -628,7 +594,6 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 	}
 	fmt.Printf("\tDeleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
 	AwsDynamodbWaitForGsiStatus(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 5*time.Second, 60*time.Second)
-	// waitForGsi(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 1)
 
 	err = adc.DeleteTable(nil, testDynamodbTableName)
 	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
@@ -636,7 +601,6 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 	}
 	fmt.Printf("\tDeleted table [%s]\n", testDynamodbTableName)
 	AwsDynamodbWaitForTableStatus(adc, testDynamodbTableName, []string{""}, 5*time.Second, 60*time.Second)
-	// waitForTable(adc, testDynamodbTableName, []string{""}, 1)
 	ok, err = adc.HasTable(nil, testDynamodbTableName)
 	if err != nil {
 		t.Fatalf("%s failed: error [%e]", name+"/HasTable", err)
@@ -1293,18 +1257,20 @@ func TestAwsDynamodbConnect_QueryItems(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%e]", name+"/QueryItems", err)
 	}
-	for _, qi := range queriesItems {
-		// fmt.Printf("Item: %#v\n", qi)
+	if len(queriesItems) != 8 {
+		t.Fatalf("%s failed: expected %d items but received %d", name, 8, len(queriesItems))
+	}
+	for i, qi := range queriesItems {
 		id := qi["email"].(string)
+		if id != strconv.Itoa(i)+"@domain.com" {
+			t.Fatalf("%s failed: expected %s but received %s", name, strconv.Itoa(i)+"@domain.com", id)
+		}
 		item := itemsMap[id]
 		var m map[string]interface{} = qi
 		if !reflect.DeepEqual(m, item) {
 			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", name+"/QueryItems", m, item)
 		}
 		delete(itemsMap, id)
-	}
-	if len(itemsMap) != 2 {
-		t.Fatalf("%s failed: remaining item(s) %d", name+"/QueryItems", len(itemsMap))
 	}
 }
 
@@ -1348,6 +1314,110 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback(t *testing.T) {
 		delete(itemsMap, id)
 		return true, nil
 	})
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/QueryItemsWithCallback", err)
+	}
+	if len(itemsMap) != 2 {
+		t.Fatalf("%s failed: remaining item(s) %d", name+"/QueryItemsWithCallback", len(itemsMap))
+	}
+}
+
+func TestAwsDynamodbConnect_QueryItems_Backward(t *testing.T) {
+	name := "TestAwsDynamodbConnect_QueryItems_Backward"
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
+
+	if os.Getenv(dynamodbTestTableName) != "" {
+		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
+	}
+	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/prepareAwsDynamodbTable", err)
+	}
+
+	itemsMap := make(map[string]map[string]interface{})
+	for i := 0; i < 10; i++ {
+		id := strconv.Itoa(i)
+		item := map[string]interface{}{
+			"username": "btnguyen2k",
+			"email":    id + "@domain.com",
+			"name":     "Thanh " + id,
+		}
+		_, err = adc.PutItem(nil, testDynamodbTableName, item, nil)
+		if err != nil {
+			t.Fatalf("%s failed: error [%e]", name+"/PutItem", err)
+		}
+		itemsMap[id+"@domain.com"] = item
+	}
+
+	keyFilter := expression.And(expression.Name("username").Equal(expression.Value("btnguyen2k")),
+		expression.Name("email").LessThan(expression.Value("8@domain.com")))
+	queriesItems, err := adc.QueryItems(nil, testDynamodbTableName, &keyFilter, nil, "", AwsQueryOpt{ScanIndexBackward: aws.Bool(true)})
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/QueryItems", err)
+	}
+	if len(queriesItems) != 8 {
+		t.Fatalf("%s failed: expected %d items but received %d", name, 8, len(queriesItems))
+	}
+	for i, qi := range queriesItems {
+		id := qi["email"].(string)
+		if id != strconv.Itoa(8-i-1)+"@domain.com" {
+			t.Fatalf("%s failed: expected %s but received %s", name, strconv.Itoa(8-i-1)+"@domain.com", id)
+		}
+		item := itemsMap[id]
+		var m map[string]interface{} = qi
+		if !reflect.DeepEqual(m, item) {
+			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", name+"/QueryItems", m, item)
+		}
+		delete(itemsMap, id)
+	}
+}
+
+func TestAwsDynamodbConnect_QueryItemsWithCallback_Backward(t *testing.T) {
+	name := "TestAwsDynamodbConnect_QueryItemsWithCallback_Backward"
+	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
+
+	if os.Getenv(dynamodbTestTableName) != "" {
+		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
+	}
+	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", name+"/prepareAwsDynamodbTable", err)
+	}
+
+	itemsMap := make(map[string]map[string]interface{})
+	for i := 0; i < 10; i++ {
+		id := strconv.Itoa(i)
+		item := map[string]interface{}{
+			"username": "btnguyen2k",
+			"email":    id + "@domain.com",
+			"name":     "Thanh " + id,
+		}
+		_, err = adc.PutItem(nil, testDynamodbTableName, item, nil)
+		if err != nil {
+			t.Fatalf("%s failed: error [%e]", name+"/PutItem", err)
+		}
+		itemsMap[id+"@domain.com"] = item
+	}
+
+	keyFilter := expression.And(expression.Name("username").Equal(expression.Value("btnguyen2k")),
+		expression.Name("email").LessThan(expression.Value("8@domain.com")))
+	i := 0
+	err = adc.QueryItemsWithCallback(nil, testDynamodbTableName, &keyFilter, nil, "", nil, func(si AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error) {
+		id := si["email"].(string)
+		if id != strconv.Itoa(8-i-1)+"@domain.com" {
+			t.Fatalf("%s failed: expected %s but received %s", name, strconv.Itoa(8-i-1)+"@domain.com", id)
+		}
+		i++
+		item := itemsMap[id]
+		var m map[string]interface{} = si
+		if !reflect.DeepEqual(m, item) {
+			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", name+"/QueryItemsWithCallback", m, item)
+		}
+		delete(itemsMap, id)
+		return true, nil
+	}, AwsQueryOpt{ScanIndexBackward: aws.Bool(true)})
 	if err != nil {
 		t.Fatalf("%s failed: error [%e]", name+"/QueryItemsWithCallback", err)
 	}

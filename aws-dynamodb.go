@@ -123,6 +123,13 @@ type AwsDynamodbNameAndType struct{ Name, Type string }
 // If callback function returns false or error, the scan/query process will stop (even if there are still more items).
 type AwsDynamodbItemCallback func(item AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error)
 
+// AwsQueryOpt provides additional options to AwsDynamodbConnect.QueryItems and AwsDynamodbConnect.QueryItemsWithCallback.
+//
+// Available since v0.2.15
+type AwsQueryOpt struct {
+	ScanIndexBackward *bool // if set to true, scan the index backward
+}
+
 func awsDynamodbToProvisionedThroughput(rcu, wcu int64) *dynamodb.ProvisionedThroughput {
 	return &dynamodb.ProvisionedThroughput{ReadCapacityUnits: aws.Int64(rcu), WriteCapacityUnits: aws.Int64(wcu)}
 }
@@ -1171,21 +1178,33 @@ func (adc *AwsDynamodbConnect) QueryWithInput(ctx aws.Context, input *dynamodb.Q
 //
 // Parameters:
 //   - ctx              : (optional) used for request cancellation
-//   - table            : name of the table to be queried
+//   - table            : name of the table to be scanned
 //   - keyFilter        : used to filter items on primary key attributes
 //   - nonKeyFilter     : used to filter items on non-primary key attributes before returning result
 //   - indexName        : if non-empty, use this secondary index to query (local or global)
 //   - exclusiveStartKey: (optional) skip items till this key (used for paging)
 //   - callback         : callback function
+//   - opts             : additional query options (since v0.2.15)
 //
 // Notes:
 //   - This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
 //   - All projected attributes will be fetched.
 //   - ConsistentRead is not set.
-func (adc *AwsDynamodbConnect) QueryItemsWithCallback(ctx aws.Context, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue, callback AwsDynamodbItemCallback) error {
+func (adc *AwsDynamodbConnect) QueryItemsWithCallback(ctx aws.Context, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder,
+	indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue, callback AwsDynamodbItemCallback,
+	opts ...AwsQueryOpt) error {
+	scanBackward := false
+	for _, opt := range opts {
+		if opt.ScanIndexBackward != nil {
+			scanBackward = *opt.ScanIndexBackward
+		}
+	}
 	input, err := adc.BuildQueryInput(table, keyFilter, nonKeyFilter, indexName, exclusiveStartKey)
 	if err != nil {
 		return err
+	}
+	if scanBackward {
+		input.ScanIndexForward = aws.Bool(false)
 	}
 	return adc.QueryWithInputCallback(ctx, input, callback)
 }
@@ -1198,15 +1217,26 @@ func (adc *AwsDynamodbConnect) QueryItemsWithCallback(ctx aws.Context, table str
 //   - keyFilter        : used to filter items on primary key attributes
 //   - nonKeyFilter     : used to filter items on non-primary key attributes before returning result
 //   - indexName        : if non-empty, use this secondary index to scan (local or global)
+//   - opts             : additional query options (since v0.2.15)
 //
 // Notes:
 //   - This function may not fetch all item's attributes when using secondary index and not all attributes are projected to the index.
 //   - All projected attributes will be fetched.
 //   - ConsistentRead is not set.
-func (adc *AwsDynamodbConnect) QueryItems(ctx aws.Context, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string) ([]AwsDynamodbItem, error) {
+func (adc *AwsDynamodbConnect) QueryItems(ctx aws.Context, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder,
+	indexName string, opts ...AwsQueryOpt) ([]AwsDynamodbItem, error) {
+	scanBackward := false
+	for _, opt := range opts {
+		if opt.ScanIndexBackward != nil {
+			scanBackward = *opt.ScanIndexBackward
+		}
+	}
 	input, err := adc.BuildQueryInput(table, keyFilter, nonKeyFilter, indexName, nil)
 	if err != nil {
 		return nil, err
+	}
+	if scanBackward {
+		input.ScanIndexForward = aws.Bool(false)
 	}
 	return adc.QueryWithInput(ctx, input)
 }
