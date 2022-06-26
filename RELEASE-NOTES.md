@@ -1,5 +1,11 @@
 # prom release notes
 
+## 2022-06-xx - v0.3.0
+
+Support simple logging and metrics:
+- New struct `CmdExecInfo`: information around an executing command.
+- New interface `ILogMetrics`: APIs to log command executions and retrieve metrics.
+
 ## 2021-10-10 - v0.2.15
 
 - ['Prom' for AWS DyamoDB](aws-dynamodb.md):
