@@ -111,7 +111,7 @@ func TestGoRedis_FastFailed_Client(t *testing.T) {
 	})
 	client := rc.GetClient(0)
 	tstart := time.Now()
-	result := client.Ping()
+	result := client.Ping(nil)
 	if result.Err() == nil {
 		t.Fatalf("%s failed: the operation should not success", name)
 	}
@@ -136,7 +136,7 @@ func TestGoRedis_FastFailed_FailoverClient(t *testing.T) {
 	})
 	client := rc.GetFailoverClient(0)
 	tstart := time.Now()
-	result := client.Ping()
+	result := client.Ping(nil)
 	if result.Err() == nil {
 		t.Fatalf("%s failed: the operation should not success", name)
 	}
@@ -161,7 +161,7 @@ func TestGoRedis_FastFailed_GetClusterClient(t *testing.T) {
 	})
 	client := rc.GetClusterClient()
 	tstart := time.Now()
-	result := client.Ping()
+	result := client.Ping(nil)
 	if result.Err() == nil {
 		t.Fatalf("%s failed: the operation should not success", name)
 	}
