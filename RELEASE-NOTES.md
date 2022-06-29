@@ -5,6 +5,8 @@
 Support simple logging and metrics:
 - New struct `CmdExecInfo`: information around an executing command.
 - New interface `IMetricsLogger`: APIs to log command executions and retrieve metrics.
+- Dependency libs updated/upgraded:
+  - 
 
 ## 2021-10-10 - v0.2.15
 

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 )
 
 // GoRedisConnect holds a go-redis client (https://github.com/go-redis/redis) that can be shared within the application.
