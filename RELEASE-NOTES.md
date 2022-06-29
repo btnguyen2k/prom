@@ -4,7 +4,7 @@
 
 Support simple logging and metrics:
 - New struct `CmdExecInfo`: information around an executing command.
-- New interface `ILogMetrics`: APIs to log command executions and retrieve metrics.
+- New interface `IMetricsLogger`: APIs to log command executions and retrieve metrics.
 
 ## 2021-10-10 - v0.2.15
 

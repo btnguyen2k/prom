@@ -16,18 +16,6 @@ import (
 	"github.com/btnguyen2k/consu/reddo"
 )
 
-// // AwsDynamodbConsistentReadLevel specifies the level of read consistency.
-// //
-// // Available: since v0.2.6
-// type AwsDynamodbConsistentReadLevel int
-//
-// // Predefined levels of read consistency.
-// //
-// // Available: since v0.2.6
-// const (
-// 	AwsDynamodbConsistentReadLevelNone AwsDynamodbConsistentReadLevel = iota
-// )
-
 const (
 	// AwsDynamodbNoIndex indicates that no index will be used
 	AwsDynamodbNoIndex = ""
@@ -238,10 +226,14 @@ func IsAwsError(err error, awsErrCode string) bool {
 	return false
 }
 
-// AwsIgnoreErrorIfMatched returns nil if err is an awserr.Error and its code equals to excludeCode.
-func AwsIgnoreErrorIfMatched(err error, excludeCode string) error {
-	if aerr, ok := err.(awserr.Error); ok && aerr.Code() == excludeCode {
-		return nil
+// AwsIgnoreErrorIfMatched returns nil if err is an awserr.Error and its code is in the "exclude" list.
+func AwsIgnoreErrorIfMatched(err error, excludeCodeList ...string) error {
+	if aerr, ok := err.(awserr.Error); ok {
+		for _, errCode := range excludeCodeList {
+			if aerr.Code() == errCode {
+				return nil
+			}
+		}
 	}
 	return err
 }
@@ -291,6 +283,25 @@ func AwsDynamodbEqualsBuilder(condition map[string]interface{}) *expression.Cond
 
 /*----------------------------------------------------------------------*/
 
+const (
+	ctxAttrCmd = "cmd" // (internal) context attribute that holds the current CmdExecInfo instance
+
+	cmdDynamodbListTables     = "LIST TABLES"      // (internal) command name for "list tables" operation
+	cmdDynamodbHasTable       = "HAS TABLE"        // (internal) command name for "has table" operation
+	cmdDynamodbDeleteTable    = "DELETE TABLE"     // (internal) command name for "delete table" operation
+	cmdDynamodbCreateTable    = "CREATE TABLE"     // (internal) command name for "create table" operation
+	cmdDynamodbGetTableStatus = "GET TABLE STATUS" // (internal) command name for "get table status" operation
+	cmdDynamodbGetGSIStatus   = "GET GSI STATUS"   // (internal) command name for "get gsi status" operation
+	cmdDynamodbCreateGSI      = "CREATE GSI"       // (internal) command name for "create gsi" operation
+	cmdDynamodbDeleteGSI      = "DELETE GSI"       // (internal) command name for "delete gsi" operation
+	cmdDynamodbPutItem        = "PUT ITEM"         // (internal) command name for "put item" operation
+	cmdDynamodbDeleteItem     = "DELETE ITEM"      // (internal) command name for "delete item" operation
+	cmdDynamodbGetItem        = "GET ITEM"         // (internal) command name for "get item" operation
+	cmdDynamodbUpdateItem     = "UPDATE ITEM"      // (internal) command name for "update item" operation
+	cmdDynamodbQueryItems     = "QUERY ITEMS"      // (internal) command name for "query items" operation
+	cmdDynamodbScanItems      = "SCAN ITEMS"       // (internal) command name for "scan items" operation
+)
+
 // AwsDynamodbConnect holds a AWS DynamoDB client (https://github.com/aws/aws-sdk-go/tree/master/service/dynamodb) that can be shared within the application.
 type AwsDynamodbConnect struct {
 	config            *aws.Config        // aws config instance
@@ -298,6 +309,7 @@ type AwsDynamodbConnect struct {
 	db                *dynamodb.DynamoDB // aws dynamodb instance
 	timeoutMs         int                // timeout in milliseconds
 	ownDb, ownSession bool
+	metricsLogger     IMetricsLogger // (since v0.3.0) if non-nil, AwsDynamodbConnect automatically logs executing commands.
 }
 
 // NewAwsDynamodbConnect constructs a new AwsDynamodbConnect instance.
@@ -309,9 +321,10 @@ type AwsDynamodbConnect struct {
 //   - defaultTimeoutMs: default timeout for db operations, in milliseconds
 //
 // Return: the AwsDynamodbConnect instance and error (if any). Note:
-//   - if db is nil, it will be built from session
-//   - if session is nil, it sill be built from config
+//   - if db is nil, the instance is built from session
+//   - if session is nil, the instance is built from config
 //   - at least one of {config, session, db} must not be nil
+//   - (since v0.3.0) an in-memory implementation of IMetricsLogger is registered with the instance
 func NewAwsDynamodbConnect(cfg *aws.Config, sess *session.Session, db *dynamodb.DynamoDB, defaultTimeoutMs int) (*AwsDynamodbConnect, error) {
 	if cfg == nil && sess == nil && db == nil {
 		return nil, errors.New("at least one of {config, session, db} must not be nil")
@@ -320,10 +333,11 @@ func NewAwsDynamodbConnect(cfg *aws.Config, sess *session.Session, db *dynamodb.
 		defaultTimeoutMs = 0
 	}
 	adc := &AwsDynamodbConnect{
-		config:    cfg,
-		session:   sess,
-		db:        db,
-		timeoutMs: defaultTimeoutMs,
+		config:        cfg,
+		session:       sess,
+		db:            db,
+		timeoutMs:     defaultTimeoutMs,
+		metricsLogger: NewMemoryStoreMetricsLogger(1028),
 	}
 	if adc.db == nil {
 		if adc.session == nil {
@@ -342,6 +356,57 @@ func NewAwsDynamodbConnect(cfg *aws.Config, sess *session.Session, db *dynamodb.
 		}
 	}
 	return adc, nil
+}
+
+// RegisterMetricsLogger associate an IMetricsLogger instance with this AwsDynamodbConnect.
+// If non-nil, AwsDynamodbConnect automatically logs executing commands.
+//
+// Available since v0.3.0
+func (adc *AwsDynamodbConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *AwsDynamodbConnect {
+	adc.metricsLogger = metricsLogger
+	return adc
+}
+
+// MetricsLogger returns the associated IMetricsLogger instance.
+func (adc *AwsDynamodbConnect) MetricsLogger() IMetricsLogger {
+	return adc.metricsLogger
+}
+
+// NewCmdExecInfo is convenient function to create a new CmdExecInfo instance.
+//
+// The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
+//
+// Available since v0.3.0
+func (adc *AwsDynamodbConnect) NewCmdExecInfo() *CmdExecInfo {
+	return &CmdExecInfo{
+		Id:        newId(),
+		BeginTime: time.Now(),
+		Cost:      -1,
+	}
+}
+
+// LogMetrics is convenient function to put the CmdExecInfo to the metrics log.
+//
+// This function is silently no-op of the input if nil or there is no associated metrics logger.
+//
+// Available since v0.3.0
+func (adc *AwsDynamodbConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
+	if cmd != nil && adc.metricsLogger != nil {
+		return adc.metricsLogger.Put(category, cmd)
+	}
+	return nil
+}
+
+// Metrics is convenient function to capture the snapshot of command execution metrics.
+//
+// This function is silently no-op of there is no associated metrics logger.
+//
+// Available since v0.3.0
+func (adc *AwsDynamodbConnect) Metrics(category string, opts ...MetricsOpts) (*Metrics, error) {
+	if adc.metricsLogger != nil {
+		return adc.metricsLogger.Metrics(category, opts...)
+	}
+	return nil, nil
 }
 
 // Close frees all resources and closes all connection associated with this AwsDynamodbConnect.
@@ -374,8 +439,15 @@ func (adc *AwsDynamodbConnect) ListTables(ctx aws.Context) ([]string, error) {
 	}
 	input := &dynamodb.ListTablesInput{}
 	result := make([]string, 0)
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatOther, cmd)
+	}()
+	cmd.CmdName = cmdDynamodbListTables
 	for {
 		dbresult, err := adc.db.ListTablesWithContext(ctx, input)
+		cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
 		if err != nil {
 			return result, err
 		}
@@ -402,13 +474,21 @@ func (adc *AwsDynamodbConnect) HasTable(ctx aws.Context, table string) (bool, er
 		ctx, _ = adc.NewContext()
 	}
 	input := &dynamodb.ListTablesInput{}
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbHasTable, table
 	for {
 		dbresult, err := adc.db.ListTablesWithContext(ctx, input)
+		cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
 		if err != nil {
 			return false, err
 		}
 		for _, n := range dbresult.TableNames {
 			if table == *n {
+				cmd.CmdResponse = true
 				return true, nil
 			}
 		}
@@ -420,6 +500,7 @@ func (adc *AwsDynamodbConnect) HasTable(ctx aws.Context, table string) (bool, er
 		// multiple calls to the ListTables function to retrieve all table names
 		input.ExclusiveStartTableName = dbresult.LastEvaluatedTableName
 	}
+	cmd.CmdResponse = false
 	return false, nil
 }
 
@@ -435,8 +516,16 @@ func (adc *AwsDynamodbConnect) DeleteTable(ctx aws.Context, table string) error 
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatDDL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDeleteTable, table
 	_, err := adc.db.DeleteTableWithContext(ctx, &dynamodb.DeleteTableInput{TableName: aws.String(table)})
-	return AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceNotFoundException)
+	err = AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceNotFoundException)
+	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	return err
 }
 
 // CreateTable create a new table without index.
@@ -454,6 +543,15 @@ func (adc *AwsDynamodbConnect) CreateTable(ctx aws.Context, table string, rcu, w
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatDDL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbCreateTable, map[string]interface{}{
+		"table": table, "rcu": rcu, "wcu": wcu,
+		"attrs": attrDefs, "pk": pkDefs,
+	}
 	input := &dynamodb.CreateTableInput{
 		AttributeDefinitions:  awsDynamodbToAttributeDefinitions(attrDefs),
 		KeySchema:             awsDynamodbToKeySchemaElement(pkDefs),
@@ -461,6 +559,7 @@ func (adc *AwsDynamodbConnect) CreateTable(ctx aws.Context, table string, rcu, w
 		TableName:             aws.String(table),
 	}
 	_, err := adc.db.CreateTableWithContext(ctx, input)
+	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
 	return err
 }
 
@@ -474,10 +573,18 @@ func (adc *AwsDynamodbConnect) GetTableStatus(ctx aws.Context, table string) (st
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbGetTableStatus, table
 	input := &dynamodb.DescribeTableInput{TableName: aws.String(table)}
 	status, err := adc.db.DescribeTableWithContext(ctx, input)
 	err = AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceNotFoundException)
+	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
 	if status != nil && status.Table != nil && status.Table.TableStatus != nil {
+		cmd.CmdResponse = *status.Table.TableStatus
 		return *status.Table.TableStatus, err
 	}
 	return "", err
@@ -493,12 +600,20 @@ func (adc *AwsDynamodbConnect) GetGlobalSecondaryIndexStatus(ctx aws.Context, ta
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbGetGSIStatus, map[string]interface{}{"table": table, "gsi": indexName}
 	input := &dynamodb.DescribeTableInput{TableName: aws.String(table)}
 	status, err := adc.db.DescribeTableWithContext(ctx, input)
 	err = AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceNotFoundException)
+	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
 	if status != nil && status.Table != nil && status.Table.GlobalSecondaryIndexes != nil {
 		for _, gsi := range status.Table.GlobalSecondaryIndexes {
 			if *gsi.IndexName == indexName {
+				cmd.CmdResponse = *gsi.IndexStatus
 				return *gsi.IndexStatus, err
 			}
 		}
@@ -522,10 +637,19 @@ func (adc *AwsDynamodbConnect) CreateGlobalSecondaryIndex(ctx aws.Context, table
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatDDL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbCreateGSI, map[string]interface{}{
+		"table": table, "gsi": indexName, "rcu": rcu, "wcu": wcu,
+		"attrs": attrDefs, "pk": keyAttrs,
+	}
 	action := &dynamodb.CreateGlobalSecondaryIndexAction{
 		IndexName:             aws.String(indexName),
 		KeySchema:             awsDynamodbToKeySchemaElement(keyAttrs),
-		Projection:            &dynamodb.Projection{ProjectionType: aws.String("KEYS_ONLY")},
+		Projection:            &dynamodb.Projection{ProjectionType: aws.String(dynamodb.ProjectionTypeKeysOnly)},
 		ProvisionedThroughput: awsDynamodbToProvisionedThroughput(rcu, wcu),
 	}
 	gscIndexes := []*dynamodb.GlobalSecondaryIndexUpdate{{Create: action}}
@@ -535,6 +659,7 @@ func (adc *AwsDynamodbConnect) CreateGlobalSecondaryIndex(ctx aws.Context, table
 		TableName:                   aws.String(table),
 	}
 	_, err := adc.db.UpdateTableWithContext(ctx, input)
+	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
 	return err
 }
 
@@ -550,13 +675,21 @@ func (adc *AwsDynamodbConnect) DeleteGlobalSecondaryIndex(ctx aws.Context, table
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatDDL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDeleteGSI, map[string]interface{}{"table": table, "gsi": indexName}
 	action := &dynamodb.DeleteGlobalSecondaryIndexAction{IndexName: aws.String(indexName)}
 	input := &dynamodb.UpdateTableInput{
 		GlobalSecondaryIndexUpdates: []*dynamodb.GlobalSecondaryIndexUpdate{{Delete: action}},
 		TableName:                   aws.String(table),
 	}
 	_, err := adc.db.UpdateTableWithContext(ctx, input)
-	return AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceNotFoundException)
+	err = AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceNotFoundException)
+	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	return err
 }
 
 // BuildPutItemInput is a helper function to build dynamodb.PutItemInput.
@@ -565,7 +698,7 @@ func (adc *AwsDynamodbConnect) DeleteGlobalSecondaryIndex(ctx aws.Context, table
 func (adc *AwsDynamodbConnect) BuildPutItemInput(table string, item map[string]*dynamodb.AttributeValue, condition *expression.ConditionBuilder) (*dynamodb.PutItemInput, error) {
 	input := &dynamodb.PutItemInput{
 		Item:                   item,
-		ReturnConsumedCapacity: aws.String("INDEXES"),
+		ReturnConsumedCapacity: aws.String(dynamodb.ReturnConsumedCapacityTotal),
 		TableName:              aws.String(table),
 	}
 	if condition != nil {
@@ -587,7 +720,25 @@ func (adc *AwsDynamodbConnect) PutItemWithInput(ctx aws.Context, input *dynamodb
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
-	return adc.db.PutItemWithContext(ctx, input)
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbPutItem, map[string]interface{}{
+		"table":            input.TableName,
+		"item":             input.Item,
+		"cond_expr":        input.ConditionExpression,
+		"expr_attr_names":  input.ExpressionAttributeNames,
+		"expr_attr_values": input.ExpressionAttributeValues,
+	}
+	result, err := adc.db.PutItemWithContext(ctx, input)
+	cost := 0.0
+	if result != nil && result.ConsumedCapacity != nil && result.ConsumedCapacity.CapacityUnits != nil {
+		cost = *result.ConsumedCapacity.CapacityUnits
+	}
+	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	return result, err
 }
 
 // PutItemRaw inserts a new item to table or replace an existing one.
@@ -660,7 +811,7 @@ func (adc *AwsDynamodbConnect) BuildDeleteItemInput(table string, keyFilter map[
 	key := awsDynamodbMakeKey(keyFilter)
 	input := &dynamodb.DeleteItemInput{
 		Key:                    key,
-		ReturnConsumedCapacity: aws.String("INDEXES"),
+		ReturnConsumedCapacity: aws.String(dynamodb.ReturnConsumedCapacityTotal),
 		TableName:              aws.String(table),
 	}
 	if condition != nil {
@@ -682,7 +833,25 @@ func (adc *AwsDynamodbConnect) DeleteItemWithInput(ctx aws.Context, input *dynam
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
-	return adc.db.DeleteItemWithContext(ctx, input)
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDeleteItem, map[string]interface{}{
+		"table":            input.TableName,
+		"key":              input.Key,
+		"cond_expr":        input.ConditionExpression,
+		"expr_attr_names":  input.ExpressionAttributeNames,
+		"expr_attr_values": input.ExpressionAttributeValues,
+	}
+	result, err := adc.db.DeleteItemWithContext(ctx, input)
+	cost := 0.0
+	if result != nil && result.ConsumedCapacity != nil && result.ConsumedCapacity.CapacityUnits != nil {
+		cost = *result.ConsumedCapacity.CapacityUnits
+	}
+	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	return result, err
 }
 
 // DeleteItem removes a single item from specified table.
@@ -710,7 +879,7 @@ func (adc *AwsDynamodbConnect) DeleteItem(ctx aws.Context, table string, keyFilt
 func (adc *AwsDynamodbConnect) BuildGetItemInput(table string, keyFilter map[string]interface{}) (*dynamodb.GetItemInput, error) {
 	return &dynamodb.GetItemInput{
 		Key:                    awsDynamodbMakeKey(keyFilter),
-		ReturnConsumedCapacity: aws.String("INDEXES"),
+		ReturnConsumedCapacity: aws.String(dynamodb.ReturnConsumedCapacityTotal),
 		TableName:              aws.String(table),
 	}, nil
 }
@@ -722,7 +891,27 @@ func (adc *AwsDynamodbConnect) GetItemWithInput(ctx aws.Context, input *dynamodb
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
-	return adc.db.GetItemWithContext(ctx, input)
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbGetItem, map[string]interface{}{
+		"table":           input.TableName,
+		"key":             input.Key,
+		"expr_attr_names": input.ExpressionAttributeNames,
+		"proj_expr":       input.ProjectionExpression,
+	}
+	result, err := adc.db.GetItemWithContext(ctx, input)
+	if result != nil {
+		cmd.CmdResponse = result.Item
+	}
+	cost := 0.0
+	if result != nil && result.ConsumedCapacity != nil && result.ConsumedCapacity.CapacityUnits != nil {
+		cost = *result.ConsumedCapacity.CapacityUnits
+	}
+	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	return result, err
 }
 
 // GetItem fetches a single item from specified table.
@@ -804,7 +993,7 @@ func (adc *AwsDynamodbConnect) BuildUpdateItemInput(table string, keyFilter map[
 		ExpressionAttributeNames:  updateBuilderExp.Names(),
 		ExpressionAttributeValues: updateBuilderExp.Values(),
 		Key:                       key,
-		ReturnConsumedCapacity:    aws.String("INDEXES"),
+		ReturnConsumedCapacity:    aws.String(dynamodb.ReturnConsumedCapacityTotal),
 		TableName:                 aws.String(table),
 		UpdateExpression:          updateBuilderExp.Update(),
 	}, nil
@@ -817,7 +1006,29 @@ func (adc *AwsDynamodbConnect) UpdateItemWithInput(ctx aws.Context, input *dynam
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
-	return adc.db.UpdateItemWithContext(ctx, input)
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbUpdateItem, map[string]interface{}{
+		"table":            input.TableName,
+		"key":              input.Key,
+		"cond_expr":        input.ConditionExpression,
+		"expr_attr_names":  input.ExpressionAttributeNames,
+		"expr_attr_values": input.ExpressionAttributeValues,
+		"update_expr":      input.UpdateExpression,
+	}
+	result, err := adc.db.UpdateItemWithContext(ctx, input)
+	if result != nil {
+		cmd.CmdResponse = result.Attributes
+	}
+	cost := 0.0
+	if result != nil && result.ConsumedCapacity != nil && result.ConsumedCapacity.CapacityUnits != nil {
+		cost = *result.ConsumedCapacity.CapacityUnits
+	}
+	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	return result, err
 }
 
 // UpdateItem performs operation remove/set/add value/delete values from item's attributes.
@@ -896,9 +1107,6 @@ func (adc *AwsDynamodbConnect) doAddOrDeleteSetValues(ctx aws.Context, table str
 	keyFilter map[string]interface{}, condition *expression.ConditionBuilder,
 	attrsAndValues map[string]interface{},
 	doAdd bool) (*dynamodb.UpdateItemOutput, error) {
-	if ctx == nil {
-		ctx, _ = adc.NewContext()
-	}
 	key := awsDynamodbMakeKey(keyFilter)
 	avs := make(map[string]*dynamodb.AttributeValue)
 	var updateBuilder expression.UpdateBuilder
@@ -933,11 +1141,11 @@ func (adc *AwsDynamodbConnect) doAddOrDeleteSetValues(ctx aws.Context, table str
 		ExpressionAttributeNames:  names,
 		ExpressionAttributeValues: values,
 		Key:                       key,
-		ReturnConsumedCapacity:    aws.String("INDEXES"),
+		ReturnConsumedCapacity:    aws.String(dynamodb.ReturnConsumedCapacityTotal),
 		TableName:                 aws.String(table),
 		UpdateExpression:          updateBuilderExp.Update(),
 	}
-	return adc.db.UpdateItemWithContext(ctx, input)
+	return adc.UpdateItemWithInput(ctx, input)
 }
 
 // AddValuesToSet adds values to set attributes of an item.
@@ -978,7 +1186,7 @@ func (adc *AwsDynamodbConnect) DeleteValuesFromSet(ctx aws.Context, table string
 func (adc *AwsDynamodbConnect) BuildScanInput(table string, filter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue) (*dynamodb.ScanInput, error) {
 	input := &dynamodb.ScanInput{
 		ExclusiveStartKey:      exclusiveStartKey,
-		ReturnConsumedCapacity: aws.String("INDEXES"),
+		ReturnConsumedCapacity: aws.String(dynamodb.ReturnConsumedCapacityTotal),
 		TableName:              aws.String(table),
 	}
 	if filter != nil {
@@ -1006,8 +1214,29 @@ func (adc *AwsDynamodbConnect) ScanWithInputCallback(ctx aws.Context, input *dyn
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbScanItems, map[string]interface{}{
+		"table":            input.TableName,
+		"index":            input.IndexName,
+		"consistent":       input.ConsistentRead,
+		"limit":            input.Limit,
+		"expr_attr_names":  input.ExpressionAttributeNames,
+		"expr_attr_values": input.ExpressionAttributeValues,
+		"filter_expr":      input.FilterExpression,
+		"proj_expr":        input.ProjectionExpression,
+		"attrs":            input.Select,
+	}
 	for {
 		dbresult, err := adc.db.ScanWithContext(ctx, input)
+		cost := 0.0
+		if dbresult != nil && dbresult.ConsumedCapacity != nil && dbresult.ConsumedCapacity.CapacityUnits != nil {
+			cost = *dbresult.ConsumedCapacity.CapacityUnits
+		}
+		cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
 		if err != nil {
 			return err
 		}
@@ -1096,7 +1325,7 @@ func (adc *AwsDynamodbConnect) ScanItems(ctx aws.Context, table string, filter *
 func (adc *AwsDynamodbConnect) BuildQueryInput(table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue) (*dynamodb.QueryInput, error) {
 	input := &dynamodb.QueryInput{
 		ExclusiveStartKey:      exclusiveStartKey,
-		ReturnConsumedCapacity: aws.String("INDEXES"),
+		ReturnConsumedCapacity: aws.String(dynamodb.ReturnConsumedCapacityTotal),
 		TableName:              aws.String(table),
 	}
 	if keyFilter != nil || nonKeyFilter != nil {
@@ -1136,8 +1365,31 @@ func (adc *AwsDynamodbConnect) QueryWithInputCallback(ctx aws.Context, input *dy
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
 	}
+	cmd := adc.NewCmdExecInfo()
+	defer func() {
+		adc.LogMetrics(MetricsCatAll, cmd)
+		adc.LogMetrics(MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = cmdDynamodbQueryItems, map[string]interface{}{
+		"table":            input.TableName,
+		"index":            input.IndexName,
+		"consistent":       input.ConsistentRead,
+		"limit":            input.Limit,
+		"expr_attr_names":  input.ExpressionAttributeNames,
+		"expr_attr_values": input.ExpressionAttributeValues,
+		"filter_expr":      input.FilterExpression,
+		"key_expr":         input.KeyConditionExpression,
+		"proj_expr":        input.ProjectionExpression,
+		"attrs":            input.Select,
+		"forward":          input.ScanIndexForward,
+	}
 	for {
 		dbresult, err := adc.db.QueryWithContext(ctx, input)
+		cost := 0.0
+		if dbresult != nil && dbresult.ConsumedCapacity != nil && dbresult.ConsumedCapacity.CapacityUnits != nil {
+			cost = *dbresult.ConsumedCapacity.CapacityUnits
+		}
+		cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
 		if err != nil {
 			return err
 		}
