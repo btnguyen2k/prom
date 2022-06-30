@@ -1,6 +1,7 @@
 package prom
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -111,12 +112,13 @@ func TestGoRedis_FastFailed_Client(t *testing.T) {
 	})
 	client := rc.GetClient(0)
 	tstart := time.Now()
-	result := client.Ping()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	result := client.Ping(ctx)
 	if result.Err() == nil {
 		t.Fatalf("%s failed: the operation should not success", name)
 	}
-	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
-	dmax := 20 * time.Millisecond
+	d := time.Now().Sub(tstart)
+	dmax := 31 * time.Millisecond
 	if d > dmax {
 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
 	}
@@ -136,12 +138,13 @@ func TestGoRedis_FastFailed_FailoverClient(t *testing.T) {
 	})
 	client := rc.GetFailoverClient(0)
 	tstart := time.Now()
-	result := client.Ping()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	result := client.Ping(ctx)
 	if result.Err() == nil {
 		t.Fatalf("%s failed: the operation should not success", name)
 	}
 	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
-	dmax := 20 * time.Millisecond
+	dmax := 21 * time.Millisecond
 	if d > dmax {
 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
 	}
@@ -161,12 +164,13 @@ func TestGoRedis_FastFailed_GetClusterClient(t *testing.T) {
 	})
 	client := rc.GetClusterClient()
 	tstart := time.Now()
-	result := client.Ping()
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	result := client.Ping(ctx)
 	if result.Err() == nil {
 		t.Fatalf("%s failed: the operation should not success", name)
 	}
-	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
-	dmax := 20 * time.Millisecond
+	d := time.Now().Sub(tstart)
+	dmax := 21 * time.Millisecond
 	if d > dmax {
 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
 	}

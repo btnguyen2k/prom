@@ -1,4 +1,4 @@
-**'Prom' for the `database/sql` package (https://golang.org/pkg/database/sql/)**
+**'Prom' for the `database/sql` package (https://pkg.go.dev/database/sql)**
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom#SqlConnect)
 
@@ -7,7 +7,7 @@ Prom for `database/sql` has been tested and supports with the following drivers:
 - [x] Azure Cosmos DB: [github.com/btnguyen2k/gocosmos](https://github.com/btnguyen2k/gocosmos).
 - [x] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb).
 - [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql).
-- [x] Oracle: [github.com/godror/godror](https://github.com/go-goracle/goracle).
+- [x] Oracle: [github.com/godror/godror](https://github.com/godror/godror).
 - [x] PostgreSQL:[github.com/jackc/pgx](https://github.com/jackc/pgx).
 - [x] SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3).
 
