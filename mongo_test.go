@@ -1,6 +1,7 @@
 package prom
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"strings"
@@ -103,12 +104,13 @@ func TestMongo_FastFailed(t *testing.T) {
 	defer mc.Close(nil)
 
 	tstart := time.Now()
-	err = mc.Ping(nil)
+	ctx, _ := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
+	err = mc.Ping(ctx)
 	if err == nil {
 		t.Fatalf("%s failed: the operation should not success", name)
 	}
-	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
-	dmax := time.Duration(float64(time.Duration(timeoutMs)*time.Millisecond) * 1.5)
+	d := time.Now().Sub(tstart)
+	dmax := time.Duration(float64(timeoutMs)*1.5) * time.Millisecond
 	if d > dmax {
 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
 	}

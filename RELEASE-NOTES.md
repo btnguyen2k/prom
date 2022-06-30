@@ -6,7 +6,15 @@ Support simple logging and metrics:
 - New struct `CmdExecInfo`: information around an executing command.
 - New interface `IMetricsLogger`: APIs to log command executions and retrieve metrics.
 - Dependency libs updated/upgraded:
-  - 
+  - aws/aws-sdk-go v1.44.44
+  - btnguyen2k/gocosmos v0.1.6
+  - denisenkom/go-mssqldb v0.12.2
+  - go-redis/redis/v8 v8.11.5
+  - go-sql-driver/mysql v1.6.0
+  - godror/godror v0.33.3
+  - jackc/pgx/v4 v4.16.1
+  - mattn/go-sqlite3 v1.14.14
+  - go.mongodb.org/mongo-driver v1.9.1
 
 ## 2021-10-10 - v0.2.15
 
