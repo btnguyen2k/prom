@@ -160,7 +160,7 @@ func (dp *DynamoDbProxy) BatchGetItemPages(input *dynamodb.BatchGetItemInput, fn
 
 // BatchGetItemPagesWithContext overrides dynamodb.DynamoDB/BatchGetItemPagesWithContext to log execution metrics.
 func (dp *DynamoDbProxy) BatchGetItemPagesWithContext(ctx aws.Context, input *dynamodb.BatchGetItemInput, fn func(*dynamodb.BatchGetItemOutput, bool) bool, opts ...request.Option) error {
-	return dp.metricsBatchGetItemPages(false, nil, input, fn, opts...)
+	return dp.metricsBatchGetItemPages(false, ctx, input, fn, opts...)
 }
 
 func (dp *DynamoDbProxy) metricsBatchGetItemPages(withoutContext bool, ctx aws.Context, input *dynamodb.BatchGetItemInput, fn func(*dynamodb.BatchGetItemOutput, bool) bool, opts ...request.Option) (err error) {
@@ -197,7 +197,7 @@ func (dp *DynamoDbProxy) BatchWriteItem(input *dynamodb.BatchWriteItemInput) (*d
 
 // BatchWriteItemWithContext overrides dynamodb.DynamoDB/BatchWriteItemWithContext to log execution metrics.
 func (dp *DynamoDbProxy) BatchWriteItemWithContext(ctx aws.Context, input *dynamodb.BatchWriteItemInput, opts ...request.Option) (*dynamodb.BatchWriteItemOutput, error) {
-	return dp.metricsBatchWriteItem(false, nil, input, opts...)
+	return dp.metricsBatchWriteItem(false, ctx, input, opts...)
 }
 
 func (dp *DynamoDbProxy) metricsBatchWriteItem(withoutContext bool, ctx aws.Context, input *dynamodb.BatchWriteItemInput, opts ...request.Option) (output *dynamodb.BatchWriteItemOutput, err error) {
@@ -228,7 +228,7 @@ func (dp *DynamoDbProxy) CreateBackup(input *dynamodb.CreateBackupInput) (*dynam
 
 // CreateBackupWithContext overrides dynamodb.DynamoDB/CreateBackupWithContext to log execution metrics.
 func (dp *DynamoDbProxy) CreateBackupWithContext(ctx aws.Context, input *dynamodb.CreateBackupInput, opts ...request.Option) (*dynamodb.CreateBackupOutput, error) {
-	return dp.metricsCreateBackup(false, nil, input, opts...)
+	return dp.metricsCreateBackup(false, ctx, input, opts...)
 }
 
 func (dp *DynamoDbProxy) metricsCreateBackup(withoutContext bool, ctx aws.Context, input *dynamodb.CreateBackupInput, opts ...request.Option) (output *dynamodb.CreateBackupOutput, err error) {
@@ -309,7 +309,7 @@ func (dp *DynamoDbProxy) DeleteBackup(input *dynamodb.DeleteBackupInput) (*dynam
 
 // DeleteBackupWithContext overrides dynamodb.DynamoDB/DeleteBackupWithContext to log execution metrics.
 func (dp *DynamoDbProxy) DeleteBackupWithContext(ctx aws.Context, input *dynamodb.DeleteBackupInput, opts ...request.Option) (*dynamodb.DeleteBackupOutput, error) {
-	return dp.metricsDeleteBackup(false, nil, input, opts...)
+	return dp.metricsDeleteBackup(false, ctx, input, opts...)
 }
 
 func (dp *DynamoDbProxy) metricsDeleteBackup(withoutContext bool, ctx aws.Context, input *dynamodb.DeleteBackupInput, opts ...request.Option) (output *dynamodb.DeleteBackupOutput, err error) {
@@ -394,7 +394,7 @@ func (dp *DynamoDbProxy) DescribeBackup(input *dynamodb.DescribeBackupInput) (*d
 
 // DescribeBackupWithContext overrides dynamodb.DynamoDB/DescribeBackupWithContext to log execution metrics.
 func (dp *DynamoDbProxy) DescribeBackupWithContext(ctx aws.Context, input *dynamodb.DescribeBackupInput, opts ...request.Option) (*dynamodb.DescribeBackupOutput, error) {
-	return dp.metricsDescribeBackup(false, nil, input, opts...)
+	return dp.metricsDescribeBackup(false, ctx, input, opts...)
 }
 
 func (dp *DynamoDbProxy) metricsDescribeBackup(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeBackupInput, opts ...request.Option) (output *dynamodb.DescribeBackupOutput, err error) {
@@ -421,7 +421,7 @@ func (dp *DynamoDbProxy) DescribeContinuousBackups(input *dynamodb.DescribeConti
 
 // DescribeContinuousBackupsWithContext overrides dynamodb.DynamoDB/DescribeContinuousBackupsWithContext to log execution metrics.
 func (dp *DynamoDbProxy) DescribeContinuousBackupsWithContext(ctx aws.Context, input *dynamodb.DescribeContinuousBackupsInput, opts ...request.Option) (*dynamodb.DescribeContinuousBackupsOutput, error) {
-	return dp.metricsDescribeContinuousBackups(false, nil, input, opts...)
+	return dp.metricsDescribeContinuousBackups(false, ctx, input, opts...)
 }
 
 func (dp *DynamoDbProxy) metricsDescribeContinuousBackups(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeContinuousBackupsInput, opts ...request.Option) (output *dynamodb.DescribeContinuousBackupsOutput, err error) {
@@ -617,7 +617,7 @@ func (dp *DynamoDbProxy) metricsDescribeLimits(withoutContext bool, ctx aws.Cont
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
 		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescLimits, input
 	if withoutContext {
@@ -664,7 +664,7 @@ func (dp *DynamoDbProxy) DescribeTableReplicaAutoScaling(input *dynamodb.Describ
 
 // DescribeTableReplicaAutoScalingWithContext overrides dynamodb.DynamoDB/DescribeTableReplicaAutoScalingWithContext to log execution metrics.
 func (dp *DynamoDbProxy) DescribeTableReplicaAutoScalingWithContext(ctx aws.Context, input *dynamodb.DescribeTableReplicaAutoScalingInput, opts ...request.Option) (*dynamodb.DescribeTableReplicaAutoScalingOutput, error) {
-	return dp.metricsDescribeTableReplicaAutoScaling(false, nil, input, opts...)
+	return dp.metricsDescribeTableReplicaAutoScaling(false, ctx, input, opts...)
 }
 
 func (dp *DynamoDbProxy) metricsDescribeTableReplicaAutoScaling(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeTableReplicaAutoScalingInput, opts ...request.Option) (output *dynamodb.DescribeTableReplicaAutoScalingOutput, err error) {
@@ -699,7 +699,7 @@ func (dp *DynamoDbProxy) metricsDescribeTimeToLive(withoutContext bool, ctx aws.
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
 		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescTTL, input
 	if withoutContext {
@@ -780,7 +780,7 @@ func (dp *DynamoDbProxy) metricsExecuteStatement(withoutContext bool, ctx aws.Co
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
 		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbExecuteStatement, input
 	if withoutContext {
@@ -807,7 +807,7 @@ func (dp *DynamoDbProxy) metricsExecuteTransaction(withoutContext bool, ctx aws.
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
 		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbExecuteTransaction, input
 	if withoutContext {
@@ -1539,7 +1539,7 @@ func (dp *DynamoDbProxy) UpdateGlobalTableSettings(input *dynamodb.UpdateGlobalT
 
 // UpdateGlobalTableSettingsWithContext overrides dynamodb.DynamoDB/UpdateGlobalTableSettingsWithContext to log execution metrics.
 func (dp *DynamoDbProxy) UpdateGlobalTableSettingsWithContext(ctx aws.Context, input *dynamodb.UpdateGlobalTableSettingsInput, opts ...request.Option) (*dynamodb.UpdateGlobalTableSettingsOutput, error) {
-	return dp.metricsUpdateGlobalTableSettings(false, nil, input, opts...)
+	return dp.metricsUpdateGlobalTableSettings(false, ctx, input, opts...)
 }
 
 func (dp *DynamoDbProxy) metricsUpdateGlobalTableSettings(withoutContext bool, ctx aws.Context, input *dynamodb.UpdateGlobalTableSettingsInput, opts ...request.Option) (output *dynamodb.UpdateGlobalTableSettingsOutput, err error) {

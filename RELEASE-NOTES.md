@@ -1,6 +1,6 @@
 # prom release notes
 
-## 2022-06-xx - v0.3.0
+## 2022-08-xx - v0.3.0
 
 Support simple logging and metrics:
 - New struct `CmdExecInfo`: information around an executing command.

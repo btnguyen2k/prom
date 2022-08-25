@@ -317,7 +317,7 @@ func TestAwsDynamodbExistsAllBuilder(t *testing.T) {
 	conditionBuilder := AwsDynamodbExistsAllBuilder(input)
 	builder, err := expression.NewBuilder().WithCondition(*conditionBuilder).Build()
 	if err != nil {
-		t.Fatalf("%s failed: %e", testName, err)
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 	condition := builder.Condition()
 	expected := "((attribute_exists (#0)) AND (attribute_exists (#1))) AND (attribute_exists (#2))"
@@ -332,7 +332,7 @@ func TestAwsDynamodbNotExistsAllBuilder(t *testing.T) {
 	conditionBuilder := AwsDynamodbNotExistsAllBuilder(input)
 	builder, err := expression.NewBuilder().WithCondition(*conditionBuilder).Build()
 	if err != nil {
-		t.Fatalf("%s failed: %e", testName, err)
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 	condition := builder.Condition()
 	expected := "((attribute_not_exists (#0)) AND (attribute_not_exists (#1))) AND (attribute_not_exists (#2))"
@@ -347,7 +347,7 @@ func TestAwsDynamodbEqualsBuilder(t *testing.T) {
 	conditionBuilder := AwsDynamodbEqualsBuilder(input)
 	builder, err := expression.NewBuilder().WithCondition(*conditionBuilder).Build()
 	if err != nil {
-		t.Fatalf("%s failed: %e", testName, err)
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 	condition := builder.Condition()
 	expected := "((#0 = :0) AND (#1 = :1)) AND (#2 = :2)"
@@ -427,7 +427,7 @@ func TestNewAwsDynamodbConnect_timeout(t *testing.T) {
 	}
 	adc, err := NewAwsDynamodbConnect(cfg, nil, nil, -1)
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName, err)
+		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
 	if adc == nil {
 		t.Fatalf("%s failed: nil", testName)
@@ -446,7 +446,7 @@ func TestNewAwsDynamodbConnect_MetricsLogger(t *testing.T) {
 	}
 	adc, err := NewAwsDynamodbConnect(cfg, nil, nil, -1)
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName, err)
+		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
 	if adc == nil {
 		t.Fatalf("%s failed: nil", testName)
@@ -478,7 +478,7 @@ func TestAwsDynamodbConnect_Close(t *testing.T) {
 	adc := _createAwsDynamodbConnect(t, testName)
 	err := adc.Close()
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName, err)
+		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
 }
 
@@ -531,6 +531,18 @@ func prepareAwsDynamodbTable(adc *AwsDynamodbConnect, table string) error {
 		return err
 	}
 	AwsDynamodbWaitForTableStatus(adc, table, []string{"ACTIVE"}, 5*time.Second, 60*time.Second)
+
+	if os.Getenv(dynamodbTestGsiName) != "" {
+		testDynamodbGsiName = os.Getenv(dynamodbTestGsiName)
+	}
+	adc.CreateGlobalSecondaryIndex(nil, table, testDynamodbGsiName, 1, 1,
+		[]AwsDynamodbNameAndType{
+			{"username", AwsAttrTypeString}, {"email", AwsAttrTypeString},
+		},
+		[]AwsDynamodbNameAndType{
+			{"username", AwsKeyTypePartition}, {"email", AwsKeyTypeSort},
+		})
+	AwsDynamodbWaitForGsiStatus(adc, table, testDynamodbGsiName, []string{"ACTIVE"}, 5*time.Second, 60*time.Second)
 	return nil
 }
 
@@ -541,14 +553,14 @@ const (
 
 var (
 	testDynamodbTableName = "test_prom"
-	testDynamodbGsiName   = "test_prom_gsi_email"
+	testDynamodbGsiName   = "gsi_" + testDynamodbTableName
 )
 
 func _adcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, adc *AwsDynamodbConnect, cmdName string, ignoreErrorCodes []string, cmdCats ...string) {
 	for _, cat := range cmdCats {
 		m, err := adc.Metrics(cat, MetricsOpts{ReturnLatestCommands: 1})
 		if err != nil {
-			f(fmt.Sprintf("%s failed: error [%e]", testName+"/Metrics("+cat+")", err))
+			f(fmt.Sprintf("%s failed: error [%s]", testName+"/Metrics("+cat+")", err))
 		}
 		if m == nil {
 			f(fmt.Sprintf("%s failed: cannot obtain metrics info", testName+"/Metrics("+cat+")"))
@@ -565,12 +577,22 @@ func _adcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, adc *AwsDy
 				}
 			}
 		}
-		if cmd.CmdName != cmdName || cmd.Result != CmdResultOk || cmd.Error != nil || cmd.Cost <= 0 {
-			f(fmt.Sprintf("%s failed: invalid last command metrics.\nExpected: [Name=%v / Result=%v / Error = %e / Cost = %v]\nReceived: [Name=%v / Result=%v / Error = %s / Cost = %v]",
+		if cmd.CmdName != cmdName || cmd.Result != CmdResultOk || cmd.Error != nil || cmd.Cost < 0 {
+			f(fmt.Sprintf("%s failed: invalid last command metrics.\nExpected: [Name=%v / Result=%v / Error = %s / Cost = %v]\nReceived: [Name=%v / Result=%v / Error = %s / Cost = %v]",
 				testName+"/Metrics("+cat+")",
-				cmdName, CmdResultOk, error(nil), "> 0",
+				cmdName, CmdResultOk, error(nil), ">= 0",
 				cmd.CmdName, cmd.Result, cmd.Error, cmd.Cost))
 		}
+	}
+}
+
+func _adcPrepareTestTable(f _testFailedWithMsgFunc, testName string, adc *AwsDynamodbConnect) {
+	if os.Getenv(dynamodbTestTableName) != "" {
+		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
+	}
+	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
+	if err != nil {
+		f(fmt.Sprintf("%s failed: error [%s]", testName+"/prepareAwsDynamodbTable", err))
 	}
 }
 
@@ -578,9 +600,10 @@ func TestAwsDynamodbConnect_ListTables(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_ListTables"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
+
 	tables, err := adc.ListTables(nil)
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName, err)
+		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
 	if tables == nil {
 		t.Fatalf("%s failed: nil", testName)
@@ -596,18 +619,17 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
 	}
-
 	err := adc.CreateTable(nil, testDynamodbTableName, 2, 2,
 		[]AwsDynamodbNameAndType{{"username", AwsAttrTypeString}},
 		[]AwsDynamodbNameAndType{{"username", AwsKeyTypePartition}})
 	if err = AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException); err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/CreateTable", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/CreateTable", err)
 	}
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateTable, []string{dynamodb.ErrCodeResourceInUseException}, MetricsCatAll, MetricsCatDDL)
 
 	ok, err := adc.HasTable(nil, testDynamodbTableName)
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/HasTable", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/HasTable", err)
 	}
 	if !ok {
 		t.Fatalf("%s failed: table [%s] not found", testName+"/HasTable", testDynamodbTableName)
@@ -621,11 +643,10 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 	if os.Getenv(dynamodbTestGsiName) != "" {
 		testDynamodbGsiName = os.Getenv(dynamodbTestGsiName)
 	}
-
 	{
 		err = adc.DeleteGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName)
 		if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/DeleteGlobalSecondaryIndex", err)
+			t.Fatalf("%s failed: error [%s]", testName+"/DeleteGlobalSecondaryIndex", err)
 		}
 		fmt.Printf("\tDeleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, []string{dynamodb.ErrCodeResourceNotFoundException}, MetricsCatAll, MetricsCatDDL)
@@ -637,7 +658,7 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 		[]AwsDynamodbNameAndType{{"email", AwsAttrTypeString}},
 		[]AwsDynamodbNameAndType{{"email", AwsKeyTypePartition}})
 	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/CreateGlobalSecondaryIndex", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/CreateGlobalSecondaryIndex", err)
 	}
 	fmt.Printf("\tCreated GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, []string{dynamodb.ErrCodeResourceInUseException}, MetricsCatAll, MetricsCatDDL)
@@ -649,7 +670,7 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 
 	err = adc.DeleteGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName)
 	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/DeleteGlobalSecondaryIndex", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/DeleteGlobalSecondaryIndex", err)
 	}
 	fmt.Printf("\tDeleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, []string{dynamodb.ErrCodeResourceInUseException}, MetricsCatAll, MetricsCatDDL)
@@ -659,7 +680,7 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 
 	err = adc.DeleteTable(nil, testDynamodbTableName)
 	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/DeleteTable", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/DeleteTable", err)
 	}
 	fmt.Printf("\tDeleted table [%s]\n", testDynamodbTableName)
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteTable, nil, MetricsCatAll, MetricsCatDDL)
@@ -669,7 +690,7 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 
 	ok, err = adc.HasTable(nil, testDynamodbTableName)
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/HasTable", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/HasTable", err)
 	}
 	if ok {
 		t.Fatalf("%s failed: table [%s] not deleted", testName+"/HasTable", testDynamodbTableName)
@@ -681,14 +702,7 @@ func TestAwsDynamodbConnect_PutItem(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_PutItem"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item := bson.M{
 		"username": "btnguyen2k",
@@ -696,12 +710,12 @@ func TestAwsDynamodbConnect_PutItem(t *testing.T) {
 		"version":  time.Now().Unix(),
 		"active":   true,
 	}
-	if _, err = adc.PutItem(nil, testDynamodbTableName, item, nil); err != nil {
-		t.Fatalf("%s failed: error [%e]", testName, err)
+	if _, err := adc.PutItem(nil, testDynamodbTableName, item, nil); err != nil {
+		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
 
-	if _, err = adc.PutItem(nil, testDynamodbTableName, item, AwsDynamodbExistsAllBuilder([]string{"notexists"})); AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeConditionalCheckFailedException) != nil {
+	if _, err := adc.PutItem(nil, testDynamodbTableName, item, AwsDynamodbExistsAllBuilder([]string{"notexists"})); AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeConditionalCheckFailedException) != nil {
 		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, MetricsCatAll, MetricsCatDML)
@@ -711,14 +725,7 @@ func TestAwsDynamodbConnect_GetPutItem(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_GetPutItem"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item1 := bson.M{
 		"username": "btnguyen2k",
@@ -751,6 +758,7 @@ func TestAwsDynamodbConnect_GetPutItem(t *testing.T) {
 	}
 
 	var fetchedItem AwsDynamodbItem
+	var err error
 	keyFilter := bson.M{"username": "btnguyen2k", "email": "me@domain.com"}
 
 	// GetItem: must be "not found"
@@ -786,14 +794,7 @@ func TestAwsDynamodbConnect_PutItemIfNotExist(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_PutItemIfNotExist"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item1 := bson.M{
 		"username": "btnguyen2k",
@@ -823,6 +824,7 @@ func TestAwsDynamodbConnect_PutItemIfNotExist(t *testing.T) {
 	}
 	pkAttrs := []string{"username"}
 	var fetchedItem AwsDynamodbItem
+	var err error
 	for i, data := range testData {
 		// PutItem: must be successful for new item
 		if _, err = adc.PutItemIfNotExist(nil, testDynamodbTableName, data.item, pkAttrs); err != nil {
@@ -847,14 +849,7 @@ func TestAwsDynamodbConnect_DeleteItem(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_DeleteItem"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item1 := bson.M{
 		"username": "btnguyen2k",
@@ -879,6 +874,7 @@ func TestAwsDynamodbConnect_DeleteItem(t *testing.T) {
 	}
 
 	var fetchedItem AwsDynamodbItem
+	var err error
 	for i, data := range testData {
 		// firstly: put item to the table
 		if _, err = adc.PutItem(nil, testDynamodbTableName, data.item, nil); err != nil {
@@ -920,14 +916,7 @@ func TestAwsDynamodbConnect_RemoveAttributes(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_RemoveAttributes"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item0 := bson.M{
 		"username": "btnguyen2k",
@@ -951,6 +940,7 @@ func TestAwsDynamodbConnect_RemoveAttributes(t *testing.T) {
 	}
 
 	var fetchedItem AwsDynamodbItem
+	var err error
 	for i, data := range testData {
 		// firstly: put item to the table
 		if _, err = adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil); err != nil {
@@ -983,14 +973,7 @@ func TestAwsDynamodbConnect_SetAttributes(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_SetAttributes"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item0 := bson.M{
 		"username": "btnguyen2k",
@@ -1021,6 +1004,7 @@ func TestAwsDynamodbConnect_SetAttributes(t *testing.T) {
 	}
 
 	var fetchedItem AwsDynamodbItem
+	var err error
 	for i, data := range testData {
 		// firstly: put item to the table
 		if _, err = adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil); err != nil {
@@ -1053,14 +1037,7 @@ func TestAwsDynamodbConnect_AddValuesToAttributes(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_AddValuesToAttributes"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item0 := bson.M{
 		"username": "btnguyen2k",
@@ -1104,6 +1081,7 @@ func TestAwsDynamodbConnect_AddValuesToAttributes(t *testing.T) {
 	}
 
 	var fetchedItem AwsDynamodbItem
+	var err error
 	for i, data := range testData {
 		// firstly: put item to the table
 		if _, err = adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil); err != nil {
@@ -1136,14 +1114,7 @@ func TestAwsDynamodbConnect_AddValuesToSet(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_AddValuesToSet"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item0Raw := map[string]*dynamodb.AttributeValue{
 		"username": {S: aws.String("btnguyen2k")},
@@ -1199,6 +1170,7 @@ func TestAwsDynamodbConnect_AddValuesToSet(t *testing.T) {
 	keyFilter := bson.M{"username": "btnguyen2k", "email": "me@domain.com"}
 
 	var fetchedItem AwsDynamodbItem
+	var err error
 	for i, data := range testData {
 		// firstly: put item to the table
 		if _, err = adc.PutItemRaw(nil, testDynamodbTableName, data.orgItem, nil); err != nil {
@@ -1231,14 +1203,7 @@ func TestAwsDynamodbConnect_DeleteValuesFromSet(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_DeleteValuesFromSet"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item0Raw := map[string]*dynamodb.AttributeValue{
 		"username": {S: aws.String("btnguyen2k")},
@@ -1294,6 +1259,7 @@ func TestAwsDynamodbConnect_DeleteValuesFromSet(t *testing.T) {
 	keyFilter := bson.M{"username": "btnguyen2k", "email": "me@domain.com"}
 
 	var fetchedItem AwsDynamodbItem
+	var err error
 	for i, data := range testData {
 		// firstly: put item to the table
 		if _, err = adc.PutItemRaw(nil, testDynamodbTableName, data.orgItem, nil); err != nil {
@@ -1326,14 +1292,7 @@ func TestAwsDynamodbConnect_ScanItems(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_ScanItems"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	numItems := 1024
 	itemsMap := make(map[string]map[string]interface{})
@@ -1342,26 +1301,26 @@ func TestAwsDynamodbConnect_ScanItems(t *testing.T) {
 		item := map[string]interface{}{
 			"username": id,
 			"email":    id + "@domain.com",
-			"testName": "Thanh " + id,
+			"name":     "Thanh " + id,
 		}
-		_, err = adc.PutItem(nil, testDynamodbTableName, item, nil)
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
 		if err != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/PutItem", err)
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[id] = item
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	filter1 := rand.Intn(numItems / 5)
+	filter1 := numItems*4/5 + rand.Intn(numItems/5)
+	filter2 := rand.Intn(numItems / 5)
 	filter1Str := strconv.Itoa(filter1)
-	filter2 := numItems*4/5 + rand.Intn(numItems/5)
 	filter2Str := strconv.Itoa(filter2) + "@domain.com"
 	filter := expression.Or(expression.Name("username").GreaterThan(expression.Value(filter1Str)),
 		expression.Name("email").LessThanEqual(expression.Value(filter2Str)))
 	scannedItems, err := adc.ScanItems(nil, testDynamodbTableName, &filter, "")
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/ScanItems", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/ScanItems", err)
 	}
 	for _, si := range scannedItems {
 		username := si["username"].(string)
@@ -1370,9 +1329,55 @@ func TestAwsDynamodbConnect_ScanItems(t *testing.T) {
 			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/ScanItems", m, itemsMap[username])
 		}
 		email := si["email"].(string)
-
 		if !(username > filter1Str || email <= filter2Str) {
 			t.Fatalf("%s failed: [%s>%s] or [%s<=%s] is not true", testName+"/ScanItems", username, filter1Str, email, filter2Str)
+		}
+	}
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
+}
+
+func TestAwsDynamodbConnect_ScanItemsOnGSI(t *testing.T) {
+	testName := "TestAwsDynamodbConnect_ScanItemsOnGSI"
+	adc := _createAwsDynamodbConnect(t, testName)
+	defer adc.Close()
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
+
+	numItems := 1024
+	itemsMap := make(map[string]map[string]interface{})
+	for i := 0; i < numItems; i++ {
+		id := strconv.Itoa(i)
+		item := map[string]interface{}{
+			"username": id,
+			"email":    id + "@domain.com",
+		}
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
+		if err != nil {
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
+		}
+		itemsMap[id] = item
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	filter1 := rand.Intn(numItems / 5)
+	filter2 := numItems*4/5 + rand.Intn(numItems/5)
+	filter1Str := strconv.Itoa(filter1)
+	filter2Str := strconv.Itoa(filter2) + "@domain.com"
+	filter := expression.And(expression.Name("username").GreaterThan(expression.Value(filter1Str)),
+		expression.Name("email").LessThanEqual(expression.Value(filter2Str)))
+	scannedItems, err := adc.ScanItems(nil, testDynamodbTableName, &filter, testDynamodbGsiName)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", testName+"/ScanItems", err)
+	}
+	for _, si := range scannedItems {
+		username := si["username"].(string)
+		var m map[string]interface{} = si
+		if !reflect.DeepEqual(m, itemsMap[username]) {
+			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/ScanItems", m, itemsMap[username])
+		}
+		email := si["email"].(string)
+		if !(username > filter1Str && email <= filter2Str) {
+			t.Fatalf("%s failed: [%s>%s] and [%s<=%s] is not true", testName+"/ScanItems", username, filter1Str, email, filter2Str)
 		}
 	}
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
@@ -1382,14 +1387,7 @@ func TestAwsDynamodbConnect_ScanItemsWithCallback(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_ScanItemsWithCallback"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	numItems := 1024
 	itemsMap := make(map[string]map[string]interface{})
@@ -1398,11 +1396,58 @@ func TestAwsDynamodbConnect_ScanItemsWithCallback(t *testing.T) {
 		item := map[string]interface{}{
 			"username": id,
 			"email":    id + "@domain.com",
-			"testName": "Thanh " + id,
+			"name":     "Thanh " + id,
 		}
-		_, err = adc.PutItem(nil, testDynamodbTableName, item, nil)
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
 		if err != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/PutItem", err)
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
+		}
+		itemsMap[id] = item
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	filter1 := numItems*4/5 + rand.Intn(numItems/5)
+	filter2 := rand.Intn(numItems / 5)
+	filter1Str := strconv.Itoa(filter1)
+	filter2Str := strconv.Itoa(filter2) + "@domain.com"
+	filter := expression.Or(expression.Name("username").GreaterThan(expression.Value(filter1Str)),
+		expression.Name("email").LessThanEqual(expression.Value(filter2Str)))
+	err := adc.ScanItemsWithCallback(nil, testDynamodbTableName, &filter, "", nil, func(si AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error) {
+		username := si["username"].(string)
+		var m map[string]interface{} = si
+		if !reflect.DeepEqual(m, itemsMap[username]) {
+			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/ScanItems", m, itemsMap[username])
+		}
+		email := si["email"].(string)
+		if !(username > filter1Str || email <= filter2Str) {
+			t.Fatalf("%s failed: [%s>%s] or [%s<=%s] is not true", testName+"/ScanItems", username, filter1Str, email, filter2Str)
+		}
+		return true, nil
+	})
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", testName+"/ScanItemsWithCallback", err)
+	}
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
+}
+
+func TestAwsDynamodbConnect_ScanItemsOnGSIWithCallback(t *testing.T) {
+	testName := "TestAwsDynamodbConnect_ScanItemsOnGSIWithCallback"
+	adc := _createAwsDynamodbConnect(t, testName)
+	defer adc.Close()
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
+
+	numItems := 1024
+	itemsMap := make(map[string]map[string]interface{})
+	for i := 0; i < numItems; i++ {
+		id := strconv.Itoa(i)
+		item := map[string]interface{}{
+			"username": id,
+			"email":    id + "@domain.com",
+		}
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
+		if err != nil {
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[id] = item
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
@@ -1410,26 +1455,25 @@ func TestAwsDynamodbConnect_ScanItemsWithCallback(t *testing.T) {
 
 	rand.Seed(time.Now().UnixNano())
 	filter1 := rand.Intn(numItems / 5)
-	filter1Str := strconv.Itoa(filter1)
 	filter2 := numItems*4/5 + rand.Intn(numItems/5)
+	filter1Str := strconv.Itoa(filter1)
 	filter2Str := strconv.Itoa(filter2) + "@domain.com"
-	filter := expression.Or(expression.Name("username").GreaterThan(expression.Value(filter1Str)),
+	filter := expression.And(expression.Name("username").GreaterThan(expression.Value(filter1Str)),
 		expression.Name("email").LessThanEqual(expression.Value(filter2Str)))
-	err = adc.ScanItemsWithCallback(nil, testDynamodbTableName, &filter, "", nil, func(si AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error) {
+	err := adc.ScanItemsWithCallback(nil, testDynamodbTableName, &filter, testDynamodbGsiName, nil, func(si AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error) {
 		username := si["username"].(string)
 		var m map[string]interface{} = si
 		if !reflect.DeepEqual(m, itemsMap[username]) {
 			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/ScanItems", m, itemsMap[username])
 		}
 		email := si["email"].(string)
-
-		if !(username > filter1Str || email <= filter2Str) {
-			t.Fatalf("%s failed: [%s>%s] or [%s<=%s] is not true", testName+"/ScanItems", username, filter1Str, email, filter2Str)
+		if !(username > filter1Str && email <= filter2Str) {
+			t.Fatalf("%s failed: [%s>%s] and [%s<=%s] is not true", testName+"/ScanItems", username, filter1Str, email, filter2Str)
 		}
 		return true, nil
 	})
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/ScanItemsWithCallback", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/ScanItemsWithCallback", err)
 	}
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
 }
@@ -1438,14 +1482,7 @@ func TestAwsDynamodbConnect_QueryItems(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_QueryItems"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	numItems := 1024
 	itemsMap := make(map[string]map[string]interface{})
@@ -1455,24 +1492,29 @@ func TestAwsDynamodbConnect_QueryItems(t *testing.T) {
 		item := map[string]interface{}{
 			"username": "btnguyen2k-" + strconv.Itoa(i%2),
 			"email":    email,
-			"testName": "Thanh " + id,
+			"name":     "Thanh " + id,
 		}
-		_, err = adc.PutItem(nil, testDynamodbTableName, item, nil)
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
 		if err != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/PutItem", err)
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	filter := numItems*4/5 + rand.Intn(numItems/5)
-	filterStr := strconv.Itoa(filter) + "@domain.com"
-	keyFilter := expression.And(expression.Name("username").Equal(expression.Value("btnguyen2k-0")),
-		expression.Name("email").LessThan(expression.Value(filterStr)))
-	queriesItems, err := adc.QueryItems(nil, testDynamodbTableName, &keyFilter, nil, "")
+	keyFilter := expression.Name("username").Equal(expression.Value("btnguyen2k-0"))
+	filter1Name := numItems*4/5 + rand.Intn(numItems/5)
+	filter2Name := rand.Intn(numItems / 5)
+	filter1NameStr := "Thanh " + strconv.Itoa(filter1Name)
+	filter2NameStr := "Thanh " + strconv.Itoa(filter2Name)
+	nonkeyFilter := expression.Or(
+		expression.Name("name").GreaterThan(expression.Value(filter1NameStr)),
+		expression.Name("name").LessThanEqual(expression.Value(filter2NameStr)),
+	)
+	queriesItems, err := adc.QueryItems(nil, testDynamodbTableName, &keyFilter, &nonkeyFilter, "")
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/QueryItems", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/QueryItems", err)
 	}
 	for _, qi := range queriesItems {
 		email := qi["email"].(string)
@@ -1481,8 +1523,60 @@ func TestAwsDynamodbConnect_QueryItems(t *testing.T) {
 			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/QueryItems", m, itemsMap[email])
 		}
 		username := qi["username"].(string)
-		if !(username == "btnguyen2k-0" || email < filterStr) {
-			t.Fatalf("%s failed: [%s==%s] or [%s<%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0", email, filterStr)
+		if !(username == "btnguyen2k-0") {
+			t.Fatalf("%s failed: [%s==%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0")
+		}
+		name := qi["name"].(string)
+		if !(name > filter1NameStr || name <= filter2NameStr) {
+			t.Fatalf("%s failed: [%s>%s] or [%s<=%s] is not true", testName+"/QueryItems", name, filter1NameStr, name, filter2NameStr)
+		}
+	}
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+}
+
+func TestAwsDynamodbConnect_QueryItemsOnGSI(t *testing.T) {
+	testName := "TestAwsDynamodbConnect_QueryItemsOnGSI"
+	adc := _createAwsDynamodbConnect(t, testName)
+	defer adc.Close()
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
+
+	numItems := 1024
+	itemsMap := make(map[string]map[string]interface{})
+	for i := 0; i < numItems; i++ {
+		id := strconv.Itoa(i)
+		email := id + "@domain.com"
+		item := map[string]interface{}{
+			"username": "btnguyen2k-" + strconv.Itoa(i%2),
+			"email":    email,
+		}
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
+		if err != nil {
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
+		}
+		itemsMap[email] = item
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	filter1Email := rand.Intn(numItems / 5)
+	filter1EmailStr := strconv.Itoa(filter1Email) + "@domain.com"
+	keyFilter := expression.And(
+		expression.Name("username").Equal(expression.Value("btnguyen2k-0")),
+		expression.Name("email").GreaterThan(expression.Value(filter1EmailStr)),
+	)
+	queriesItems, err := adc.QueryItems(nil, testDynamodbTableName, &keyFilter, nil, testDynamodbGsiName)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", testName+"/QueryItems", err)
+	}
+	for _, qi := range queriesItems {
+		email := qi["email"].(string)
+		var m map[string]interface{} = qi
+		if !reflect.DeepEqual(m, itemsMap[email]) {
+			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/QueryItems", m, itemsMap[email])
+		}
+		username := qi["username"].(string)
+		if !(username == "btnguyen2k-0" && email > filter1EmailStr) {
+			t.Fatalf("%s failed: [%s==%s] and [%s>%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0", email, filter1EmailStr)
 		}
 	}
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
@@ -1492,13 +1586,14 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_QueryItemsWithCallback"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
 	if os.Getenv(dynamodbTestTableName) != "" {
 		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
 	}
+	adc.DeleteTable(nil, testDynamodbTableName)
+
 	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/prepareAwsDynamodbTable", err)
 	}
 
 	numItems := 1024
@@ -1509,35 +1604,92 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback(t *testing.T) {
 		item := map[string]interface{}{
 			"username": "btnguyen2k-" + strconv.Itoa(i%2),
 			"email":    email,
-			"testName": "Thanh " + id,
+			"name":     "Thanh " + id,
 		}
 		_, err = adc.PutItem(nil, testDynamodbTableName, item, nil)
 		if err != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/PutItem", err)
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	filter := numItems*4/5 + rand.Intn(numItems/5)
-	filterStr := strconv.Itoa(filter) + "@domain.com"
-	keyFilter := expression.And(expression.Name("username").Equal(expression.Value("btnguyen2k-0")),
-		expression.Name("email").LessThan(expression.Value(filterStr)))
-	err = adc.QueryItemsWithCallback(nil, testDynamodbTableName, &keyFilter, nil, "", nil, func(qi AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error) {
+	keyFilter := expression.Name("username").Equal(expression.Value("btnguyen2k-0"))
+	filter1Name := numItems*4/5 + rand.Intn(numItems/5)
+	filter2Name := rand.Intn(numItems / 5)
+	filter1NameStr := "Thanh " + strconv.Itoa(filter1Name)
+	filter2NameStr := "Thanh " + strconv.Itoa(filter2Name)
+	nonkeyFilter := expression.Or(
+		expression.Name("name").GreaterThan(expression.Value(filter1NameStr)),
+		expression.Name("name").LessThanEqual(expression.Value(filter2NameStr)),
+	)
+	err = adc.QueryItemsWithCallback(nil, testDynamodbTableName, &keyFilter, &nonkeyFilter, "", nil, func(qi AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error) {
 		email := qi["email"].(string)
 		var m map[string]interface{} = qi
 		if !reflect.DeepEqual(m, itemsMap[email]) {
 			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/ScanItems", m, itemsMap[email])
 		}
 		username := qi["username"].(string)
-		if !(username == "btnguyen2k-0" || email < filterStr) {
-			t.Fatalf("%s failed: [%s==%s] or [%s<%s] is not true", testName+"/QueryItemsWithCallback", username, "btnguyen2k-0", email, filterStr)
+		if !(username == "btnguyen2k-0") {
+			t.Fatalf("%s failed: [%s==%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0")
+		}
+		name := qi["name"].(string)
+		if !(name > filter1NameStr || name <= filter2NameStr) {
+			t.Fatalf("%s failed: [%s>%s] or [%s<=%s] is not true", testName+"/QueryItems", name, filter1NameStr, name, filter2NameStr)
 		}
 		return true, nil
 	})
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/QueryItemsWithCallback", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/QueryItemsWithCallback", err)
+	}
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+}
+
+func TestAwsDynamodbConnect_QueryItemsOnGSIWithCallback(t *testing.T) {
+	testName := "TestAwsDynamodbConnect_QueryItemsOnGSIWithCallback"
+	adc := _createAwsDynamodbConnect(t, testName)
+	defer adc.Close()
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
+
+	numItems := 1024
+	itemsMap := make(map[string]map[string]interface{})
+	for i := 0; i < numItems; i++ {
+		id := strconv.Itoa(i)
+		email := id + "@domain.com"
+		item := map[string]interface{}{
+			"username": "btnguyen2k-" + strconv.Itoa(i%2),
+			"email":    email,
+		}
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
+		if err != nil {
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
+		}
+		itemsMap[email] = item
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	filter1Email := rand.Intn(numItems / 5)
+	filter1EmailStr := strconv.Itoa(filter1Email) + "@domain.com"
+	keyFilter := expression.And(
+		expression.Name("username").Equal(expression.Value("btnguyen2k-0")),
+		expression.Name("email").GreaterThan(expression.Value(filter1EmailStr)),
+	)
+	err := adc.QueryItemsWithCallback(nil, testDynamodbTableName, &keyFilter, nil, testDynamodbGsiName, nil, func(qi AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error) {
+		email := qi["email"].(string)
+		var m map[string]interface{} = qi
+		if !reflect.DeepEqual(m, itemsMap[email]) {
+			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/ScanItems", m, itemsMap[email])
+		}
+		username := qi["username"].(string)
+		if !(username == "btnguyen2k-0" && email > filter1EmailStr) {
+			t.Fatalf("%s failed: [%s==%s] and [%s>%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0", email, filter1EmailStr)
+		}
+		return true, nil
+	})
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", testName+"/QueryItemsWithCallback", err)
 	}
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
 }
@@ -1546,14 +1698,7 @@ func TestAwsDynamodbConnect_QueryItems_Backward(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_QueryItems_Backward"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	numItems := 1024
 	itemsMap := make(map[string]map[string]interface{})
@@ -1563,24 +1708,29 @@ func TestAwsDynamodbConnect_QueryItems_Backward(t *testing.T) {
 		item := map[string]interface{}{
 			"username": "btnguyen2k-" + strconv.Itoa(i%2),
 			"email":    email,
-			"testName": "Thanh " + id,
+			"name":     "Thanh " + id,
 		}
-		_, err = adc.PutItem(nil, testDynamodbTableName, item, nil)
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
 		if err != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/PutItem", err)
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	filter := numItems*4/5 + rand.Intn(numItems/5)
-	filterStr := strconv.Itoa(filter) + "@domain.com"
-	keyFilter := expression.And(expression.Name("username").Equal(expression.Value("btnguyen2k-0")),
-		expression.Name("email").LessThan(expression.Value(filterStr)))
-	queriesItems, err := adc.QueryItems(nil, testDynamodbTableName, &keyFilter, nil, "", AwsQueryOpt{ScanIndexBackward: aws.Bool(true)})
+	keyFilter := expression.Name("username").Equal(expression.Value("btnguyen2k-0"))
+	filter1Name := numItems*4/5 + rand.Intn(numItems/5)
+	filter2Name := rand.Intn(numItems / 5)
+	filter1NameStr := "Thanh " + strconv.Itoa(filter1Name)
+	filter2NameStr := "Thanh " + strconv.Itoa(filter2Name)
+	nonkeyFilter := expression.Or(
+		expression.Name("name").GreaterThan(expression.Value(filter1NameStr)),
+		expression.Name("name").LessThanEqual(expression.Value(filter2NameStr)),
+	)
+	queriesItems, err := adc.QueryItems(nil, testDynamodbTableName, &keyFilter, &nonkeyFilter, "", AwsQueryOpt{ScanIndexBackward: aws.Bool(true)})
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/QueryItems", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/QueryItems", err)
 	}
 	for i, qi := range queriesItems {
 		email := qi["email"].(string)
@@ -1589,8 +1739,68 @@ func TestAwsDynamodbConnect_QueryItems_Backward(t *testing.T) {
 			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/QueryItems", m, itemsMap[email])
 		}
 		username := qi["username"].(string)
-		if !(username == "btnguyen2k-0" || email < filterStr) {
-			t.Fatalf("%s failed: [%s==%s] or [%s<%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0", email, filterStr)
+		if !(username == "btnguyen2k-0") {
+			t.Fatalf("%s failed: [%s==%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0")
+		}
+		name := qi["name"].(string)
+		if !(name > filter1NameStr || name <= filter2NameStr) {
+			t.Fatalf("%s failed: [%s>%s] or [%s<=%s] is not true", testName+"/QueryItems", name, filter1NameStr, name, filter2NameStr)
+		}
+
+		if i > 0 {
+			prev := queriesItems[i-1]
+			pemail := prev["email"].(string)
+			if !(pemail > email) {
+				t.Fatalf("%s failed: out of order [%s vs %s]", testName+"/QueryItems", pemail, email)
+			}
+		}
+	}
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+}
+
+func TestAwsDynamodbConnect_QueryItemsOnGSI_Backward(t *testing.T) {
+	testName := "TestAwsDynamodbConnect_QueryItemsOnGSI_Backward"
+	adc := _createAwsDynamodbConnect(t, testName)
+	defer adc.Close()
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
+
+	numItems := 1024
+	itemsMap := make(map[string]map[string]interface{})
+	for i := 0; i < numItems; i++ {
+		id := strconv.Itoa(i)
+		email := id + "@domain.com"
+		item := map[string]interface{}{
+			"username": "btnguyen2k-" + strconv.Itoa(i%2),
+			"email":    email,
+		}
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
+		if err != nil {
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
+		}
+		itemsMap[email] = item
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	filter1Email := rand.Intn(numItems / 5)
+	filter1EmailStr := strconv.Itoa(filter1Email) + "@domain.com"
+	keyFilter := expression.And(
+		expression.Name("username").Equal(expression.Value("btnguyen2k-0")),
+		expression.Name("email").GreaterThan(expression.Value(filter1EmailStr)),
+	)
+	queriesItems, err := adc.QueryItems(nil, testDynamodbTableName, &keyFilter, nil, testDynamodbGsiName, AwsQueryOpt{ScanIndexBackward: aws.Bool(true)})
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", testName+"/QueryItems", err)
+	}
+	for i, qi := range queriesItems {
+		email := qi["email"].(string)
+		var m map[string]interface{} = qi
+		if !reflect.DeepEqual(m, itemsMap[email]) {
+			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/QueryItems", m, itemsMap[email])
+		}
+		username := qi["username"].(string)
+		if !(username == "btnguyen2k-0" && email > filter1EmailStr) {
+			t.Fatalf("%s failed: [%s==%s] and [%s>%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0", email, filter1EmailStr)
 		}
 
 		if i > 0 {
@@ -1608,14 +1818,7 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback_Backward(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_QueryItemsWithCallback_Backward"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	numItems := 1024
 	itemsMap := make(map[string]map[string]interface{})
@@ -1625,31 +1828,40 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback_Backward(t *testing.T) {
 		item := map[string]interface{}{
 			"username": "btnguyen2k-" + strconv.Itoa(i%2),
 			"email":    email,
-			"testName": "Thanh " + id,
+			"name":     "Thanh " + id,
 		}
-		_, err = adc.PutItem(nil, testDynamodbTableName, item, nil)
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
 		if err != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/PutItem", err)
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	filter := numItems*4/5 + rand.Intn(numItems/5)
-	filterStr := strconv.Itoa(filter) + "@domain.com"
-	keyFilter := expression.And(expression.Name("username").Equal(expression.Value("btnguyen2k-0")),
-		expression.Name("email").LessThan(expression.Value(filterStr)))
+	keyFilter := expression.Name("username").Equal(expression.Value("btnguyen2k-0"))
+	filter1Name := numItems*4/5 + rand.Intn(numItems/5)
+	filter2Name := rand.Intn(numItems / 5)
+	filter1NameStr := "Thanh " + strconv.Itoa(filter1Name)
+	filter2NameStr := "Thanh " + strconv.Itoa(filter2Name)
+	nonkeyFilter := expression.Or(
+		expression.Name("name").GreaterThan(expression.Value(filter1NameStr)),
+		expression.Name("name").LessThanEqual(expression.Value(filter2NameStr)),
+	)
 	var prev AwsDynamodbItem = nil
-	err = adc.QueryItemsWithCallback(nil, testDynamodbTableName, &keyFilter, nil, "", nil, func(qi AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error) {
+	err := adc.QueryItemsWithCallback(nil, testDynamodbTableName, &keyFilter, &nonkeyFilter, "", nil, func(qi AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error) {
 		email := qi["email"].(string)
 		var m map[string]interface{} = qi
 		if !reflect.DeepEqual(m, itemsMap[email]) {
 			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/QueryItems", m, itemsMap[email])
 		}
 		username := qi["username"].(string)
-		if !(username == "btnguyen2k-0" || email < filterStr) {
-			t.Fatalf("%s failed: [%s==%s] or [%s<%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0", email, filterStr)
+		if !(username == "btnguyen2k-0") {
+			t.Fatalf("%s failed: [%s==%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0")
+		}
+		name := qi["name"].(string)
+		if !(name > filter1NameStr || name <= filter2NameStr) {
+			t.Fatalf("%s failed: [%s>%s] or [%s<=%s] is not true", testName+"/QueryItems", name, filter1NameStr, name, filter2NameStr)
 		}
 
 		if prev != nil {
@@ -1662,7 +1874,64 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback_Backward(t *testing.T) {
 		return true, nil
 	}, AwsQueryOpt{ScanIndexBackward: aws.Bool(true)})
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/QueryItemsWithCallback", err)
+		t.Fatalf("%s failed: error [%s]", testName+"/QueryItemsWithCallback", err)
+	}
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+}
+
+func TestAwsDynamodbConnect_QueryItemsOnGSIWithCallback_Backward(t *testing.T) {
+	testName := "TestAwsDynamodbConnect_QueryItemsOnGSIWithCallback_Backward"
+	adc := _createAwsDynamodbConnect(t, testName)
+	defer adc.Close()
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
+
+	numItems := 1024
+	itemsMap := make(map[string]map[string]interface{})
+	for i := 0; i < numItems; i++ {
+		id := strconv.Itoa(i)
+		email := id + "@domain.com"
+		item := map[string]interface{}{
+			"username": "btnguyen2k-" + strconv.Itoa(i%2),
+			"email":    email,
+		}
+		_, err := adc.PutItem(nil, testDynamodbTableName, item, nil)
+		if err != nil {
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
+		}
+		itemsMap[email] = item
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	filter1Email := rand.Intn(numItems / 5)
+	filter1EmailStr := strconv.Itoa(filter1Email) + "@domain.com"
+	keyFilter := expression.And(
+		expression.Name("username").Equal(expression.Value("btnguyen2k-0")),
+		expression.Name("email").GreaterThan(expression.Value(filter1EmailStr)),
+	)
+	var prev AwsDynamodbItem = nil
+	err := adc.QueryItemsWithCallback(nil, testDynamodbTableName, &keyFilter, nil, testDynamodbGsiName, nil, func(qi AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (bool, error) {
+		email := qi["email"].(string)
+		var m map[string]interface{} = qi
+		if !reflect.DeepEqual(m, itemsMap[email]) {
+			t.Fatalf("%s failed: fetched\n%#v\noriginal\n%#v", testName+"/QueryItems", m, itemsMap[email])
+		}
+		username := qi["username"].(string)
+		if !(username == "btnguyen2k-0" && email > filter1EmailStr) {
+			t.Fatalf("%s failed: [%s==%s] and [%s>%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0", email, filter1EmailStr)
+		}
+
+		if prev != nil {
+			pemail := prev["email"].(string)
+			if !(pemail > email) {
+				t.Fatalf("%s failed: out of order [%s vs %s]", testName+"/QueryItems", pemail, email)
+			}
+		}
+		prev = qi
+		return true, nil
+	}, AwsQueryOpt{ScanIndexBackward: aws.Bool(true)})
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", testName+"/QueryItemsWithCallback", err)
 	}
 	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
 }
@@ -1671,14 +1940,7 @@ func TestAwsDynamodbConnect_TxPut(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_TxPut"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item := bson.M{
 		"username": "btnguyen2k",
@@ -1703,14 +1965,7 @@ func TestAwsDynamodbConnect_TxGetPut(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_TxGetPut"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item1 := bson.M{
 		"username": "btnguyen2k",
@@ -1736,6 +1991,7 @@ func TestAwsDynamodbConnect_TxGetPut(t *testing.T) {
 	var txGet *dynamodb.TransactGetItem
 	var txPut *dynamodb.TransactWriteItem
 	var fetchedItems []AwsDynamodbItem
+	var err error
 	keyFilter := bson.M{"username": "btnguyen2k", "email": "me@domain.com"}
 
 	// GetItem: must be "not found"
@@ -1776,14 +2032,7 @@ func TestAwsDynamodbConnect_TxPutIfNotExist(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_TxPutIfNotExist"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%s]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item1 := bson.M{
 		"username": "btnguyen2k",
@@ -1815,6 +2064,7 @@ func TestAwsDynamodbConnect_TxPutIfNotExist(t *testing.T) {
 	var txGet *dynamodb.TransactGetItem
 	var txPut *dynamodb.TransactWriteItem
 	var fetchedItems []AwsDynamodbItem
+	var err error
 	pkAttrs := []string{"username"}
 	for i, data := range testData {
 		item := data.item
@@ -1851,14 +2101,7 @@ func TestAwsDynamodbConnect_TxDelete(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_TxDelete"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item1 := bson.M{
 		"username": "btnguyen2k",
@@ -1886,9 +2129,9 @@ func TestAwsDynamodbConnect_TxDelete(t *testing.T) {
 	var fetchedItems []AwsDynamodbItem
 	for i, data := range testData {
 		// firstly: put item to the table
-		_, err = adc.PutItem(nil, testDynamodbTableName, data.item, nil)
+		_, err := adc.PutItem(nil, testDynamodbTableName, data.item, nil)
 		if err != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/PutItem/"+strconv.Itoa(i), err)
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
 
@@ -1942,14 +2185,7 @@ func TestAwsDynamodbConnect_TxRemoveAttributes(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_TxRemoveAttributes"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item0 := bson.M{
 		"username": "btnguyen2k",
@@ -1976,9 +2212,9 @@ func TestAwsDynamodbConnect_TxRemoveAttributes(t *testing.T) {
 	var fetchedItems []AwsDynamodbItem
 	for i, data := range testData {
 		// firstly: put item to the table
-		_, err = adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil)
+		_, err := adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil)
 		if err != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/PutItem/"+strconv.Itoa(i), err)
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
 
@@ -2024,14 +2260,7 @@ func TestAwsDynamodbConnect_TxSetAttributes(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_TxSetAttributes"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item0 := bson.M{
 		"username": "btnguyen2k",
@@ -2065,9 +2294,9 @@ func TestAwsDynamodbConnect_TxSetAttributes(t *testing.T) {
 	var fetchedItems []AwsDynamodbItem
 	for i, data := range testData {
 		// firstly: put item to the table
-		_, err = adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil)
+		_, err := adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil)
 		if err != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/PutItem/"+strconv.Itoa(i), err)
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
 
@@ -2113,14 +2342,7 @@ func TestAwsDynamodbConnect_TxAddValuesToAttributes(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_TxAddValuesToAttributes"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item0 := bson.M{
 		"username": "btnguyen2k",
@@ -2165,11 +2387,12 @@ func TestAwsDynamodbConnect_TxAddValuesToAttributes(t *testing.T) {
 	var txAddValuesToAttrs *dynamodb.TransactWriteItem
 	var txGet *dynamodb.TransactGetItem
 	var fetchedItems []AwsDynamodbItem
+	var err error
 	for i, data := range testData {
 		// firstly: put item to the table
 		_, err = adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil)
 		if err != nil {
-			t.Fatalf("%s failed: error [%e]", testName+"/PutItem/"+strconv.Itoa(i), err)
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
 
@@ -2215,14 +2438,7 @@ func TestAwsDynamodbConnect_TxAddValuesToSet(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_TxAddValuesToSet"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item0Raw := map[string]*dynamodb.AttributeValue{
 		"username": {S: aws.String("btnguyen2k")},
@@ -2279,6 +2495,7 @@ func TestAwsDynamodbConnect_TxAddValuesToSet(t *testing.T) {
 	var txAddValuesToAdd *dynamodb.TransactWriteItem
 	var txGet *dynamodb.TransactGetItem
 	var fetchedItems []AwsDynamodbItem
+	var err error
 	for i, data := range testData {
 		// firstly: put item to the table
 		_, err = adc.PutItemRaw(nil, testDynamodbTableName, data.orgItem, nil)
@@ -2329,14 +2546,7 @@ func TestAwsDynamodbConnect_TxDeleteValuesFromSet(t *testing.T) {
 	testName := "TestAwsDynamodbConnect_TxDeleteValuesFromSet"
 	adc := _createAwsDynamodbConnect(t, testName)
 	defer adc.Close()
-
-	if os.Getenv(dynamodbTestTableName) != "" {
-		testDynamodbTableName = os.Getenv(dynamodbTestTableName)
-	}
-	err := prepareAwsDynamodbTable(adc, testDynamodbTableName)
-	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName+"/prepareAwsDynamodbTable", err)
-	}
+	_adcPrepareTestTable(func(msg string) { t.Fatalf(msg) }, testName, adc)
 
 	item0Raw := map[string]*dynamodb.AttributeValue{
 		"username": {S: aws.String("btnguyen2k")},
@@ -2393,6 +2603,7 @@ func TestAwsDynamodbConnect_TxDeleteValuesFromSet(t *testing.T) {
 	var txAddValuesToDelete *dynamodb.TransactWriteItem
 	var txGet *dynamodb.TransactGetItem
 	var fetchedItems []AwsDynamodbItem
+	var err error
 	for i, data := range testData {
 		// firstly: put item to the table
 		_, err = adc.PutItemRaw(nil, testDynamodbTableName, data.orgItem, nil)

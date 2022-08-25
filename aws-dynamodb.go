@@ -589,6 +589,25 @@ func (adc *AwsDynamodbConnect) GetGlobalSecondaryIndexStatus(ctx aws.Context, ta
 	return "", err
 }
 
+// BuildCreateGlobalSecondaryIndexAction is a convenient function to build a dynamodb.CreateGlobalSecondaryIndexAction instance.
+//
+// Parameters:
+//   - indexName     : name of the index to be created
+//   - projectionType: specify attributes that are copied from the table into the index. These are in addition to the primary key attributes and index key attributes, which are automatically projected.
+//   - rcu           : ReadCapacityUnits (0 means PAY_PER_REQUEST)
+//   - wcu           : WriteCapacityUnits (0 means PAY_PER_REQUEST)
+//   - keyAttrs      : GSI key schema, where key-type is either "HASH" or "RANGE"
+//
+// Available since v0.3.0
+func (adc *AwsDynamodbConnect) BuildCreateGlobalSecondaryIndexAction(indexName, projectionType string, rcu, wcu int64, keyAttrs []AwsDynamodbNameAndType) *dynamodb.CreateGlobalSecondaryIndexAction {
+	return &dynamodb.CreateGlobalSecondaryIndexAction{
+		IndexName:             aws.String(indexName),
+		KeySchema:             awsDynamodbToKeySchemaElement(keyAttrs),
+		Projection:            &dynamodb.Projection{ProjectionType: aws.String(projectionType)},
+		ProvisionedThroughput: awsDynamodbToProvisionedThroughput(rcu, wcu),
+	}
+}
+
 // CreateGlobalSecondaryIndex creates a Global Secondary Index on a specified table.
 //
 // Parameters:
@@ -600,22 +619,26 @@ func (adc *AwsDynamodbConnect) GetGlobalSecondaryIndexStatus(ctx aws.Context, ta
 //   - attrDefs : GSI attributes, where attribute-type is either "S", "N" or "B"
 //   - keyAttrs : GSI key schema, where key-type is either "HASH" or "RANGE"
 //
-// Note: DynamoDB GSI is created asynchronously. Use GetGlobalSecondaryIndexStatus to check GSI's existence.
+// Note:
+//   - DynamoDB GSI is created asynchronously. Use GetGlobalSecondaryIndexStatus to check GSI's existence.
+//   - GSI is created with projection type dynamodb.ProjectionTypeKeysOnly. Use CreateGlobalSecondaryIndexWithAction to create GSI with customized options.
 func (adc *AwsDynamodbConnect) CreateGlobalSecondaryIndex(ctx aws.Context, table, indexName string, rcu, wcu int64, attrDefs, keyAttrs []AwsDynamodbNameAndType) error {
+	action := adc.BuildCreateGlobalSecondaryIndexAction(indexName, dynamodb.ProjectionTypeKeysOnly, rcu, wcu, keyAttrs)
+	return adc.CreateGlobalSecondaryIndexWithAction(ctx, table, attrDefs, action)
+}
+
+// CreateGlobalSecondaryIndexWithAction creates a Global Secondary Index on a specified table.
+//
+// Available since v0.3.0
+func (adc *AwsDynamodbConnect) CreateGlobalSecondaryIndexWithAction(ctx aws.Context, tableName string, attrDefs []AwsDynamodbNameAndType, action *dynamodb.CreateGlobalSecondaryIndexAction) error {
 	if ctx == nil {
 		ctx, _ = adc.NewContext()
-	}
-	action := &dynamodb.CreateGlobalSecondaryIndexAction{
-		IndexName:             aws.String(indexName),
-		KeySchema:             awsDynamodbToKeySchemaElement(keyAttrs),
-		Projection:            &dynamodb.Projection{ProjectionType: aws.String(dynamodb.ProjectionTypeKeysOnly)},
-		ProvisionedThroughput: awsDynamodbToProvisionedThroughput(rcu, wcu),
 	}
 	gscIndexes := []*dynamodb.GlobalSecondaryIndexUpdate{{Create: action}}
 	input := &dynamodb.UpdateTableInput{
 		AttributeDefinitions:        awsDynamodbToAttributeDefinitions(attrDefs),
 		GlobalSecondaryIndexUpdates: gscIndexes,
-		TableName:                   aws.String(table),
+		TableName:                   aws.String(tableName),
 	}
 	_, err := adc.GetDbProxy().UpdateTableWithContext(ctx, input)
 	return err
@@ -1008,9 +1031,10 @@ func (adc *AwsDynamodbConnect) DeleteValuesFromSet(ctx aws.Context, table string
 
 // BuildScanInput is a helper function to build dynamodb.ScanInput.
 //
-// Notes:
-//   - All projected attributes will be fetched.
+// Notes: default options
+//   - Only projected attributes will be fetched.
 //   - ConsistentRead is not set.
+//   - Limit number of processed items to 100.
 //
 // Available: since v0.2.6
 func (adc *AwsDynamodbConnect) BuildScanInput(table string, filter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue) (*dynamodb.ScanInput, error) {
@@ -1018,6 +1042,7 @@ func (adc *AwsDynamodbConnect) BuildScanInput(table string, filter *expression.C
 		ExclusiveStartKey:      exclusiveStartKey,
 		ReturnConsumedCapacity: aws.String(dynamodb.ReturnConsumedCapacityTotal),
 		TableName:              aws.String(table),
+		Limit:                  aws.Int64(100),
 	}
 	if filter != nil {
 		filterExp, err := expression.NewBuilder().WithFilter(*filter).Build()
@@ -1031,6 +1056,7 @@ func (adc *AwsDynamodbConnect) BuildScanInput(table string, filter *expression.C
 	var useIndex = indexName != ""
 	if useIndex {
 		input.IndexName = aws.String(indexName)
+		// input.Select = aws.String("ALL_ATTRIBUTES")
 	}
 	return input, nil
 }
@@ -1127,8 +1153,9 @@ func (adc *AwsDynamodbConnect) ScanItems(ctx aws.Context, table string, filter *
 // BuildQueryInput is a helper function to build dynamodb.QueryInput.
 //
 // Notes:
-//   - All projected attributes will be fetched.
+//   - Only projected attributes will be fetched.
 //   - ConsistentRead is not set.
+//   - Limit number of processed items to 100.
 //
 // Available: since v0.2.6
 func (adc *AwsDynamodbConnect) BuildQueryInput(table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string, exclusiveStartKey map[string]*dynamodb.AttributeValue) (*dynamodb.QueryInput, error) {
@@ -1136,6 +1163,7 @@ func (adc *AwsDynamodbConnect) BuildQueryInput(table string, keyFilter, nonKeyFi
 		ExclusiveStartKey:      exclusiveStartKey,
 		ReturnConsumedCapacity: aws.String(dynamodb.ReturnConsumedCapacityTotal),
 		TableName:              aws.String(table),
+		Limit:                  aws.Int64(100),
 	}
 	if keyFilter != nil || nonKeyFilter != nil {
 		builder := expression.NewBuilder()
