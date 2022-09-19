@@ -23,7 +23,7 @@ type MongoConnect struct {
 	clientProxy   *MongoClientProxy // (since v0.3.0) wrapper around the real MongoDB client
 	timeoutMs     int               // default timeout for db operations, in milliseconds
 	poolOpts      *MongoPoolOpts    // MongoDB connection pool options
-	metricsLogger IMetricsLogger    // (since v0.3.0) if non-nil, AwsDynamodbConnect automatically logs executing commands.
+	metricsLogger IMetricsLogger    // (since v0.3.0) if non-nil, MongoConnect automatically logs executing commands.
 }
 
 // MongoPoolOpts holds options to configure MongoDB connection pool.
@@ -151,8 +151,8 @@ func (m *MongoConnect) Init() error {
 	return m.client.Connect(m.NewContext())
 }
 
-// RegisterMetricsLogger associate an IMetricsLogger instance with this AwsDynamodbConnect.
-// If non-nil, AwsDynamodbConnect automatically logs executing commands.
+// RegisterMetricsLogger associates an IMetricsLogger instance with this MongoConnect.
+// If non-nil, MongoConnect automatically logs executing commands.
 //
 // Available since v0.3.0
 func (m *MongoConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *MongoConnect {
@@ -161,6 +161,8 @@ func (m *MongoConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *Mong
 }
 
 // MetricsLogger returns the associated IMetricsLogger instance.
+//
+// Available since v0.3.0
 func (m *MongoConnect) MetricsLogger() IMetricsLogger {
 	return m.metricsLogger
 }
