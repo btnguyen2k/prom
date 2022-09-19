@@ -169,7 +169,7 @@ jobs:
 
   testWithCosmosDb:
     name: Test with Azure Cosmos DB
-    runs-on: windows-2016
+    runs-on: windows-latest
     steps:
     - name: Set up Go env
       uses: actions/setup-go@v2
