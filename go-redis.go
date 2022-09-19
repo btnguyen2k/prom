@@ -14,14 +14,16 @@ type GoRedisConnect struct {
 	password      string   // password to authenticate against Redis server
 	maxRetries    int      // max number of retries for failed operations
 
-	poolOpts *RedisPoolOpts // Redis connection pool options
-	mutex    sync.Mutex
+	poolOpts      *RedisPoolOpts // Redis connection pool options
+	mutex         sync.Mutex
+	metricsLogger IMetricsLogger // (since v0.3.0) if non-nil, GoRedisConnect automatically logs executing commands.
 
-	masterName      string                // the sentinel master name, used by failover clients
-	slaveReadOnly   bool                  // enables read-only commands on slave nodes
-	clients         map[int]*redis.Client // clients mapped with Redis databases
-	failoverClients map[int]*redis.Client // failover-clients mapped with Redis databases
-	clusterClient   *redis.ClusterClient  // cluster-enabled client
+	/* other options */
+	sentinelMasterName string                // the sentinel master name, used by failover clients
+	slaveReadOnly      bool                  // enables read-only commands on slave nodes
+	clients            map[int]*redis.Client // clients mapped with Redis databases
+	failoverClients    map[int]*redis.Client // failover-clients mapped with Redis databases
+	clusterClient      *redis.ClusterClient  // cluster-enabled client
 }
 
 // RedisPoolOpts holds options to configure Redis connection pool.
@@ -57,7 +59,7 @@ var (
 // NewGoRedisConnect constructs a new GoRedisConnect instance with supplied options and default Redis pool options.
 //
 // Parameters: see NewGoRedisConnectWithPoolOptions
-func NewGoRedisConnect(hostsAndPorts, password string, maxRetries int) *GoRedisConnect {
+func NewGoRedisConnect(hostsAndPorts, password string, maxRetries int) (*GoRedisConnect, error) {
 	return NewGoRedisConnectWithPoolOptions(hostsAndPorts, password, maxRetries, defaultRedisPoolOpts)
 }
 
@@ -70,20 +72,102 @@ func NewGoRedisConnect(hostsAndPorts, password string, maxRetries int) *GoRedisC
 //   - poolOpts     : Redis connection pool settings
 //
 // Available since v0.2.8
-func NewGoRedisConnectWithPoolOptions(hostsAndPorts, password string, maxRetries int, poolOpts *RedisPoolOpts) *GoRedisConnect {
+func NewGoRedisConnectWithPoolOptions(hostsAndPorts, password string, maxRetries int, poolOpts *RedisPoolOpts) (*GoRedisConnect, error) {
 	if maxRetries < 0 {
 		maxRetries = 0
+	}
+	if poolOpts == nil {
+		poolOpts = defaultRedisPoolOpts
 	}
 	r := &GoRedisConnect{
 		hostsAndPorts:   regexp.MustCompile("[,;\\s]+").Split(hostsAndPorts, -1),
 		password:        password,
 		maxRetries:      maxRetries,
 		slaveReadOnly:   true,
-		clients:         map[int]*redis.Client{},
-		failoverClients: map[int]*redis.Client{},
+		clients:         make(map[int]*redis.Client),
+		failoverClients: make(map[int]*redis.Client),
 		poolOpts:        poolOpts,
+		metricsLogger:   NewMemoryStoreMetricsLogger(1028),
 	}
+	return r, r.Init()
+}
+
+// Init should be called to initialize the GoRedisConnect instance before use.
+//
+// Available since v0.3.0
+func (r *GoRedisConnect) Init() error {
+	if r.clients != nil && r.failoverClients != nil {
+		return nil
+	}
+	if r.maxRetries < 0 {
+		r.maxRetries = 0
+	}
+	if r.poolOpts == nil {
+		r.poolOpts = defaultRedisPoolOpts
+	}
+	if r.metricsLogger == nil {
+		r.metricsLogger = NewMemoryStoreMetricsLogger(1028)
+	}
+	if r.clients == nil {
+		r.clients = make(map[int]*redis.Client)
+	}
+	if r.failoverClients == nil {
+		r.failoverClients = make(map[int]*redis.Client)
+	}
+	return nil
+}
+
+// RegisterMetricsLogger associates an IMetricsLogger instance with this GoRedisConnect.
+// If non-nil, GoRedisConnect automatically logs executing commands.
+//
+// Available since v0.3.0
+func (r *GoRedisConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *GoRedisConnect {
+	r.metricsLogger = metricsLogger
 	return r
+}
+
+// MetricsLogger returns the associated IMetricsLogger instance.
+//
+// Available since v0.3.0
+func (r *GoRedisConnect) MetricsLogger() IMetricsLogger {
+	return r.metricsLogger
+}
+
+// NewCmdExecInfo is convenient function to create a new CmdExecInfo instance.
+//
+// The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
+//
+// Available since v0.3.0
+func (r *GoRedisConnect) NewCmdExecInfo() *CmdExecInfo {
+	return &CmdExecInfo{
+		Id:        newId(),
+		BeginTime: time.Now(),
+		Cost:      -1,
+	}
+}
+
+// LogMetrics is convenient function to put the CmdExecInfo to the metrics log.
+//
+// This function is silently no-op of the input if nil or there is no associated metrics logger.
+//
+// Available since v0.3.0
+func (r *GoRedisConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
+	if cmd != nil && r.metricsLogger != nil {
+		return r.metricsLogger.Put(category, cmd)
+	}
+	return nil
+}
+
+// Metrics is convenient function to capture the snapshot of command execution metrics.
+//
+// This function is silently no-op of there is no associated metrics logger.
+//
+// Available since v0.3.0
+func (r *GoRedisConnect) Metrics(category string, opts ...MetricsOpts) (*Metrics, error) {
+	if r.metricsLogger != nil {
+		return r.metricsLogger.Metrics(category, opts...)
+	}
+	return nil, nil
 }
 
 // GetSlaveReadOnly returns the current value of 'slaveReadOnly' setting.
@@ -106,7 +190,7 @@ func (r *GoRedisConnect) SetSlaveReadOnly(readOnly bool) *GoRedisConnect {
 //
 // Available: since v0.2.8
 func (r *GoRedisConnect) GetSentinelMasterName() string {
-	return r.masterName
+	return r.sentinelMasterName
 }
 
 // SetSentinelMasterName sets the sentinel master name, used by failover clients.
@@ -114,7 +198,7 @@ func (r *GoRedisConnect) GetSentinelMasterName() string {
 // The change will apply to newly created clients, existing one will NOT be effected!
 // This function returns the current GoRedisConnect instance so that function calls can be chained.
 func (r *GoRedisConnect) SetSentinelMasterName(masterName string) *GoRedisConnect {
-	r.masterName = masterName
+	r.sentinelMasterName = masterName
 	return r
 }
 
@@ -144,7 +228,7 @@ func (r *GoRedisConnect) closeClients() {
 			c.Close()
 		}
 	}
-	r.clients = map[int]*redis.Client{}
+	r.clients = make(map[int]*redis.Client)
 }
 
 func (r *GoRedisConnect) closeFailoverClients() {
@@ -153,7 +237,7 @@ func (r *GoRedisConnect) closeFailoverClients() {
 			c.Close()
 		}
 	}
-	r.failoverClients = map[int]*redis.Client{}
+	r.failoverClients = make(map[int]*redis.Client)
 }
 
 func (r *GoRedisConnect) closeClusterClient() {
@@ -173,12 +257,13 @@ func (r *GoRedisConnect) Close() error {
 	return nil
 }
 
-func (r *GoRedisConnect) newClient(db int) *redis.Client {
+// availablie since v0.3.0
+func (r *GoRedisConnect) newClientWithHostAndPort(hostAndPort string, db int) *redis.Client {
 	if db < 0 {
 		db = 0
 	}
 	redisOpts := &redis.Options{
-		Addr:       r.hostsAndPorts[0],
+		Addr:       hostAndPort,
 		Password:   r.password,
 		MaxRetries: r.maxRetries,
 		DB:         db,
@@ -205,6 +290,10 @@ func (r *GoRedisConnect) newClient(db int) *redis.Client {
 	return redis.NewClient(redisOpts)
 }
 
+func (r *GoRedisConnect) newClient(db int) *redis.Client {
+	return r.newClientWithHostAndPort(r.hostsAndPorts[0], db)
+}
+
 // GetClient returns the redis.Client associated with the specified db number.
 //
 // Note: do NOT close the returned client (e.g. call redis.Client.Close()).
@@ -228,12 +317,25 @@ func (r *GoRedisConnect) GetClient(db int) *redis.Client {
 	return client
 }
 
+// GetClientProxy is similar to GetClient, but returns a proxy that can be used as a replacement.
+//
+// Available since v0.3.0
+func (r *GoRedisConnect) GetClientProxy(db int) *RedisClientProxy {
+	proxy := &RedisClientProxy{
+		CmdableWrapper: CmdableWrapper{
+			Cmdable: r.GetClient(db),
+			rc:      r,
+		},
+	}
+	return proxy
+}
+
 func (r *GoRedisConnect) newFailoverClient(db int) *redis.Client {
 	if db < 0 {
 		db = 0
 	}
 	redisOpts := &redis.FailoverOptions{
-		MasterName:    r.masterName,
+		MasterName:    r.sentinelMasterName,
 		SentinelAddrs: r.hostsAndPorts,
 		Password:      r.password,
 		MaxRetries:    r.maxRetries,
@@ -284,6 +386,21 @@ func (r *GoRedisConnect) GetFailoverClient(db int) *redis.Client {
 	return client
 }
 
+// GetFailoverClientProxy is similar to GetFailoverClient, but returns a proxy that can be used as a replacement.
+//
+// Available since v0.3.0
+func (r *GoRedisConnect) GetFailoverClientProxy(db int) *RedisFailoverClientProxy {
+	proxy := &RedisFailoverClientProxy{
+		RedisClientProxy: RedisClientProxy{
+			CmdableWrapper: CmdableWrapper{
+				Cmdable: r.GetFailoverClient(db),
+				rc:      r,
+			},
+		},
+	}
+	return proxy
+}
+
 func (r *GoRedisConnect) newClusterClient() *redis.ClusterClient {
 	redisOpts := &redis.ClusterOptions{
 		Addrs:          r.hostsAndPorts,
@@ -329,4 +446,17 @@ func (r *GoRedisConnect) GetClusterClient() *redis.ClusterClient {
 		}
 	}
 	return r.clusterClient
+}
+
+// GetClusterClientProxy is similar to GetClusterClient, but returns a proxy that can be used as a replacement.
+//
+// Available since v0.3.0
+func (r *GoRedisConnect) GetClusterClientProxy() *RedisClusterClientProxy {
+	proxy := &RedisClusterClientProxy{
+		CmdableWrapper: CmdableWrapper{
+			Cmdable: r.GetClusterClient(),
+			rc:      r,
+		},
+	}
+	return proxy
 }
