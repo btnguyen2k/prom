@@ -17,11 +17,13 @@ import (
 
 // MongoConnect holds a MongoDB client (https://github.com/mongodb/mongo-go-driver) that can be shared within the application.
 type MongoConnect struct {
-	url       string         // connection url, including authentication credentials
-	db        string         // database name
-	client    *mongo.Client  // client instance
-	timeoutMs int            // default timeout for db operations, in milliseconds
-	poolOpts  *MongoPoolOpts // MongoDB connection pool options
+	url           string            // connection url, including authentication credentials
+	db            string            // database name
+	client        *mongo.Client     // instance of MongoDB client
+	clientProxy   *MongoClientProxy // (since v0.3.0) wrapper around the real MongoDB client
+	timeoutMs     int               // default timeout for db operations, in milliseconds
+	poolOpts      *MongoPoolOpts    // MongoDB connection pool options
+	metricsLogger IMetricsLogger    // (since v0.3.0) if non-nil, MongoConnect automatically logs executing commands.
 }
 
 // MongoPoolOpts holds options to configure MongoDB connection pool.
@@ -46,12 +48,31 @@ type MongoPoolOpts struct {
 }
 
 var (
-	defaultMongoPoolOpts = &MongoPoolOpts{
-		// fast-failed options
+	// MongoPoolOptsLongDistance is MongoPoolOpts configured for the case client and MongoDB are far apart.
+	// available since v0.2.13
+	MongoPoolOptsLongDistance = &MongoPoolOpts{
+		ConnectTimeout:         3000 * time.Millisecond,
+		SocketTimeout:          5000 * time.Millisecond,
+		ServerSelectionTimeout: 10000 * time.Millisecond,
+	}
+
+	// MongoPoolOptsFailFast is MongoPoolOpts configured for the case client and MongoDB are close, and we want to fail fast when error.
+	// available since v0.2.13
+	MongoPoolOptsFailFast = &MongoPoolOpts{
 		ConnectTimeout:         50 * time.Millisecond,
 		SocketTimeout:          250 * time.Millisecond,
 		ServerSelectionTimeout: 1000 * time.Millisecond,
 	}
+
+	// MongoPoolOptsGeneral is MongoPoolOpts configured for general use cases.
+	// available since v0.2.13
+	MongoPoolOptsGeneral = &MongoPoolOpts{
+		ConnectTimeout:         1000 * time.Millisecond,
+		SocketTimeout:          3000 * time.Millisecond,
+		ServerSelectionTimeout: 5000 * time.Millisecond,
+	}
+
+	defaultMongoPoolOpts = MongoPoolOptsLongDistance
 )
 
 // NewMongoConnect constructs a new MongoConnect instance.
@@ -84,10 +105,11 @@ func NewMongoConnectWithPoolOptions(url, db string, defaultTimeoutMs int, poolOp
 		poolOpts = defaultMongoPoolOpts
 	}
 	m := &MongoConnect{
-		url:       url,
-		db:        db,
-		timeoutMs: defaultTimeoutMs,
-		poolOpts:  poolOpts,
+		url:           url,
+		db:            db,
+		timeoutMs:     defaultTimeoutMs,
+		poolOpts:      poolOpts,
+		metricsLogger: NewMemoryStoreMetricsLogger(1028),
 	}
 	return m, m.Init()
 }
@@ -125,7 +147,61 @@ func (m *MongoConnect) Init() error {
 		return err
 	}
 	m.client = client
+	m.clientProxy = &MongoClientProxy{Client: client, mc: m}
 	return m.client.Connect(m.NewContext())
+}
+
+// RegisterMetricsLogger associates an IMetricsLogger instance with this MongoConnect.
+// If non-nil, MongoConnect automatically logs executing commands.
+//
+// Available since v0.3.0
+func (m *MongoConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *MongoConnect {
+	m.metricsLogger = metricsLogger
+	return m
+}
+
+// MetricsLogger returns the associated IMetricsLogger instance.
+//
+// Available since v0.3.0
+func (m *MongoConnect) MetricsLogger() IMetricsLogger {
+	return m.metricsLogger
+}
+
+// NewCmdExecInfo is convenient function to create a new CmdExecInfo instance.
+//
+// The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
+//
+// Available since v0.3.0
+func (m *MongoConnect) NewCmdExecInfo() *CmdExecInfo {
+	return &CmdExecInfo{
+		Id:        newId(),
+		BeginTime: time.Now(),
+		Cost:      -1,
+	}
+}
+
+// LogMetrics is convenient function to put the CmdExecInfo to the metrics log.
+//
+// This function is silently no-op of the input if nil or there is no associated metrics logger.
+//
+// Available since v0.3.0
+func (m *MongoConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
+	if cmd != nil && m.metricsLogger != nil {
+		return m.metricsLogger.Put(category, cmd)
+	}
+	return nil
+}
+
+// Metrics is convenient function to capture the snapshot of command execution metrics.
+//
+// This function is silently no-op of there is no associated metrics logger.
+//
+// Available since v0.3.0
+func (m *MongoConnect) Metrics(category string, opts ...MetricsOpts) (*Metrics, error) {
+	if m.metricsLogger != nil {
+		return m.metricsLogger.Metrics(category, opts...)
+	}
+	return nil, nil
 }
 
 // GetUrl returns MongoDB connection url setting.
@@ -298,7 +374,7 @@ func (m *MongoConnect) DecodeResultCallbackRaw(ctx context.Context, cursor *mong
 
 // Ping tries to send a "ping" request to MongoDB server.
 func (m *MongoConnect) Ping(ctx context.Context) error {
-	return m.client.Ping(m.NewContextIfNil(ctx), readpref.Primary())
+	return m.GetMongoClientProxy().Ping(m.NewContextIfNil(ctx), readpref.Primary())
 }
 
 // IsConnected returns true if the connection to MongoDB has established.
@@ -311,18 +387,32 @@ func (m *MongoConnect) GetMongoClient() *mongo.Client {
 	return m.client
 }
 
+// GetMongoClientProxy is similar to GetMongoClient, but returns a proxy that can be used as a replacement.
+//
+// Available since v0.3.0
+func (m *MongoConnect) GetMongoClientProxy() *MongoClientProxy {
+	if m.clientProxy == nil {
+		m.clientProxy = &MongoClientProxy{Client: m.client, mc: m}
+	}
+	return m.clientProxy
+}
+
 // GetDatabase returns the database object attached to this MongoConnect.
 func (m *MongoConnect) GetDatabase(opts ...*options.DatabaseOptions) *mongo.Database {
 	return m.client.Database(m.db, opts...)
 }
 
+// GetDatabaseProxy is similar to GetDatabase, but returns a proxy that can be used as a replacement.
+//
+// Available since v0.3.0
+func (m *MongoConnect) GetDatabaseProxy(opts ...*options.DatabaseOptions) *MongoDatabaseProxy {
+	return m.GetMongoClientProxy().DatabaseProxy(m.db, opts...)
+}
+
 // HasDatabase checks if a database exists on MongoDB server.
 func (m *MongoConnect) HasDatabase(dbName string, opts ...*options.ListDatabasesOptions) (bool, error) {
-	dbList, err := m.client.ListDatabaseNames(m.NewContext(), bson.M{"name": dbName}, opts...)
-	if err != nil {
-		return false, err
-	}
-	return len(dbList) > 0, nil
+	dbList, err := m.GetMongoClientProxy().ListDatabaseNames(m.NewContext(), bson.M{"name": dbName}, opts...)
+	return len(dbList) > 0, err
 }
 
 // GetCollection returns the collection object specified by 'collectionName'.
@@ -330,27 +420,51 @@ func (m *MongoConnect) GetCollection(collectionName string, opts ...*options.Col
 	return m.GetDatabase().Collection(collectionName, opts...)
 }
 
+// GetCollectionProxy is similar to GetCollection, but returns a proxy that can be used as a replacement.
+//
+// Available since v0.3.0
+func (m *MongoConnect) GetCollectionProxy(collectionName string, opts ...*options.CollectionOptions) *MongoCollectionProxy {
+	return m.GetDatabaseProxy().CollectionProxy(collectionName, opts...)
+}
+
 // HasCollection checks if a collection exists in the database.
 func (m *MongoConnect) HasCollection(collectionName string, opts ...*options.ListCollectionsOptions) (bool, error) {
 	ctx := m.NewContext()
-	collectionList, err := m.GetDatabase().ListCollections(ctx, bson.M{"name": collectionName}, opts...)
+	collectionList, err := m.GetDatabaseProxy().ListCollections(ctx, bson.M{"name": collectionName}, opts...)
 	defer collectionList.Close(ctx)
+	if err == nil {
+		err = collectionList.Err()
+	}
 	if err != nil {
 		return false, err
-	}
-	if collectionList.Err() != nil {
-		return false, collectionList.Err()
 	}
 	return collectionList.Next(ctx), nil
 }
 
-// CreateCollection creates a collection specified by 'collectionName'
-func (m *MongoConnect) CreateCollection(collectionName string) (*mongo.SingleResult, error) {
-	return m.GetDatabase().RunCommand(m.NewContext(), bson.M{"create": collectionName}), nil
+// CreateCollection is convenient function to create a collection in the current database specified by 'collectionName'.
+func (m *MongoConnect) CreateCollection(collectionName string, opts ...*options.CreateCollectionOptions) error {
+	return m.GetDatabaseProxy().CreateCollection(m.NewContext(), collectionName, opts...)
+}
+
+// DropCollection is convenient function to drop a collection in the current database specified by 'collectionName'.
+//
+// Available since v0.3.0
+func (m *MongoConnect) DropCollection(collectionName string) error {
+	return m.GetCollectionProxy(collectionName).Drop(m.NewContext())
+}
+
+// CreateView is convenient function to create a view in the current database.
+//
+// Note: view, once created, is a "virtual" collection. A view can be dropped by calling DropCollection and its existence
+// can be verified by calling HasCollection. See https://www.mongodb.com/docs/manual/core/views/
+//
+// Available since v0.3.0
+func (m *MongoConnect) CreateView(viewName, collectionName string, pipeline interface{}, opts ...*options.CreateViewOptions) error {
+	return m.GetDatabaseProxy().CreateView(m.NewContext(), viewName, collectionName, pipeline, opts...)
 }
 
 /*
-CreateCollectionIndexes creates indexes on the specified collection. The names of the created indexes are returned.
+CreateCollectionIndexes creates indexes on the specified collection in the current database. The names of the created indexes are returned.
 
 Example (index definition can be a map, or a mongo.IndexModel):
 
@@ -375,6 +489,8 @@ Example (index definition can be a map, or a mongo.IndexModel):
 	}
 	indexesNames, err := m.CreateCollectionIndexes(collectionName, indexes)
 
+See https://www.mongodb.com/docs/manual/indexes/
+
 Available: since v0.2.1
 */
 func (m *MongoConnect) CreateCollectionIndexes(collectionName string, indexes []interface{}) ([]string, error) {
@@ -382,11 +498,13 @@ func (m *MongoConnect) CreateCollectionIndexes(collectionName string, indexes []
 	for _, index := range indexes {
 		indexModel := toIndexModel(index)
 		if indexModel == nil {
-			return nil, errors.New("cannot convert index definition to mongo.IndexModel")
+			err := errors.New("cannot convert index definition to mongo.IndexModel")
+			return nil, err
 		}
 		indexModels = append(indexModels, *indexModel)
 	}
-	return m.GetCollection(collectionName).Indexes().CreateMany(m.NewContext(), indexModels)
+	result, err := m.GetCollectionProxy(collectionName).IndexesProxy().CreateMany(m.NewContext(), indexModels)
+	return result, err
 }
 
 func toIndexModel(index interface{}) *mongo.IndexModel {

@@ -1,4 +1,4 @@
-**'Prom' for AWS DynamoDB (https://github.com/aws/aws-sdk-go/tree/master/service/dynamodb)**
+**'Prom' for AWS DynamoDB (https://github.com/aws/aws-sdk-go/tree/main/service/dynamodb)**
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom#AwsDynamodbConnect)
 
