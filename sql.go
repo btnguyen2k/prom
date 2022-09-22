@@ -54,13 +54,17 @@ type SqlConnect struct {
 	timeoutMs      int             // default timeout for db operations, in milliseconds
 	flavor         DbFlavor        // database flavor
 	db             *sql.DB         // database instance
+	dbProxy        *DBProxy        // (since v0.3.0) wrapper around the real sql.DB instance
 	loc            *time.Location  // timezone location to parse date/time data, new since v0.1.2
 	mysqlParseTime bool            // set to 'true' if specifying parseTime=true in MySQL connection string, new since v0.2.12
+	metricsLogger  IMetricsLogger  // (since v0.3.0) if non-nil, SqlConnect automatically logs executing commands.
 }
 
 // NewSqlConnect constructs a new SqlConnect instance.
 //
-// Parameters: see #NewSqlConnectWithFlavor.
+// Parameters: see NewSqlConnectWithFlavor.
+//
+// @Deprecated: use NewSqlConnectWithFlavor.
 func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
 	return NewSqlConnectWithFlavor(driver, dsn, defaultTimeoutMs, poolOptions, FlavorDefault)
 }
@@ -87,12 +91,13 @@ func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOptio
 		poolOptions = defaultSqlPoolOptions
 	}
 	sc := &SqlConnect{
-		driver:      driver,
-		dsn:         dsn,
-		poolOptions: poolOptions,
-		timeoutMs:   defaultTimeoutMs,
-		flavor:      flavor,
-		loc:         time.UTC,
+		driver:        driver,
+		dsn:           dsn,
+		poolOptions:   poolOptions,
+		timeoutMs:     defaultTimeoutMs,
+		flavor:        flavor,
+		loc:           time.UTC,
+		metricsLogger: NewMemoryStoreMetricsLogger(1028),
 	}
 	return sc, sc.Init()
 }
@@ -119,8 +124,65 @@ func (sc *SqlConnect) Init() error {
 			db.SetConnMaxLifetime(sc.poolOptions.ConnMaxLifetime)
 		}
 	}
+	if sc.metricsLogger == nil {
+		sc.RegisterMetricsLogger(NewMemoryStoreMetricsLogger(1028))
+	}
 	sc.db = db
+	sc.dbProxy = &DBProxy{DB: db, sqlc: sc}
 	return err
+}
+
+// RegisterMetricsLogger associates an IMetricsLogger instance with this SqlConnect.
+// If non-nil, SqlConnect automatically logs executing commands.
+//
+// Available since v0.3.0
+func (sc *SqlConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *SqlConnect {
+	sc.metricsLogger = metricsLogger
+	return sc
+}
+
+// MetricsLogger returns the associated IMetricsLogger instance.
+//
+// Available since v0.3.0
+func (sc *SqlConnect) MetricsLogger() IMetricsLogger {
+	return sc.metricsLogger
+}
+
+// NewCmdExecInfo is convenient function to create a new CmdExecInfo instance.
+//
+// The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
+//
+// Available since v0.3.0
+func (sc *SqlConnect) NewCmdExecInfo() *CmdExecInfo {
+	return &CmdExecInfo{
+		Id:        newId(),
+		BeginTime: time.Now(),
+		Cost:      -1,
+	}
+}
+
+// LogMetrics is convenient function to put the CmdExecInfo to the metrics log.
+//
+// This function is silently no-op of the input if nil or there is no associated metrics logger.
+//
+// Available since v0.3.0
+func (sc *SqlConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
+	if cmd != nil && sc.metricsLogger != nil {
+		return sc.metricsLogger.Put(category, cmd)
+	}
+	return nil
+}
+
+// Metrics is convenient function to capture the snapshot of command execution metrics.
+//
+// This function is silently no-op of there is no associated metrics logger.
+//
+// Available since v0.3.0
+func (sc *SqlConnect) Metrics(category string, opts ...MetricsOpts) (*Metrics, error) {
+	if sc.metricsLogger != nil {
+		return sc.metricsLogger.Metrics(category, opts...)
+	}
+	return nil, nil
 }
 
 // GetDriver returns the database driver setting.
@@ -295,6 +357,16 @@ func (sc *SqlConnect) GetDB() *sql.DB {
 	return sc.db
 }
 
+// GetDBProxy is similar to GetDB, but returns a proxy that can be used as a replacement.
+//
+// Available since v0.3.0
+func (sc *SqlConnect) GetDBProxy() *DBProxy {
+	if sc.dbProxy == nil {
+		sc.dbProxy = &DBProxy{DB: sc.db, sqlc: sc}
+	}
+	return sc.dbProxy
+}
+
 // Close closes the underlying 'sql.DB' instance.
 func (sc *SqlConnect) Close() error {
 	return sc.db.Close()
@@ -302,7 +374,7 @@ func (sc *SqlConnect) Close() error {
 
 // Ping verifies a connection to the database is still alive, establishing a connection if necessary.
 func (sc *SqlConnect) Ping(ctx context.Context) error {
-	return sc.db.PingContext(sc.NewContextIfNil(ctx))
+	return sc.GetDBProxy().PingContext(sc.NewContextIfNil(ctx))
 }
 
 // IsConnected returns true if the connection to the database is alive.
