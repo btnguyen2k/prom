@@ -19,8 +19,12 @@ jobs:
       uses: actions/checkout@v2
     - name: Test
       run: |
-        go test -cover -coverprofile coverage_general.txt -v .
-        bash <(curl -s https://codecov.io/bash) -cF general
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_general.txt .
+    - name: Codecov
+      uses: codecov/codecov-action@v1.0.15
+      with:
+        flags: general
+        name: general
 
   testAwsDynamoDB:
     name: Test against AWS DynamoDB
@@ -40,8 +44,12 @@ jobs:
         export AWS_ACCESS_KEY_ID="DUMMYIDEXAMPLE"
         export AWS_SECRET_ACCESS_KEY="DUMMYEXAMPLEKEY"
         export AWS_DYNAMODB_ENDPOINT="http://localhost:8000"
-        go test -timeout 9999s -p 1 -cover -coverprofile coverage_dynamodb.txt -v -run ".*Dynamodb.*" .
-        bash <(curl -s https://codecov.io/bash) -cF dynamodb
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_dynamodb.txt -run "Aws|Dynamodb" .
+    - name: Codecov
+      uses: codecov/codecov-action@v1.0.15
+      with:
+        flags: dynamodb
+        name: dynamodb
 
   testMongoStandalone:
     name: Test against MongoDB (Standalone)
@@ -59,8 +67,12 @@ jobs:
       run: |
         export MONGO_DB="test"
         export MONGO_URL="mongodb://test:test@localhost:27017/?authSource=admin"
-        go test -p 1 -cover -coverprofile coverage_mongo_singleserver.txt -v -run ".*Mongo.*" .
-        bash <(curl -s https://codecov.io/bash) -cF mongo_singleserver
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mongo_singleserver.txt -run "Mongo" .
+    - name: Codecov
+      uses: codecov/codecov-action@v1.0.15
+      with:
+        flags: mongo_singleserver
+        name: mongo_singleserver
 
   testMongoReplicaSet:
     name: Test against MongoDB (ReplicaSet)
@@ -78,8 +90,12 @@ jobs:
       run: |
         export MONGO_DB="test"
         export MONGO_URL="mongodb://root:test@localhost:27017/?authSource=admin&replicaSet=replicaset"
-        go test -p 1 -cover -coverprofile coverage_mongo_replicaset.txt -v -run ".*Mongo.*" .
-        bash <(curl -s https://codecov.io/bash) -cF mongo_replicaset
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mongo_replicaset.txt -run "Mongo" .
+    - name: Codecov
+      uses: codecov/codecov-action@v1.0.15
+      with:
+        flags: mongo_replicaset
+        name: mongo_replicaset
 
   testRedis:
     name: Test against Redis
@@ -99,8 +115,12 @@ jobs:
           export REDIS_FAILOVER_HOSTS_AND_PORTS="127.0.0.1:5000"
           export REDIS_FAILOVER_MASTER_NAME="sentinel7000"
           export REDIS_CLUSTER_HOSTS_AND_PORTS="127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002,127.0.0.1:7003,127.0.0.1:7004,127.0.0.1:7005"
-          go test -p 1 -cover -coverprofile coverage_redis.txt -v -run ".*Redis.*" .
-          bash <(curl -s https://codecov.io/bash) -cF redis
+          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_redis.txt -run "Redis" .
+      - name: Codecov
+        uses: codecov/codecov-action@v1.0.15
+        with:
+          flags: redis
+          name: redis
 
   testSqlite:
     name: Test against SQLite
@@ -118,8 +138,12 @@ jobs:
         mkdir ./temp
         export SQLITE_DRIVER="sqlite3"
         export SQLITE_URL="./temp/temp.db"
-        go test -p 1 -cover -coverprofile coverage_sqlite.txt -v -run ".*Sql.*" .
-        bash <(curl -s https://codecov.io/bash) -cF sqlite
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_sqlite.txt -run "DBProxy|ConnProxy|TxProxy_|Sql" .
+    - name: Codecov
+      uses: codecov/codecov-action@v1.0.15
+      with:
+        flags: sqlite
+        name: sqlite
 
   testMySQL:
     name: Test against MySQL
@@ -133,20 +157,28 @@ jobs:
       uses: actions/checkout@v2
     - name: Start MySQL server
       run: docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_USER=test -e MYSQL_PASSWORD=test -p 3306:3306 mysql:8
-    - name: Test against parseTime
+    - name: Test with parseTime
       run: |
         export TIMEZONE="Asia/Ho_Chi_Minh"
         export MYSQL_DRIVER="mysql"
         export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=true&loc=\${loc}"
-        go test -p 1 -cover -coverprofile coverage_mysql_parsetime.txt -v -run ".*Sql.*" .
-        bash <(curl -s https://codecov.io/bash) -cF mysql_parsetime
-    - name: Test againstout parseTime
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mysql_parsetime.txt -run "DBProxy|ConnProxy|TxProxy_|Sql" .
+    - name: Codecov
+      uses: codecov/codecov-action@v1.0.15
+      with:
+        flags: mysql_parsetime
+        name: mysql_parsetime
+    - name: Test without parseTime
       run: |
         export TIMEZONE="Asia/Ho_Chi_Minh"
         export MYSQL_DRIVER="mysql"
         export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=\${loc}"
-        go test -p 1 -cover -coverprofile coverage_mysql.txt -v -run ".*Sql.*" .
-        bash <(curl -s https://codecov.io/bash) -cF mysql
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mysql.txt -run "DBProxy|ConnProxy|TxProxy_|Sql" .
+    - name: Codecov
+      uses: codecov/codecov-action@v1.0.15
+      with:
+        flags: mysql
+        name: mysql
 
   testPostgreSQL:
     name: Test against PostgreSQL
@@ -165,8 +197,12 @@ jobs:
         export TIMEZONE="Asia/Ho_Chi_Minh"
         export PGSQL_DRIVER="pgx"
         export PGSQL_URL="postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
-        go test -p 1 -cover -coverprofile coverage_pgsql.txt -v -run ".*Sql.*" .
-        bash <(curl -s https://codecov.io/bash) -cF pgsql
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_pgsql.txt -run "DBProxy|ConnProxy|TxProxy_|Sql" .
+    - name: Codecov
+      uses: codecov/codecov-action@v1.0.15
+      with:
+        flags: pgsql
+        name: pgsql
 
   testMSSQL:
     name: Test against MSSQL
@@ -185,8 +221,12 @@ jobs:
         export TIMEZONE="Asia/Ho_Chi_Minh"
         export MSSQL_DRIVER="sqlserver"
         export MSSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
-        go test -p 1 -cover -coverprofile coverage_mssql.txt -v -run ".*Sql.*" .
-        bash <(curl -s https://codecov.io/bash) -cF mssql
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mssql.txt -run "DBProxy|ConnProxy|TxProxy_|Sql" .
+    - name: Codecov
+      uses: codecov/codecov-action@v1.0.15
+      with:
+        flags: mssql
+        name: mssql
 
   testCosmosDb:
     name: Test against Azure Cosmos DB
@@ -208,7 +248,7 @@ jobs:
         $env:COSMOSDB_DRIVER='gocosmos'
         $env:COSMOSDB_URL='AccountEndpoint=https://127.0.0.1:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;Db=prom'
         $env:TIMEZONE='Asia/Ho_Chi_Minh'
-        go test -timeout 9999s -p 1 -cover -coverprofile="coverage_cosmosdb.txt" -v -run ".*Sql.*" .
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile="coverage_cosmosdb.txt" -run "DBProxy|ConnProxy|TxProxy_|Sql" .
     - name: Codecov
       uses: codecov/codecov-action@v1.0.15
       with:
