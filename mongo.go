@@ -146,6 +146,9 @@ func (m *MongoConnect) Init() error {
 	if err != nil {
 		return err
 	}
+	if m.metricsLogger == nil {
+		m.RegisterMetricsLogger(NewMemoryStoreMetricsLogger(1028))
+	}
 	m.client = client
 	m.clientProxy = &MongoClientProxy{Client: client, mc: m}
 	return m.client.Connect(m.NewContext())
