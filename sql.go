@@ -387,7 +387,15 @@ func (sc *SqlConnect) IsConnected() bool {
 //
 // Every leased connection must be returned to the pool after use by calling sql.Conn.Close
 func (sc *SqlConnect) Conn(ctx context.Context) (*sql.Conn, error) {
-	return sc.db.Conn(sc.NewContextIfNil(ctx))
+	return sc.GetDB().Conn(sc.NewContextIfNil(ctx))
+}
+
+// ConnProxy is similar to Conn, but returns a proxy that can be used as a replacement.
+//
+// Available since v0.3.0
+func (sc *SqlConnect) ConnProxy(ctx context.Context) (*ConnProxy, error) {
+	conn, err := sc.Conn(ctx)
+	return &ConnProxy{Conn: conn, sqlc: sc}, err
 }
 
 // FetchRow copies the columns from the matched row into a slice and return it.
