@@ -395,29 +395,37 @@ func sqlInitTable(sqlc *SqlConnect, table string, insertSampleRows bool) error {
 
 var (
 	sqlcList   []*SqlConnect
+	sqlc2List  []*SqlConnect
 	dbtypeList []string
 )
 
 var _setupTestSqlConnect _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
 	sqlcList = make([]*SqlConnect, 0)
+	sqlc2List = make([]*SqlConnect, 0)
 	dbtypeList = make([]string, 0)
 	urlMap := sqlGetUrlFromEnv()
 	for dbtype, info := range urlMap {
-		var sqlc *SqlConnect
-		var err error
+		var sqlc, sqlc2 *SqlConnect
+		var err, err2 error
 		switch dbtype {
 		case "sqlite", "sqlite3":
 			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
+			sqlc2, err2 = newSqlConnectSqlite(info.driver, info.url, timezoneSql2, 10000, nil)
 		case "mssql":
 			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
+			sqlc2, err2 = newSqlConnectMssql(info.driver, info.url, timezoneSql2, 10000, nil)
 		case "mysql":
 			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
+			sqlc2, err2 = newSqlConnectMysql(info.driver, info.url, timezoneSql2, 10000, nil)
 		case "oracle":
 			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
+			sqlc2, err2 = newSqlConnectOracle(info.driver, info.url, timezoneSql2, 10000, nil)
 		case "pgsql", "postgresql":
 			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
+			sqlc2, err2 = newSqlConnectPgsql(info.driver, info.url, timezoneSql2, 10000, nil)
 		case "cosmos", "cosmosdb":
 			sqlc, err = newSqlConnectCosmosdb(info.driver, info.url, timezoneSql, 10000, nil)
+			sqlc2, err2 = newSqlConnectCosmosdb(info.driver, info.url, timezoneSql2, 10000, nil)
 		default:
 			t.Fatalf("%s failed: unknown database type [%s]", testName, dbtype)
 		}
@@ -426,7 +434,13 @@ var _setupTestSqlConnect _testSetupOrTeardownFunc = func(t *testing.T, testName 
 		} else if sqlc == nil {
 			t.Fatalf("%s failed: nil", testName+"/"+dbtype)
 		}
+		if err2 != nil {
+			t.Fatalf("%s failed: error [%s]", testName+"/"+dbtype, err2)
+		} else if sqlc2 == nil {
+			t.Fatalf("%s failed: nil", testName+"/"+dbtype)
+		}
 		sqlcList = append(sqlcList, sqlc)
+		sqlc2List = append(sqlc2List, sqlc2)
 		dbtypeList = append(dbtypeList, dbtype)
 	}
 }
@@ -435,6 +449,11 @@ var _teardownTestSqlConnect _testSetupOrTeardownFunc = func(t *testing.T, testNa
 	for _, sqlc := range sqlcList {
 		if sqlc != nil {
 			go sqlc.Close()
+		}
+	}
+	for _, sqlc2 := range sqlc2List {
+		if sqlc2 != nil {
+			go sqlc2.Close()
 		}
 	}
 }
