@@ -3,12 +3,12 @@
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom/sql)
 
 > Supported/Tested libraries/drivers+version:
-> - [x] Azure Cosmos DB: [github.com/btnguyen2k/gocosmos](https://github.com/btnguyen2k/gocosmos) v0.1.6.
-> - [x] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb) v0.12.2.
-> - [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql) v1.6.0.
-> - [x] Oracle: [github.com/godror/godror](https://github.com/godror/godror) v0.33.3.
-> - [x] PostgreSQL:[github.com/jackc/pgx/v4](https://github.com/jackc/pgx) v4.16.1.
-> - [x] SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3) v1.14.14.
+> - [x] Azure Cosmos DB: [github.com/btnguyen2k/gocosmos](https://github.com/btnguyen2k/gocosmos) v0.1.6
+> - [x] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb) v0.12.2
+> - [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql) v1.6.0
+> - [x] Oracle: [github.com/godror/godror](https://github.com/godror/godror) v0.33.3
+> - [x] PostgreSQL:[github.com/jackc/pgx/v4](https://github.com/jackc/pgx) v4.16.1
+> - [x] SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3) v1.14.14
 
 Sample usage (MySQL):
 
