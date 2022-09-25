@@ -119,6 +119,9 @@ func _newGoRedisConnectForRedisClusterClient(t *testing.T, testName string) *GoR
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
+	rc.poolOpts.ReadTimeout = 30 * time.Second
+	rc.poolOpts.WriteTimeout = 30 * time.Second
+	rc.poolOpts.DialTimeout = 30 * time.Second
 	return rc
 }
 
