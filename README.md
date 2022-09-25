@@ -8,26 +8,19 @@
 
 Utility library to manage shared connections in Go.
 
-## Documentation
+## Documentations
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md).
-- ['Prom' for the official Go driver for MongoDB](mongo.md).
-- ['Prom' for go-redis](go-redis.md).
-- ['Prom' for database/sql](sql.md).
+- ['Prom' for AWS DyamoDB](dynamodb/)
+- ['Prom' for the official Go driver for MongoDB](mongo/)
+- ['Prom' for go-redis](goredis/)
+- ['Prom' for database/sql](sql/)
 
-## Supported 3rd party libraries/drivers
+## Examples
 
-`prom` is supporting and has been tested against following libraries/drivers+version:
-
-- AWS DynamoDB: `github.com/aws/aws-sdk-go v1.44.44`
-- Redis: `github.com/go-redis/redis/v8 v8.11.5`
-- MongoDB: `go.mongodb.org/mongo-driver v1.9.1`
-- (database/sql driver) Azure Cosmos DB: `github.com/btnguyen2k/gocosmos v0.1.6`
-- (database/sql driver) MSSQL: `github.com/denisenkom/go-mssqldb v0.12.2`
-- (database/sql driver) MySQL: `github.com/go-sql-driver/mysql v1.6.0`
-- (database/sql driver) Oracle: `github.com/godror/godror v0.33.3`
-- (database/sql driver) PostgreSQL: `github.com/jackc/pgx/v4 v4.16.1`
-- (database/sql driver) SQLite3: `github.com/mattn/go-sqlite3 v1.14.14`
+- [AWS DyamoDB](./examples/dynamodb/)
+- [MongoDB](./examples/mongo/)
+- [Redis](./examples/goredis/)
+- [database/sql](./examples/sql/)
 
 ## License
 

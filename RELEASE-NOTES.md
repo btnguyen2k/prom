@@ -1,5 +1,9 @@
 # prom release notes
 
+## 2022-10-25 - v0.4.0
+
+Move `AwsDynamodbConnect`, `GoRedisConnect`, `MongoConnect` and `SqlConnect` to sub-packages.
+
 ## 2022-10-24 - v0.3.0
 
 Support simple logging and metrics:
@@ -18,13 +22,13 @@ Support simple logging and metrics:
 
 ## 2021-10-10 - v0.2.15
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - New struct `AwsQueryOpt`: to supply additional options to `AwsDynamodbConnect.QueryItems` and `AwsDynamodbConnect.QueryItemsWithCallback`.
   - `AwsDynamodbConnect.QueryItems` and `AwsDynamodbConnect.QueryItemsWithCallback` now support `ScanIndexBackward`.
 
 ## 2021-09-22 - v0.2.14
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md): new helper functions:
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md): new helper functions:
   - `AwsDynamodbWaitForGsiStatus`: periodically check if table's GSI status reaches a desired value, or timeout.
   - `AwsDynamodbWaitForTableStatus`: periodically check if table's status reaches a desired value, or timeout.
 
@@ -36,20 +40,20 @@ Support simple logging and metrics:
 
 ## 2021-08-30 - v0.2.12
 
-- ['Prom' for database/sql](sql.md): bug fixes & enhancements with date/time types.
+- ['Prom' for database/sql](sql/sql.md): bug fixes & enhancements with date/time types.
 
 ## 2021-03-10 - v0.2.11
 
-- ['Prom' for database/sql](sql.md): bug fixes, enhancements and unit test rewritten.
+- ['Prom' for database/sql](sql/sql.md): bug fixes, enhancements and unit test rewritten.
 
 ## 2021-02-19 - v0.2.10
 
-- ['Prom' for database/sql](sql.md):
+- ['Prom' for database/sql](sql/sql.md):
   - Quick fix for Oracle's `NUMBER` data type.
 
 ## 2020-12-26 - v0.2.9
 
-- ['Prom' for database/sql](sql.md):
+- ['Prom' for database/sql](sql/sql.md):
   - Add `FlavorCosmosDb` && [Azure Cosmos DB](https://docs.microsoft.com/en-us/azure/cosmos-db/) support.
 - More unit tests.
 - Update dependencies.
@@ -57,7 +61,7 @@ Support simple logging and metrics:
 
 ## 2020-10-25 - v0.2.8
 
-- ['Prom' for go-redis](go-redis.md):
+- ['Prom' for go-redis](goredis/go-redis.md):
   - Add `RedisPoolOpts` struct.
   - `GoRedisConnect.GetClient`, `GoRedisConnect.GetFailoverClient` and `GoRedisConnect.GetClusterClient` adhere to Redis connection pool settings.
 - ['Prom' for the official Go driver for MongoDB](mongo.md):
@@ -65,7 +69,7 @@ Support simple logging and metrics:
   - New getter/setter & `MongoConnect.Init` functions.
   - `MongoConnect.NewContext` now returns single `context.Context` result.
   - New functions `MongoConnect.NewContextIfNil` and `MongoConnect.NewContextWithCancel`.
-- ['Prom' for database/sql](sql.md):
+- ['Prom' for database/sql](sql/sql.md):
   - New getter/setter & `SqlConnect.Init` functions
   - New db flavor for SQLite
   - `SqlConnect.NewContext` now returns single `context.Context` result
@@ -76,11 +80,11 @@ Support simple logging and metrics:
 
 ## 2020-06-10 - v0.2.7
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - `AwsDynamodbConnect.PutItemIfNotExist` returns `(nil, nil)` if the item being put already existed.
 - ['Prom' for the official Go driver for MongoDB](mongo.md):
   - Clean up deprecated functions.
-- ['Prom' for database/sql](sql.md):
+- ['Prom' for database/sql](sql/sql.md):
   - Clean up deprecated functions.
   - Migrate Oracle driver to `github.com/godror/godror` due to naming (trademark) issues.
   - Migrate PostgreSQL driver to `github.com/jackc/pgx/v4/stdlib`.
@@ -90,13 +94,13 @@ Support simple logging and metrics:
 
 ## 2019-11-19 - v0.2.6
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - New functions `AwsDynamodbConnect.BuildxxxInput` and `AwsDynamodbConnect.xxxWithInput`.
   - Doc fixes and updates.
 
 ## 2019-11-17 - v0.2.5
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - Add new function `IsAwsError(err error, code string) bool`
   - No longer ignore certain AWS errors, lets caller decide to call `AwsIgnoreErrorIfMatched` if needed.
 - Update dependencies.
@@ -104,7 +108,7 @@ Support simple logging and metrics:
 
 ## 2019-11-14 - v0.2.4
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - New constants `AwsAttrTypeString`, `AwsAttrTypeNumber` and `AwsAttrTypeBinary`.
   - New constants `AwsKeyTypePartition` and `AwsKeyTypeSort`.
   - Add transaction-supported functions.
@@ -131,7 +135,7 @@ Support simple logging and metrics:
 
 ## 2019-10-12 - v0.2.0
 
-- New ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- New ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - AWS SDK for Go: https://github.com/aws/aws-sdk-go
   - Type: `AwsDynamodbConnect`.
   - [Usage examples](examples/example_aws-dynamodb_base.go).
@@ -155,13 +159,13 @@ Support simple logging and metrics:
 
 ## 2019-04-03 - v0.1.2
 
-- ['Prom' for database/sql](sql.md):
+- ['Prom' for database/sql](sql/sql.md):
   - Add timezone location attribute to `SqlConnect` struct.
   - Correctly parse date/time data from db using timezone location attribute.
 
 ## 2019-04-01 - v0.1.1
 
-- ['Prom' for database/sql](sql.md): solve the case when Mysql's `TIME` is loaded as `[]byte`.
+- ['Prom' for database/sql](sql/sql.md): solve the case when Mysql's `TIME` is loaded as `[]byte`.
 
 ## 2019-03-27 - v0.1.0
 
@@ -175,7 +179,7 @@ Support simple logging and metrics:
 
 ## 2019-03-19 - v0.0.4
 
-- New ['Prom' for database/sql](sql.md):
+- New ['Prom' for database/sql](sql/sql.md):
   - Go's database/sql package: https://pkg.go.dev/database/sql
   - Type: `SqlConnect`.
   - Usage examples: [MySQL](examples/example_mysql.go), [PostgreSQL](examples/example_pgsql.go)
@@ -192,7 +196,7 @@ Support simple logging and metrics:
 - ['Prom' for the official Go driver for MongoDB](mongo.md):
   - Bug fixes, enhancements & refactoring
   - Add [usage examples](examples/example_mongo.go)
-- New ['Prom' for go-redis](go-redis.md):
+- New ['Prom' for go-redis](goredis/go-redis.md):
   - go-redis: https://github.com/go-redis/redis
   - Type: `GoRedisConnect`.
   - [Usage examples](examples/example_go-redis.go)

@@ -6,10 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	olaf2 "github.com/btnguyen2k/consu/olaf"
+	olaflib "github.com/btnguyen2k/consu/olaf"
 )
-
-type m map[string]interface{}
 
 func getMacAddr() string {
 	interfaces, err := net.Interfaces()
@@ -29,9 +27,11 @@ func getMacAddrAsLong() int64 {
 	return mac
 }
 
-var olaf = olaf2.NewOlaf(getMacAddrAsLong())
+var olaf = olaflib.NewOlaf(getMacAddrAsLong())
 
-// newId generates a new unique id.
-func newId() string {
+// NewId generates a new unique id.
+//
+// prom's internal use only!
+func NewId() string {
 	return strings.ToLower(olaf.Id128Hex())
 }
