@@ -136,7 +136,7 @@ jobs:
     - name: Test
       run: |
         export TIMEZONE="Asia/Ho_Chi_Minh"
-        mkdir ./temp
+        mkdir -p ./sql/temp
         export SQLITE_DRIVER="sqlite3"
         export SQLITE_URL="./temp/temp.db"
         go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_sqlite.txt ./sql
