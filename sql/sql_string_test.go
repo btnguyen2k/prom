@@ -1,4 +1,4 @@
-package prom
+package sql
 
 import (
 	"encoding/base64"

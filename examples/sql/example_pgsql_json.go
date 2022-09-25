@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -9,21 +10,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btnguyen2k/prom/sql"
 	_ "github.com/jackc/pgx/v4/stdlib"
-
-	"github.com/btnguyen2k/prom"
 )
 
-var timezonePgsql = "Asia/Kabul"
-
 // construct an 'prom.SqlConnect' instance
-func createSqlConnectPgsql() *prom.SqlConnect {
+func createSqlConnectPgsqlJson() *sql.SqlConnect {
 	driver := "pgx"
 	dsn := "postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
 	if os.Getenv("PGSQL_URL") != "" {
 		dsn = strings.ReplaceAll(os.Getenv("PGSQL_URL"), `"`, "")
 	}
-	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorPgSql)
+	sqlConnect, err := sql.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, sql.FlavorPgSql)
 	if sqlConnect == nil || err != nil {
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -32,34 +30,29 @@ func createSqlConnectPgsql() *prom.SqlConnect {
 			panic("error creating [prom.SqlConnect] instance")
 		}
 	}
-	loc, _ := time.LoadLocation(timezonePgsql)
-	sqlConnect.SetLocation(loc)
 	return sqlConnect
 }
 
-var colsPgsql = []string{"id", "username", "email",
-	"data_bool", "data_int", "data_float",
-	"data_time", "data_timez",
-	"data_date", "data_datez",
-	"data_datetime", "data_datetimez",
-	"data_timestamp", "data_timestampz"}
+var colsPgsqlJson = []string{"id", "data_map", "data_list"}
 
-func printRowPgsql(row map[string]interface{}) {
+func printRowPgsqlJson(row map[string]interface{}) {
 	id := row["id"]
 	fmt.Printf("\t\tRow [%v]\n", id)
-	for _, n := range colsPgsql {
+	for _, n := range colsPgsqlJson {
 		v := row[n]
-		fmt.Println("\t\t\t", n, "[", reflect.TypeOf(v), "] = ", v)
+		if reflect.TypeOf(v).String() == "[]uint8" {
+			fmt.Println("\t\t\t", n, "[", reflect.TypeOf(v), "] = ", string(v.([]byte)))
+		} else {
+			fmt.Println("\t\t\t", n, "[", reflect.TypeOf(v), "] = ", v)
+		}
 	}
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	SEP := "======================================================================"
-	sqlConnect := createSqlConnectPgsql()
+	sqlConnect := createSqlConnectPgsqlJson()
 	defer sqlConnect.Close()
-	loc, _ := time.LoadLocation(timezonePgsql)
-	fmt.Println("Timezone:", loc)
 
 	{
 		fmt.Println("-== Database & Ping info ==-")
@@ -82,32 +75,27 @@ func main() {
 		fmt.Println("-== Drop/Create Table ==-")
 
 		// setting up
-		sql := "DROP TABLE IF EXISTS tbl_demo"
+		sql := "DROP TABLE IF EXISTS tbl_demojson"
 		_, err := sqlConnect.GetDB().Exec(sql)
 		if err != nil {
 			fmt.Printf("\tError while executing query [%s]: %s\n", sql, err)
 		} else {
-			fmt.Println("\tDropped table [tbl_demo]")
+			fmt.Println("\tDropped table [tbl_demojson]")
 
-			types := []string{"INT", "VARCHAR(64)", "VARCHAR(128)",
-				"CHAR(1)", "INT", "DOUBLE PRECISION",
-				"TIME", "TIME WITH TIME ZONE",
-				"DATE", "DATE",
-				"TIMESTAMP", "TIMESTAMP WITH TIME ZONE",
-				"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
+			types := []string{"INT", "JSONB", "JSONB"}
 
-			sql := "CREATE TABLE tbl_demo ("
-			for i := range colsPgsql {
-				sql += colsPgsql[i] + " " + types[i] + ","
+			sql := "CREATE TABLE tbl_demojson ("
+			for i := range colsPgsqlJson {
+				sql += colsPgsqlJson[i] + " " + types[i] + ","
 			}
 			sql += "PRIMARY KEY(id))"
-			fmt.Println("\tQuery:" + sql)
+			fmt.Println("\tQuery:", sql)
 
 			_, err := sqlConnect.GetDB().Exec(sql)
 			if err != nil {
 				fmt.Printf("\tError while executing query: %s\n", err)
 			} else {
-				fmt.Println("\tCreated table [tbl_demo]")
+				fmt.Println("\tCreated table [tbl_demojson]")
 			}
 		}
 
@@ -116,19 +104,20 @@ func main() {
 
 	{
 		fmt.Println("-== Insert Rows to Table ==-")
+		loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
 
 		// insert some rows
-		sql := "INSERT INTO tbl_demo ("
-		sql += strings.Join(colsPgsql, ",")
+		sql := "INSERT INTO tbl_demojson ("
+		sql += strings.Join(colsPgsqlJson, ",")
 		sql += ") VALUES ("
-		for k := range colsPgsql {
+		for k := range colsPgsqlJson {
 			sql += "$" + strconv.Itoa(k+1) + ","
 		}
 		sql = sql[0 : len(sql)-1]
 		sql += ")"
 
 		n := 100
-		fmt.Printf("\tInserting %d rows to table [tbl_demo]\n", n)
+		fmt.Printf("\tInserting %d rows to table [tbl_demojson]\n", n)
 		for i := 1; i <= n; i++ {
 			t := time.Unix(int64(rand.Int31()), rand.Int63()%1000000000).In(loc)
 			id := i
@@ -137,16 +126,18 @@ func main() {
 			dataInt := rand.Int31()
 			dataBool := strconv.Itoa(int(dataInt % 2))
 			dataFloat := rand.Float64()
-			dataTime := t
-			dataTimez := t
-			dataDate := t
-			dataDatez := t
 			dataDatetime := t
-			dataDatetimez := t
-			dataTimestamp := t
-			dataTimestampz := t
-			_, err := sqlConnect.GetDB().Exec(sql, id, username, email, dataBool, dataInt, dataFloat,
-				dataTime, dataTimez, dataDate, dataDatez, dataDatetime, dataDatetimez, dataTimestamp, dataTimestampz)
+			dataMap := map[string]interface{}{"username": username, "email": email, "int": dataInt, "bool": dataBool, "float": dataFloat, "datetime": dataDatetime}
+			dataList := []interface{}{username, email, dataInt, dataBool, dataFloat, dataDatetime}
+			val1, err := json.Marshal(dataMap)
+			if err != nil {
+				fmt.Println("\t\tError:", err)
+			}
+			val2, err := json.Marshal(dataList)
+			if err != nil {
+				fmt.Println("\t\tError:", err)
+			}
+			_, err = sqlConnect.GetDB().Exec(sql, id, val1, val2)
 			if err != nil {
 				fmt.Println("\t\tError:", err)
 			}
@@ -159,14 +150,14 @@ func main() {
 		fmt.Println("-== Query Single Row from Table ==-")
 
 		// query single row
-		sql := "SELECT * FROM tbl_demo WHERE id=$1"
+		sql := "SELECT * FROM tbl_demojson WHERE id=$1"
 
 		id := rand.Intn(100) + 1
-		fmt.Printf("\tFetching row id %d from table [tbl_demo]\n", id)
+		fmt.Printf("\tFetching row id %d from table [tbl_demojson]\n", id)
 		dbRow := sqlConnect.GetDB().QueryRow(sql, id)
-		data, err := sqlConnect.FetchRow(dbRow, len(colsPgsql))
+		data, err := sqlConnect.FetchRow(dbRow, len(colsPgsqlJson))
 		if err != nil {
-			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
+			fmt.Printf("\tError fetching row %d from table [tbl_demojson]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tRow not found")
 		} else {
@@ -181,11 +172,11 @@ func main() {
 		}
 
 		id = 999
-		fmt.Printf("\tFetching row id %d from table [tbl_demo]\n", id)
+		fmt.Printf("\tFetching row id %d from table [tbl_demojson]\n", id)
 		dbRow = sqlConnect.GetDB().QueryRow(sql, id)
-		data, err = sqlConnect.FetchRow(dbRow, len(colsPgsql))
+		data, err = sqlConnect.FetchRow(dbRow, len(colsPgsqlJson))
 		if err != nil {
-			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
+			fmt.Printf("\tError fetching row %d from table [tbl_demojson]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tNo row matches query")
 		} else {
@@ -206,21 +197,21 @@ func main() {
 		fmt.Println("-== Query Multiple Rows from Table ==-")
 
 		// query multiple rows
-		sql := "SELECT * FROM tbl_demo WHERE id>=$1 LIMIT 4"
+		sql := "SELECT * FROM tbl_demojson WHERE id>=$1 LIMIT 4"
 
 		id := rand.Intn(100) + 1
-		fmt.Printf("\tFetching rows starting at %d from table [tbl_demo]\n", id)
+		fmt.Printf("\tFetching rows starting at %d from table [tbl_demojson]\n", id)
 		dbRows1, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows1.Close()
 		if err != nil {
-			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
+			fmt.Printf("\tE\trror while executing query: %s\n", err)
 		} else {
 			rows, err := sqlConnect.FetchRows(dbRows1)
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demojson]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowPgsql(r)
+					printRowPgsqlJson(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -228,7 +219,7 @@ func main() {
 		}
 
 		id = 999
-		fmt.Printf("\tFetching rows starting at %d from table [tbl_demo]\n", id)
+		fmt.Printf("\tFetching rows starting at %d from table [tbl_demojson]\n", id)
 		dbRows2, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows2.Close()
 		if err != nil {
@@ -236,10 +227,10 @@ func main() {
 		} else {
 			rows, err := sqlConnect.FetchRows(dbRows2)
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demojson]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowPgsql(r)
+					printRowPgsqlJson(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -253,18 +244,18 @@ func main() {
 		fmt.Println("-== Query Multiple Rows from Table (using callback) ==-")
 
 		// query multiple rows with callback function
-		sql := "SELECT * FROM tbl_demo WHERE id>=$1 LIMIT 4"
+		sql := "SELECT * FROM tbl_demojson WHERE id>=$1 LIMIT 4"
 		callback := func(row map[string]interface{}, err error) bool {
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demojson]: %s\n", err)
 			} else {
-				printRowPgsql(row)
+				printRowPgsqlJson(row)
 			}
 			return true
 		}
 
 		id := rand.Intn(100) + 1
-		fmt.Printf("\tFetching rows starting at %d from table [tbl_demo]\n", id)
+		fmt.Printf("\tFetching rows starting at %d from table [tbl_demojson]\n", id)
 		dbRows1, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows1.Close()
 		if err != nil {
@@ -274,7 +265,7 @@ func main() {
 		}
 
 		id = 999
-		fmt.Printf("\tFetching rows starting at %d from table [tbl_demo]\n", id)
+		fmt.Printf("\tFetching rows starting at %d from table [tbl_demojson]\n", id)
 		dbRows2, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows2.Close()
 		if err != nil {

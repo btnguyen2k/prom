@@ -9,8 +9,6 @@ import (
 	olaf2 "github.com/btnguyen2k/consu/olaf"
 )
 
-type m map[string]interface{}
-
 func getMacAddr() string {
 	interfaces, err := net.Interfaces()
 	if err == nil {

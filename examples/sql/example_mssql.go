@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -10,19 +9,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btnguyen2k/prom/sql"
 	_ "github.com/denisenkom/go-mssqldb"
-
-	"github.com/btnguyen2k/prom"
 )
 
+var timezoneMssql = "Asia/Kabul"
+
 // construct an 'prom.SqlConnect' instance
-func createSqlConnectMssqlJson() *prom.SqlConnect {
+func createSqlConnectMssql() *sql.SqlConnect {
 	driver := "sqlserver"
-	dsn := "sqlserver://sa:Password1@localhost:1433?database=tempdb"
+	dsn := "sqlserver://sa:secret@localhost:1433?database=tempdb"
 	if os.Getenv("MSSQL_URL") != "" {
 		dsn = strings.ReplaceAll(os.Getenv("MSSQL_URL"), `"`, "")
 	}
-	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorMsSql)
+	sqlConnect, err := sql.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, sql.FlavorMsSql)
 	if sqlConnect == nil || err != nil {
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -31,29 +31,34 @@ func createSqlConnectMssqlJson() *prom.SqlConnect {
 			panic("error creating [prom.SqlConnect] instance")
 		}
 	}
+	loc, _ := time.LoadLocation(timezoneMssql)
+	sqlConnect.SetLocation(loc)
 	return sqlConnect
 }
 
-var colsMssqlJson = []string{"id", "data_map", "data_list"}
+var colsMssql = []string{"id", "username", "email",
+	"data_bool", "data_int", "data_float",
+	"data_time", "data_timez",
+	"data_date", "data_datez",
+	"data_datetime", "data_datetimez",
+	"data_timestamp", "data_timestampz"}
 
-func printRowMssqlJson(row map[string]interface{}) {
+func printRowMssql(row map[string]interface{}) {
 	id := row["id"]
 	fmt.Printf("\t\tRow [%v]\n", id)
-	for _, n := range colsMssqlJson {
+	for _, n := range colsMssql {
 		v := row[n]
-		if reflect.TypeOf(v).String() == "[]uint8" {
-			fmt.Println("\t\t\t", n, "[", reflect.TypeOf(v), "] = ", string(v.([]byte)))
-		} else {
-			fmt.Println("\t\t\t", n, "[", reflect.TypeOf(v), "] = ", v)
-		}
+		fmt.Println("\t\t\t", n, "[", reflect.TypeOf(v), "] = ", v)
 	}
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	SEP := "======================================================================"
-	sqlConnect := createSqlConnectMssqlJson()
+	sqlConnect := createSqlConnectMssql()
 	defer sqlConnect.Close()
+	loc, _ := time.LoadLocation(timezoneMssql)
+	fmt.Println("Timezone:", loc)
 
 	{
 		fmt.Println("-== Database & Ping info ==-")
@@ -76,18 +81,23 @@ func main() {
 		fmt.Println("-== Drop/Create Table ==-")
 
 		// setting up
-		sql := "DROP TABLE IF EXISTS tbl_demojson"
+		sql := "DROP TABLE IF EXISTS tbl_demo"
 		_, err := sqlConnect.GetDB().Exec(sql)
 		if err != nil {
 			fmt.Printf("\tError while executing query [%s]: %s\n", sql, err)
 		} else {
-			fmt.Println("\tDropped table [tbl_demojson]")
+			fmt.Println("\tDropped table [tbl_demo]")
 
-			types := []string{"INT", "NTEXT", "NTEXT"}
+			types := []string{"INT", "NVARCHAR(64)", "NVARCHAR(128)",
+				"NCHAR(1)", "INT", "FLOAT(53)",
+				"TIME", "TIME",
+				"DATE", "DATE",
+				"DATETIME", "DATETIMEOFFSET",
+				"DATETIME2", "DATETIMEOFFSET"}
 
-			sql := "CREATE TABLE tbl_demojson ("
-			for i := range colsMssqlJson {
-				sql += colsMssqlJson[i] + " " + types[i] + ","
+			sql := "CREATE TABLE tbl_demo ("
+			for i := range colsMssql {
+				sql += colsMssql[i] + " " + types[i] + ","
 			}
 			sql += "PRIMARY KEY(id))"
 			fmt.Println("\tQuery:" + sql)
@@ -96,7 +106,7 @@ func main() {
 			if err != nil {
 				fmt.Printf("\tError while executing query: %s\n", err)
 			} else {
-				fmt.Println("\tCreated table [colsMssqlJson]")
+				fmt.Println("\tCreated table [tbl_demo]")
 			}
 		}
 
@@ -105,20 +115,19 @@ func main() {
 
 	{
 		fmt.Println("-== Insert Rows to Table ==-")
-		loc, _ := time.LoadLocation("Asia/Ho_Chi_Minh")
 
 		// insert some rows
-		sql := "INSERT INTO tbl_demojson ("
-		sql += strings.Join(colsMssqlJson, ",")
+		sql := "INSERT INTO tbl_demo ("
+		sql += strings.Join(colsMssql, ",")
 		sql += ") VALUES ("
-		for k := range colsMssqlJson {
+		for k := range colsMssql {
 			sql += "@p" + strconv.Itoa(k+1) + ","
 		}
 		sql = sql[0 : len(sql)-1]
 		sql += ")"
 
 		n := 100
-		fmt.Printf("\tInserting %d rows to table [tbl_demojson]\n", n)
+		fmt.Printf("\tInserting %d rows to table [tbl_demo]\n", n)
 		for i := 1; i <= n; i++ {
 			t := time.Unix(int64(rand.Int31()), rand.Int63()%1000000000).In(loc)
 			id := i
@@ -127,18 +136,16 @@ func main() {
 			dataInt := rand.Int31()
 			dataBool := strconv.Itoa(int(dataInt % 2))
 			dataFloat := rand.Float64()
+			dataTime := t
+			dataTimez := t
+			dataDate := t
+			dataDatez := t
 			dataDatetime := t
-			dataMap := map[string]interface{}{"username": username, "email": email, "int": dataInt, "bool": dataBool, "float": dataFloat, "datetime": dataDatetime}
-			dataList := []interface{}{username, email, dataInt, dataBool, dataFloat, dataDatetime}
-			val1, err := json.Marshal(dataMap)
-			if err != nil {
-				fmt.Println("\t\tError:", err)
-			}
-			val2, err := json.Marshal(dataList)
-			if err != nil {
-				fmt.Println("\t\tError:", err)
-			}
-			_, err = sqlConnect.GetDB().Exec(sql, id, string(val1), string(val2))
+			dataDatetimez := t
+			dataTimestamp := t
+			dataTimestampz := t
+			_, err := sqlConnect.GetDB().Exec(sql, id, username, email, dataBool, dataInt, dataFloat,
+				dataTime, dataTimez, dataDate, dataDatez, dataDatetime, dataDatetimez, dataTimestamp, dataTimestampz)
 			if err != nil {
 				fmt.Println("\t\tError:", err)
 			}
@@ -151,14 +158,14 @@ func main() {
 		fmt.Println("-== Query Single Row from Table ==-")
 
 		// query single row
-		sql := "SELECT * FROM tbl_demojson WHERE id=@p1"
+		sql := "SELECT * FROM tbl_demo WHERE id=@p1"
 
 		id := rand.Intn(100) + 1
-		fmt.Printf("\tFetching row id %d from table [tbl_demojson]\n", id)
+		fmt.Printf("\tFetching row id %d from table [tbl_demo]\n", id)
 		dbRow := sqlConnect.GetDB().QueryRow(sql, id)
-		data, err := sqlConnect.FetchRow(dbRow, len(colsMssqlJson))
+		data, err := sqlConnect.FetchRow(dbRow, len(colsMssql))
 		if err != nil {
-			fmt.Printf("\tError fetching row %d from table [tbl_demojson]: %s\n", id, err)
+			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tRow not found")
 		} else {
@@ -173,11 +180,11 @@ func main() {
 		}
 
 		id = 999
-		fmt.Printf("\tFetching row id %d from table [tbl_demojson]\n", id)
+		fmt.Printf("\tFetching row id %d from table [tbl_demo]\n", id)
 		dbRow = sqlConnect.GetDB().QueryRow(sql, id)
-		data, err = sqlConnect.FetchRow(dbRow, len(colsMssqlJson))
+		data, err = sqlConnect.FetchRow(dbRow, len(colsMssql))
 		if err != nil {
-			fmt.Printf("\tError fetching row %d from table [tbl_demojson]: %s\n", id, err)
+			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tNo row matches query")
 		} else {
@@ -199,10 +206,10 @@ func main() {
 
 		// query multiple rows: https://docs.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql?view=sql-server-2017
 		// (SQL Server 2012+ only)
-		sql := "SELECT * FROM tbl_demojson WHERE id>=@p1 ORDER BY id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY"
+		sql := "SELECT * FROM tbl_demo WHERE id>=@p1 ORDER BY id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY"
 
 		id := rand.Intn(100) + 1
-		fmt.Printf("\tFetching rows starting at %d from table [tbl_demojson]\n", id)
+		fmt.Printf("\tFetching rows starting at %d from table [tbl_demo]\n", id)
 		dbRows1, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows1.Close()
 		if err != nil {
@@ -210,10 +217,10 @@ func main() {
 		} else {
 			rows, err := sqlConnect.FetchRows(dbRows1)
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demojson]: %s\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowMssqlJson(r)
+					printRowMssql(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -221,7 +228,7 @@ func main() {
 		}
 
 		id = 999
-		fmt.Printf("\tFetching rows starting at %d from table [tbl_demojson]\n", id)
+		fmt.Printf("\tFetching rows starting at %d from table [tbl_demo]\n", id)
 		dbRows2, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows2.Close()
 		if err != nil {
@@ -229,10 +236,10 @@ func main() {
 		} else {
 			rows, err := sqlConnect.FetchRows(dbRows2)
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demojson]: %s\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowMssqlJson(r)
+					printRowMssql(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -246,18 +253,18 @@ func main() {
 		fmt.Println("-== Query Multiple Rows from Table (using callback) ==-")
 
 		// query multiple rows with callback function
-		sql := "SELECT * FROM tbl_demojson WHERE id>=@p1 ORDER BY id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY"
+		sql := "SELECT * FROM tbl_demo WHERE id>=@p1 ORDER BY id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY"
 		callback := func(row map[string]interface{}, err error) bool {
 			if err != nil {
-				fmt.Printf("\t\tError while fetching rows from table [tbl_demojson]: %s\n", err)
+				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else {
-				printRowMssqlJson(row)
+				printRowMssql(row)
 			}
 			return true
 		}
 
 		id := rand.Intn(100) + 1
-		fmt.Printf("\tFetching rows starting at %d from table [tbl_demojson]\n", id)
+		fmt.Printf("\tFetching rows starting at %d from table [tbl_demo]\n", id)
 		dbRows1, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows1.Close()
 		if err != nil {
@@ -267,7 +274,7 @@ func main() {
 		}
 
 		id = 999
-		fmt.Printf("\tFetching rows starting at %d from table [tbl_demojson]\n", id)
+		fmt.Printf("\tFetching rows starting at %d from table [tbl_demo]\n", id)
 		dbRows2, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows2.Close()
 		if err != nil {

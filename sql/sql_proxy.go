@@ -1,11 +1,15 @@
-package prom
+package sql
 
 import (
 	"context"
 	"database/sql"
 	"regexp"
 	"strings"
+
+	"github.com/btnguyen2k/prom"
 )
+
+type m map[string]interface{}
 
 var firstWordRegEx = regexp.MustCompile(`^\s*(\w+)`)
 var sqlDMLCmds = m{"INSERT": true, "DELETE": true, "UPDATE": true, "UPSERT": true}
@@ -55,12 +59,12 @@ func (dbp *DBProxy) Ping() error {
 func (dbp *DBProxy) PingContext(ctx context.Context) error {
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	defer func() {
-		dbp.sqlc.LogMetrics(MetricsCatAll, cmd)
-		dbp.sqlc.LogMetrics(MetricsCatOther, cmd)
+		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "ping"
 	err := dbp.DB.PingContext(ctx)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -68,12 +72,12 @@ func (dbp *DBProxy) PingContext(ctx context.Context) error {
 func (dbp *DBProxy) Close() error {
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	defer func() {
-		dbp.sqlc.LogMetrics(MetricsCatAll, cmd)
-		dbp.sqlc.LogMetrics(MetricsCatOther, cmd)
+		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "close"
 	err := dbp.DB.Close()
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -86,12 +90,12 @@ func (dbp *DBProxy) Prepare(query string) (*sql.Stmt, error) {
 func (dbp *DBProxy) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	defer func() {
-		dbp.sqlc.LogMetrics(MetricsCatAll, cmd)
-		dbp.sqlc.LogMetrics(MetricsCatOther, cmd)
+		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "prepare", m{"query": query}
 	result, err := dbp.DB.PrepareContext(ctx, query)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result, err
 }
 
@@ -105,13 +109,13 @@ func (dbp *DBProxy) ExecContext(ctx context.Context, query string, args ...inter
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		dbp.sqlc.LogMetrics(MetricsCatAll, cmd)
+		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			dbp.sqlc.LogMetrics(MetricsCatDML, cmd)
+			dbp.sqlc.LogMetrics(prom.MetricsCatDML, cmd)
 		} else if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			dbp.sqlc.LogMetrics(MetricsCatDDL, cmd)
+			dbp.sqlc.LogMetrics(prom.MetricsCatDDL, cmd)
 		} else {
-			dbp.sqlc.LogMetrics(MetricsCatOther, cmd)
+			dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -121,7 +125,7 @@ func (dbp *DBProxy) ExecContext(ctx context.Context, query string, args ...inter
 		rowsAffected, _ := result.RowsAffected()
 		cmd.CmdResponse = m{"lastInsertId": lastInsertId, "rowsAffected": rowsAffected}
 	}
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result, err
 }
 
@@ -135,16 +139,16 @@ func (dbp *DBProxy) QueryContext(ctx context.Context, query string, args ...inte
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		dbp.sqlc.LogMetrics(MetricsCatAll, cmd)
+		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			dbp.sqlc.LogMetrics(MetricsCatDQL, cmd)
+			dbp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			dbp.sqlc.LogMetrics(MetricsCatOther, cmd)
+			dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
 	result, err := dbp.DB.QueryContext(ctx, query, args...)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result, err
 }
 
@@ -158,16 +162,16 @@ func (dbp *DBProxy) QueryRowContext(ctx context.Context, query string, args ...i
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		dbp.sqlc.LogMetrics(MetricsCatAll, cmd)
+		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			dbp.sqlc.LogMetrics(MetricsCatDQL, cmd)
+			dbp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			dbp.sqlc.LogMetrics(MetricsCatOther, cmd)
+			dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
 	result := dbp.DB.QueryRowContext(ctx, query, args...)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, result.Err())
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, result.Err())
 	return result
 }
 
@@ -195,12 +199,12 @@ func (cp *ConnProxy) BeginTxProxy(ctx context.Context, opts *sql.TxOptions) (*Tx
 func (cp *ConnProxy) PingContext(ctx context.Context) error {
 	cmd := cp.sqlc.NewCmdExecInfo()
 	defer func() {
-		cp.sqlc.LogMetrics(MetricsCatAll, cmd)
-		cp.sqlc.LogMetrics(MetricsCatOther, cmd)
+		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "ping"
 	err := cp.Conn.PingContext(ctx)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -208,12 +212,12 @@ func (cp *ConnProxy) PingContext(ctx context.Context) error {
 func (cp *ConnProxy) Close() error {
 	cmd := cp.sqlc.NewCmdExecInfo()
 	defer func() {
-		cp.sqlc.LogMetrics(MetricsCatAll, cmd)
-		cp.sqlc.LogMetrics(MetricsCatOther, cmd)
+		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "close"
 	err := cp.Conn.Close()
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -221,12 +225,12 @@ func (cp *ConnProxy) Close() error {
 func (cp *ConnProxy) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
 	cmd := cp.sqlc.NewCmdExecInfo()
 	defer func() {
-		cp.sqlc.LogMetrics(MetricsCatAll, cmd)
-		cp.sqlc.LogMetrics(MetricsCatOther, cmd)
+		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "prepare", m{"query": query}
 	result, err := cp.Conn.PrepareContext(ctx, query)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result, err
 }
 
@@ -235,13 +239,13 @@ func (cp *ConnProxy) ExecContext(ctx context.Context, query string, args ...inte
 	cmd := cp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		cp.sqlc.LogMetrics(MetricsCatAll, cmd)
+		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			cp.sqlc.LogMetrics(MetricsCatDML, cmd)
+			cp.sqlc.LogMetrics(prom.MetricsCatDML, cmd)
 		} else if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			cp.sqlc.LogMetrics(MetricsCatDDL, cmd)
+			cp.sqlc.LogMetrics(prom.MetricsCatDDL, cmd)
 		} else {
-			cp.sqlc.LogMetrics(MetricsCatOther, cmd)
+			cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -251,7 +255,7 @@ func (cp *ConnProxy) ExecContext(ctx context.Context, query string, args ...inte
 		rowsAffected, _ := result.RowsAffected()
 		cmd.CmdResponse = m{"lastInsertId": lastInsertId, "rowsAffected": rowsAffected}
 	}
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result, err
 }
 
@@ -260,16 +264,16 @@ func (cp *ConnProxy) QueryContext(ctx context.Context, query string, args ...int
 	cmd := cp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		cp.sqlc.LogMetrics(MetricsCatAll, cmd)
+		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			cp.sqlc.LogMetrics(MetricsCatDQL, cmd)
+			cp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			cp.sqlc.LogMetrics(MetricsCatOther, cmd)
+			cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
 	result, err := cp.Conn.QueryContext(ctx, query, args...)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result, err
 }
 
@@ -278,16 +282,16 @@ func (cp *ConnProxy) QueryRowContext(ctx context.Context, query string, args ...
 	cmd := cp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		cp.sqlc.LogMetrics(MetricsCatAll, cmd)
+		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			cp.sqlc.LogMetrics(MetricsCatDQL, cmd)
+			cp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			cp.sqlc.LogMetrics(MetricsCatOther, cmd)
+			cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
 	result := cp.Conn.QueryRowContext(ctx, query, args...)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, result.Err())
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, result.Err())
 	return result
 }
 
@@ -307,12 +311,12 @@ type TxProxy struct {
 func (tp *TxProxy) Commit() error {
 	cmd := tp.sqlc.NewCmdExecInfo()
 	defer func() {
-		tp.sqlc.LogMetrics(MetricsCatAll, cmd)
-		tp.sqlc.LogMetrics(MetricsCatOther, cmd)
+		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "commit"
 	err := tp.Tx.Commit()
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -320,12 +324,12 @@ func (tp *TxProxy) Commit() error {
 func (tp *TxProxy) Rollback() error {
 	cmd := tp.sqlc.NewCmdExecInfo()
 	defer func() {
-		tp.sqlc.LogMetrics(MetricsCatAll, cmd)
-		tp.sqlc.LogMetrics(MetricsCatOther, cmd)
+		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "rollback"
 	err := tp.Tx.Rollback()
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -338,12 +342,12 @@ func (tp *TxProxy) Prepare(query string) (*sql.Stmt, error) {
 func (tp *TxProxy) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
 	cmd := tp.sqlc.NewCmdExecInfo()
 	defer func() {
-		tp.sqlc.LogMetrics(MetricsCatAll, cmd)
-		tp.sqlc.LogMetrics(MetricsCatOther, cmd)
+		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "prepare", m{"query": query}
 	result, err := tp.Tx.PrepareContext(ctx, query)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result, err
 }
 
@@ -357,13 +361,13 @@ func (tp *TxProxy) ExecContext(ctx context.Context, query string, args ...interf
 	cmd := tp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		tp.sqlc.LogMetrics(MetricsCatAll, cmd)
+		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			tp.sqlc.LogMetrics(MetricsCatDML, cmd)
+			tp.sqlc.LogMetrics(prom.MetricsCatDML, cmd)
 		} else if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			tp.sqlc.LogMetrics(MetricsCatDDL, cmd)
+			tp.sqlc.LogMetrics(prom.MetricsCatDDL, cmd)
 		} else {
-			tp.sqlc.LogMetrics(MetricsCatOther, cmd)
+			tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -373,7 +377,7 @@ func (tp *TxProxy) ExecContext(ctx context.Context, query string, args ...interf
 		rowsAffected, _ := result.RowsAffected()
 		cmd.CmdResponse = m{"lastInsertId": lastInsertId, "rowsAffected": rowsAffected}
 	}
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result, err
 }
 
@@ -387,16 +391,16 @@ func (tp *TxProxy) QueryContext(ctx context.Context, query string, args ...inter
 	cmd := tp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		tp.sqlc.LogMetrics(MetricsCatAll, cmd)
+		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			tp.sqlc.LogMetrics(MetricsCatDQL, cmd)
+			tp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			tp.sqlc.LogMetrics(MetricsCatOther, cmd)
+			tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
 	result, err := tp.Tx.QueryContext(ctx, query, args...)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result, err
 }
 
@@ -410,15 +414,15 @@ func (tp *TxProxy) QueryRowContext(ctx context.Context, query string, args ...in
 	cmd := tp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		tp.sqlc.LogMetrics(MetricsCatAll, cmd)
+		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			tp.sqlc.LogMetrics(MetricsCatDQL, cmd)
+			tp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			tp.sqlc.LogMetrics(MetricsCatOther, cmd)
+			tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
 	result := tp.Tx.QueryRowContext(ctx, query, args...)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, result.Err())
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, result.Err())
 	return result
 }

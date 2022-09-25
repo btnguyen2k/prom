@@ -9,19 +9,20 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
-
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/sql"
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
-var timezoneSqlite = "Asia/Kabul"
+var timezonePgsql = "Asia/Kabul"
 
 // construct an 'prom.SqlConnect' instance
-func createSqlConnectSqlite() *prom.SqlConnect {
-	driver := "sqlite3"
-	dsn := "./temp/temp.db"
-	os.Remove(dsn)
-	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorSqlite)
+func createSqlConnectPgsql() *sql.SqlConnect {
+	driver := "pgx"
+	dsn := "postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
+	if os.Getenv("PGSQL_URL") != "" {
+		dsn = strings.ReplaceAll(os.Getenv("PGSQL_URL"), `"`, "")
+	}
+	sqlConnect, err := sql.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, sql.FlavorPgSql)
 	if sqlConnect == nil || err != nil {
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -30,22 +31,22 @@ func createSqlConnectSqlite() *prom.SqlConnect {
 			panic("error creating [prom.SqlConnect] instance")
 		}
 	}
-	loc, _ := time.LoadLocation(timezoneSqlite)
+	loc, _ := time.LoadLocation(timezonePgsql)
 	sqlConnect.SetLocation(loc)
 	return sqlConnect
 }
 
-var colsSqlite = []string{"id", "username", "email",
+var colsPgsql = []string{"id", "username", "email",
 	"data_bool", "data_int", "data_float",
 	"data_time", "data_timez",
 	"data_date", "data_datez",
 	"data_datetime", "data_datetimez",
 	"data_timestamp", "data_timestampz"}
 
-func printRowSqlite(row map[string]interface{}) {
+func printRowPgsql(row map[string]interface{}) {
 	id := row["id"]
 	fmt.Printf("\t\tRow [%v]\n", id)
-	for _, n := range colsSqlite {
+	for _, n := range colsPgsql {
 		v := row[n]
 		fmt.Println("\t\t\t", n, "[", reflect.TypeOf(v), "] = ", v)
 	}
@@ -54,9 +55,9 @@ func printRowSqlite(row map[string]interface{}) {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	SEP := "======================================================================"
-	sqlConnect := createSqlConnectSqlite()
+	sqlConnect := createSqlConnectPgsql()
 	defer sqlConnect.Close()
-	loc, _ := time.LoadLocation(timezoneSqlite)
+	loc, _ := time.LoadLocation(timezonePgsql)
 	fmt.Println("Timezone:", loc)
 
 	{
@@ -88,15 +89,15 @@ func main() {
 			fmt.Println("\tDropped table [tbl_demo]")
 
 			types := []string{"INT", "VARCHAR(64)", "VARCHAR(128)",
-				"CHAR(1)", "INT", "DOUBLE",
-				"TIME", "TIME",
+				"CHAR(1)", "INT", "DOUBLE PRECISION",
+				"TIME", "TIME WITH TIME ZONE",
 				"DATE", "DATE",
-				"DATETIME", "DATETIME",
-				"TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"}
+				"TIMESTAMP", "TIMESTAMP WITH TIME ZONE",
+				"TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
 
 			sql := "CREATE TABLE tbl_demo ("
-			for i := range colsSqlite {
-				sql += colsSqlite[i] + " " + types[i] + ","
+			for i := range colsPgsql {
+				sql += colsPgsql[i] + " " + types[i] + ","
 			}
 			sql += "PRIMARY KEY(id))"
 			fmt.Println("\tQuery:" + sql)
@@ -117,10 +118,13 @@ func main() {
 
 		// insert some rows
 		sql := "INSERT INTO tbl_demo ("
-		sql += strings.Join(colsSqlite, ",")
+		sql += strings.Join(colsPgsql, ",")
 		sql += ") VALUES ("
-		sql += strings.Repeat("?,", len(colsSqlite)-1)
-		sql += "?)"
+		for k := range colsPgsql {
+			sql += "$" + strconv.Itoa(k+1) + ","
+		}
+		sql = sql[0 : len(sql)-1]
+		sql += ")"
 
 		n := 100
 		fmt.Printf("\tInserting %d rows to table [tbl_demo]\n", n)
@@ -154,14 +158,14 @@ func main() {
 		fmt.Println("-== Query Single Row from Table ==-")
 
 		// query single row
-		sql := "SELECT * FROM tbl_demo WHERE id=?"
+		sql := "SELECT * FROM tbl_demo WHERE id=$1"
 
 		id := rand.Intn(100) + 1
 		fmt.Printf("\tFetching row id %d from table [tbl_demo]\n", id)
 		dbRow := sqlConnect.GetDB().QueryRow(sql, id)
-		data, err := sqlConnect.FetchRow(dbRow, len(colsSqlite))
+		data, err := sqlConnect.FetchRow(dbRow, len(colsPgsql))
 		if err != nil {
-			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
+			fmt.Printf("\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
 			fmt.Println("\t\tRow not found")
 		} else {
@@ -178,7 +182,7 @@ func main() {
 		id = 999
 		fmt.Printf("\tFetching row id %d from table [tbl_demo]\n", id)
 		dbRow = sqlConnect.GetDB().QueryRow(sql, id)
-		data, err = sqlConnect.FetchRow(dbRow, len(colsSqlite))
+		data, err = sqlConnect.FetchRow(dbRow, len(colsPgsql))
 		if err != nil {
 			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else if data == nil {
@@ -201,21 +205,21 @@ func main() {
 		fmt.Println("-== Query Multiple Rows from Table ==-")
 
 		// query multiple rows
-		sql := "SELECT * FROM tbl_demo WHERE id>=? LIMIT 4"
+		sql := "SELECT * FROM tbl_demo WHERE id>=$1 LIMIT 4"
 
 		id := rand.Intn(100) + 1
 		fmt.Printf("\tFetching rows starting at %d from table [tbl_demo]\n", id)
 		dbRows1, err := sqlConnect.GetDB().Query(sql, id)
 		defer dbRows1.Close()
 		if err != nil {
-			fmt.Printf("\tE\trror while executing query: %s\n", err)
+			fmt.Printf("\t\tError fetching row %d from table [tbl_demo]: %s\n", id, err)
 		} else {
 			rows, err := sqlConnect.FetchRows(dbRows1)
 			if err != nil {
 				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowSqlite(r)
+					printRowPgsql(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -234,7 +238,7 @@ func main() {
 				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowSqlite(r)
+					printRowPgsql(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -248,12 +252,12 @@ func main() {
 		fmt.Println("-== Query Multiple Rows from Table (using callback) ==-")
 
 		// query multiple rows with callback function
-		sql := "SELECT * FROM tbl_demo WHERE id>=? LIMIT 4"
+		sql := "SELECT * FROM tbl_demo WHERE id>=$1 LIMIT 4"
 		callback := func(row map[string]interface{}, err error) bool {
 			if err != nil {
 				fmt.Printf("\t\tError while fetching rows from table [tbl_demo]: %s\n", err)
 			} else {
-				printRowSqlite(row)
+				printRowPgsql(row)
 			}
 			return true
 		}

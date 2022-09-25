@@ -1,4 +1,4 @@
-package prom
+package sql
 
 import (
 	"fmt"
@@ -11,12 +11,28 @@ import (
 	"time"
 
 	_ "github.com/btnguyen2k/gocosmos"
+	"github.com/btnguyen2k/prom"
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/godror/godror"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+type _testFailedWithMsgFunc func(msg string)
+
+type _testSetupOrTeardownFunc func(t *testing.T, testName string)
+
+func setupTest(t *testing.T, testName string, extraSetupFunc, extraTeardownFunc _testSetupOrTeardownFunc) func(t *testing.T) {
+	if extraSetupFunc != nil {
+		extraSetupFunc(t, testName)
+	}
+	return func(t *testing.T) {
+		if extraTeardownFunc != nil {
+			extraTeardownFunc(t, testName)
+		}
+	}
+}
 
 func newSqlConnectSqlite(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
 	os.Remove(url)
@@ -181,7 +197,7 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 					t.Fatalf("%s failed: expect mysqlParseTime to be %v", testName+"/"+k, value)
 				}
 			}
-			metricsLogger := NewMemoryStoreMetricsLogger(1234)
+			metricsLogger := prom.NewMemoryStoreMetricsLogger(1234)
 			if sqlc.MetricsLogger() == metricsLogger {
 				t.Fatalf("%s failed: expect a different metricsLogger", testName+"/"+k)
 			}
@@ -399,7 +415,7 @@ var (
 	dbtypeList []string
 )
 
-var _setupTestSqlConnect TestSetupOrTeardownFunc = func(t *testing.T, testName string) {
+var _setupTestSqlConnect _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
 	sqlcList = make([]*SqlConnect, 0)
 	sqlc2List = make([]*SqlConnect, 0)
 	dbtypeList = make([]string, 0)
@@ -445,7 +461,7 @@ var _setupTestSqlConnect TestSetupOrTeardownFunc = func(t *testing.T, testName s
 	}
 }
 
-var _teardownTestSqlConnect TestSetupOrTeardownFunc = func(t *testing.T, testName string) {
+var _teardownTestSqlConnect _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
 	for _, sqlc := range sqlcList {
 		if sqlc != nil {
 			go sqlc.Close()

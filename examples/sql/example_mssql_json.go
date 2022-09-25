@@ -10,19 +10,18 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/sql"
+	_ "github.com/denisenkom/go-mssqldb"
 )
 
 // construct an 'prom.SqlConnect' instance
-func createSqlConnectMysqlJson() *prom.SqlConnect {
-	driver := "mysql"
-	dsn := "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&loc=Asia%2FHo_Chi_Minh&parseTime=true"
-	if os.Getenv("MYSQL_URL") != "" {
-		dsn = strings.ReplaceAll(os.Getenv("MYSQL_URL"), `"`, "")
+func createSqlConnectMssqlJson() *sql.SqlConnect {
+	driver := "sqlserver"
+	dsn := "sqlserver://sa:Password1@localhost:1433?database=tempdb"
+	if os.Getenv("MSSQL_URL") != "" {
+		dsn = strings.ReplaceAll(os.Getenv("MSSQL_URL"), `"`, "")
 	}
-	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorMySql)
+	sqlConnect, err := sql.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, sql.FlavorMsSql)
 	if sqlConnect == nil || err != nil {
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -34,12 +33,12 @@ func createSqlConnectMysqlJson() *prom.SqlConnect {
 	return sqlConnect
 }
 
-var colsMysqlJson = []string{"id", "data_map", "data_list"}
+var colsMssqlJson = []string{"id", "data_map", "data_list"}
 
-func printRowMysqlJson(row map[string]interface{}) {
+func printRowMssqlJson(row map[string]interface{}) {
 	id := row["id"]
 	fmt.Printf("\t\tRow [%v]\n", id)
-	for _, n := range colsMysqlJson {
+	for _, n := range colsMssqlJson {
 		v := row[n]
 		if reflect.TypeOf(v).String() == "[]uint8" {
 			fmt.Println("\t\t\t", n, "[", reflect.TypeOf(v), "] = ", string(v.([]byte)))
@@ -52,7 +51,7 @@ func printRowMysqlJson(row map[string]interface{}) {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	SEP := "======================================================================"
-	sqlConnect := createSqlConnectMysqlJson()
+	sqlConnect := createSqlConnectMssqlJson()
 	defer sqlConnect.Close()
 
 	{
@@ -83,20 +82,20 @@ func main() {
 		} else {
 			fmt.Println("\tDropped table [tbl_demojson]")
 
-			types := []string{"INT", "JSON", "JSON"}
+			types := []string{"INT", "NTEXT", "NTEXT"}
 
 			sql := "CREATE TABLE tbl_demojson ("
-			for i := range colsMysqlJson {
-				sql += colsMysqlJson[i] + " " + types[i] + ","
+			for i := range colsMssqlJson {
+				sql += colsMssqlJson[i] + " " + types[i] + ","
 			}
 			sql += "PRIMARY KEY(id))"
-			fmt.Println("\tQuery:", sql)
+			fmt.Println("\tQuery:" + sql)
 
 			_, err := sqlConnect.GetDB().Exec(sql)
 			if err != nil {
 				fmt.Printf("\tError while executing query: %s\n", err)
 			} else {
-				fmt.Println("\tCreated table [tbl_demojson]")
+				fmt.Println("\tCreated table [colsMssqlJson]")
 			}
 		}
 
@@ -109,10 +108,13 @@ func main() {
 
 		// insert some rows
 		sql := "INSERT INTO tbl_demojson ("
-		sql += strings.Join(colsMysqlJson, ",")
+		sql += strings.Join(colsMssqlJson, ",")
 		sql += ") VALUES ("
-		sql += strings.Repeat("?,", len(colsMysqlJson)-1)
-		sql += "?)"
+		for k := range colsMssqlJson {
+			sql += "@p" + strconv.Itoa(k+1) + ","
+		}
+		sql = sql[0 : len(sql)-1]
+		sql += ")"
 
 		n := 100
 		fmt.Printf("\tInserting %d rows to table [tbl_demojson]\n", n)
@@ -135,7 +137,7 @@ func main() {
 			if err != nil {
 				fmt.Println("\t\tError:", err)
 			}
-			_, err = sqlConnect.GetDB().Exec(sql, id, val1, val2)
+			_, err = sqlConnect.GetDB().Exec(sql, id, string(val1), string(val2))
 			if err != nil {
 				fmt.Println("\t\tError:", err)
 			}
@@ -148,12 +150,12 @@ func main() {
 		fmt.Println("-== Query Single Row from Table ==-")
 
 		// query single row
-		sql := "SELECT * FROM tbl_demojson WHERE id=?"
+		sql := "SELECT * FROM tbl_demojson WHERE id=@p1"
 
 		id := rand.Intn(100) + 1
 		fmt.Printf("\tFetching row id %d from table [tbl_demojson]\n", id)
 		dbRow := sqlConnect.GetDB().QueryRow(sql, id)
-		data, err := sqlConnect.FetchRow(dbRow, len(colsMysqlJson))
+		data, err := sqlConnect.FetchRow(dbRow, len(colsMssqlJson))
 		if err != nil {
 			fmt.Printf("\tError fetching row %d from table [tbl_demojson]: %s\n", id, err)
 		} else if data == nil {
@@ -172,7 +174,7 @@ func main() {
 		id = 999
 		fmt.Printf("\tFetching row id %d from table [tbl_demojson]\n", id)
 		dbRow = sqlConnect.GetDB().QueryRow(sql, id)
-		data, err = sqlConnect.FetchRow(dbRow, len(colsMysqlJson))
+		data, err = sqlConnect.FetchRow(dbRow, len(colsMssqlJson))
 		if err != nil {
 			fmt.Printf("\tError fetching row %d from table [tbl_demojson]: %s\n", id, err)
 		} else if data == nil {
@@ -194,8 +196,9 @@ func main() {
 	{
 		fmt.Println("-== Query Multiple Rows from Table ==-")
 
-		// query multiple rows
-		sql := "SELECT * FROM tbl_demojson WHERE id>=? LIMIT 4"
+		// query multiple rows: https://docs.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql?view=sql-server-2017
+		// (SQL Server 2012+ only)
+		sql := "SELECT * FROM tbl_demojson WHERE id>=@p1 ORDER BY id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY"
 
 		id := rand.Intn(100) + 1
 		fmt.Printf("\tFetching rows starting at %d from table [tbl_demojson]\n", id)
@@ -209,7 +212,7 @@ func main() {
 				fmt.Printf("\t\tError while fetching rows from table [tbl_demojson]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowMysqlJson(r)
+					printRowMssqlJson(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -228,7 +231,7 @@ func main() {
 				fmt.Printf("\t\tError while fetching rows from table [tbl_demojson]: %s\n", err)
 			} else if len(rows) > 0 {
 				for _, r := range rows {
-					printRowMysqlJson(r)
+					printRowMssqlJson(r)
 				}
 			} else {
 				fmt.Println("\t\tNo row matches query")
@@ -242,12 +245,12 @@ func main() {
 		fmt.Println("-== Query Multiple Rows from Table (using callback) ==-")
 
 		// query multiple rows with callback function
-		sql := "SELECT * FROM tbl_demojson WHERE id>=? LIMIT 4"
+		sql := "SELECT * FROM tbl_demojson WHERE id>=@p1 ORDER BY id OFFSET 0 ROWS FETCH NEXT 4 ROWS ONLY"
 		callback := func(row map[string]interface{}, err error) bool {
 			if err != nil {
 				fmt.Printf("\t\tError while fetching rows from table [tbl_demojson]: %s\n", err)
 			} else {
-				printRowMysqlJson(row)
+				printRowMssqlJson(row)
 			}
 			return true
 		}

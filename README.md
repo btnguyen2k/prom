@@ -13,7 +13,7 @@ Utility library to manage shared connections in Go.
 - ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md).
 - ['Prom' for the official Go driver for MongoDB](mongo.md).
 - ['Prom' for go-redis](goredis/go-redis.md).
-- ['Prom' for database/sql](sql.md).
+- ['Prom' for database/sql](sql/sql.md).
 
 ## Supported 3rd party libraries/drivers
 

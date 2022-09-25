@@ -10,18 +10,17 @@ import (
 	"time"
 
 	_ "github.com/btnguyen2k/gocosmos"
-
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/sql"
 )
 
 // construct an 'prom.SqlConnect' instance
-func createSqlConnectCosmosJson() *prom.SqlConnect {
+func createSqlConnectCosmosJson() *sql.SqlConnect {
 	driver := "gocosmos"
 	dsn := "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;Db=prom"
 	if os.Getenv("COSMOSDB_URL") != "" {
 		dsn = strings.ReplaceAll(os.Getenv("COSMOSDB_URL"), `"`, "")
 	}
-	sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom.FlavorCosmosDb)
+	sqlConnect, err := sql.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, sql.FlavorCosmosDb)
 	if sqlConnect == nil || err != nil {
 		if err != nil {
 			fmt.Println("Error:", err)

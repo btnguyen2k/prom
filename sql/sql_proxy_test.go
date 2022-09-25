@@ -1,15 +1,17 @@
-package prom
+package sql
 
 import (
 	"context"
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/btnguyen2k/prom"
 )
 
-func _sqlcVerifyLastCommand(f TestFailedWithMsgFunc, testName string, sqlc *SqlConnect, cmdName string, cmdCats ...string) {
+func _sqlcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, sqlc *SqlConnect, cmdName string, cmdCats ...string) {
 	for _, cat := range cmdCats {
-		m, err := sqlc.Metrics(cat, MetricsOpts{ReturnLatestCommands: 1})
+		m, err := sqlc.Metrics(cat, prom.MetricsOpts{ReturnLatestCommands: 1})
 		if err != nil {
 			f(fmt.Sprintf("%s failed: error [%e]", testName+"/Metrics("+cat+")", err))
 		}
@@ -21,10 +23,10 @@ func _sqlcVerifyLastCommand(f TestFailedWithMsgFunc, testName string, sqlc *SqlC
 		}
 		cmd := m.LastNCmds[0]
 		cmd.CmdRequest, cmd.CmdResponse, cmd.CmdMeta = nil, nil, nil
-		if cmd.CmdName != cmdName || cmd.Result != CmdResultOk || cmd.Error != nil || cmd.Cost < 0 {
+		if cmd.CmdName != cmdName || cmd.Result != prom.CmdResultOk || cmd.Error != nil || cmd.Cost < 0 {
 			f(fmt.Sprintf("%s failed: invalid last command metrics.\nExpected: [Name=%v / Result=%v / Error = %e / Cost %v]\nReceived: [Name=%v / Result=%v / Error = %s / Cost %v]",
 				testName+"/Metrics("+cat+")",
-				cmdName, CmdResultOk, error(nil), ">= 0",
+				cmdName, prom.CmdResultOk, error(nil), ">= 0",
 				cmd.CmdName, cmd.Result, cmd.Error, cmd.Cost))
 		}
 	}
@@ -45,7 +47,7 @@ func TestDBProxy_Ping(t *testing.T) {
 			if err := sqlc.GetDBProxy().Ping(); err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 			}
-			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "ping", MetricsCatAll, MetricsCatOther)
+			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "ping", prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
@@ -63,7 +65,7 @@ func TestDBProxy_PingContext(t *testing.T) {
 			if err := sqlc.GetDBProxy().PingContext(context.TODO()); err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 			}
-			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "ping", MetricsCatAll, MetricsCatOther)
+			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "ping", prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
@@ -81,7 +83,7 @@ func TestDBProxy_Close(t *testing.T) {
 			if err := sqlc.GetDBProxy().Close(); err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 			}
-			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "close", MetricsCatAll, MetricsCatOther)
+			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "close", prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
@@ -102,7 +104,7 @@ func TestDBProxy_Prepare(t *testing.T) {
 			if _, err := sqlc.GetDBProxy().Prepare("SELECT * FROM " + testSqlTableName); err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 			}
-			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "prepare", MetricsCatAll, MetricsCatOther)
+			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "prepare", prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
@@ -123,7 +125,7 @@ func TestDBProxy_PrepareContext(t *testing.T) {
 			if _, err := sqlc.GetDBProxy().PrepareContext(context.TODO(), "SELECT * FROM "+testSqlTableName); err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 			}
-			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "prepare", MetricsCatAll, MetricsCatOther)
+			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "prepare", prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
@@ -141,10 +143,10 @@ func TestDBProxy_Exec(t *testing.T) {
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatOther},
-		{cmd: "INSERT", query: `insert into ${table} (${colId}) VALUES (${valId})`, params: []interface{}{}, metricCat: MetricsCatDML},
-		{cmd: "UPDATE", query: `update ${table} set ${setClause} where ${whereClauseId}`, params: []interface{}{}, metricCat: MetricsCatDML},
-		{cmd: "DELETE", query: `delete from ${table} where ${whereClauseId}`, params: []interface{}{}, metricCat: MetricsCatDML},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatOther},
+		{cmd: "INSERT", query: `insert into ${table} (${colId}) VALUES (${valId})`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
+		{cmd: "UPDATE", query: `update ${table} set ${setClause} where ${whereClauseId}`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
+		{cmd: "DELETE", query: `delete from ${table} where ${whereClauseId}`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
 	}
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
@@ -171,7 +173,7 @@ func TestDBProxy_Exec(t *testing.T) {
 				if _, err := sqlc.GetDBProxy().Exec(ti.query, ti.params...); err != nil {
 					t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 				}
-				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 			}
 		})
 	}
@@ -190,10 +192,10 @@ func TestDBProxy_ExecContext(t *testing.T) {
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatOther},
-		{cmd: "INSERT", query: `insert into ${table} (${colId}) VALUES (${valId})`, params: []interface{}{}, metricCat: MetricsCatDML},
-		{cmd: "UPDATE", query: `update ${table} set ${setClause} where ${whereClauseId}`, params: []interface{}{}, metricCat: MetricsCatDML},
-		{cmd: "DELETE", query: `delete from ${table} where ${whereClauseId}`, params: []interface{}{}, metricCat: MetricsCatDML},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatOther},
+		{cmd: "INSERT", query: `insert into ${table} (${colId}) VALUES (${valId})`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
+		{cmd: "UPDATE", query: `update ${table} set ${setClause} where ${whereClauseId}`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
+		{cmd: "DELETE", query: `delete from ${table} where ${whereClauseId}`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
 	}
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
@@ -220,7 +222,7 @@ func TestDBProxy_ExecContext(t *testing.T) {
 				if _, err := sqlc.GetDBProxy().ExecContext(context.TODO(), ti.query, ti.params...); err != nil {
 					t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 				}
-				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 			}
 		})
 	}
@@ -239,7 +241,7 @@ func TestDBProxy_Query(t *testing.T) {
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatDQL},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatDQL},
 	}
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
@@ -258,7 +260,7 @@ func TestDBProxy_Query(t *testing.T) {
 				if _, err := sqlc.GetDBProxy().Query(ti.query, ti.params...); err != nil {
 					t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 				}
-				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 			}
 		})
 	}
@@ -277,7 +279,7 @@ func TestDBProxy_QueryContext(t *testing.T) {
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatDQL},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatDQL},
 	}
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
@@ -296,7 +298,7 @@ func TestDBProxy_QueryContext(t *testing.T) {
 				if _, err := sqlc.GetDBProxy().QueryContext(context.TODO(), ti.query, ti.params...); err != nil {
 					t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 				}
-				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 			}
 		})
 	}
@@ -315,7 +317,7 @@ func TestDBProxy_QueryRow(t *testing.T) {
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatDQL},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatDQL},
 	}
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
@@ -334,7 +336,7 @@ func TestDBProxy_QueryRow(t *testing.T) {
 				if row := sqlc.GetDBProxy().QueryRow(ti.query, ti.params...); row.Err() != nil {
 					t.Fatalf("%s failed: %s", testName+"/"+dbtype, row.Err())
 				}
-				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 			}
 		})
 	}
@@ -353,7 +355,7 @@ func TestDBProxy_QueryRowContext(t *testing.T) {
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatDQL},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatDQL},
 	}
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
@@ -372,7 +374,7 @@ func TestDBProxy_QueryRowContext(t *testing.T) {
 				if row := sqlc.GetDBProxy().QueryRowContext(context.TODO(), ti.query, ti.params...); row.Err() != nil {
 					t.Fatalf("%s failed: %s", testName+"/"+dbtype, row.Err())
 				}
-				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 			}
 		})
 	}
@@ -397,7 +399,7 @@ func TestConnProxy_PingContext(t *testing.T) {
 			if err = conn.PingContext(context.TODO()); err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 			}
-			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "ping", MetricsCatAll, MetricsCatOther)
+			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "ping", prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
@@ -419,7 +421,7 @@ func TestConnProxy_Close(t *testing.T) {
 			if err = conn.Close(); err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 			}
-			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "close", MetricsCatAll, MetricsCatOther)
+			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "close", prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
@@ -444,7 +446,7 @@ func TestConnProxy_PrepareContext(t *testing.T) {
 			if _, err = conn.PrepareContext(context.TODO(), "SELECT * FROM "+testSqlTableName); err != nil {
 				t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 			}
-			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "prepare", MetricsCatAll, MetricsCatOther)
+			_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, "prepare", prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
@@ -462,10 +464,10 @@ func TestConnProxy_ExecContext(t *testing.T) {
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatOther},
-		{cmd: "INSERT", query: `insert into ${table} (${colId}) VALUES (${valId})`, params: []interface{}{}, metricCat: MetricsCatDML},
-		{cmd: "UPDATE", query: `update ${table} set ${setClause} where ${whereClauseId}`, params: []interface{}{}, metricCat: MetricsCatDML},
-		{cmd: "DELETE", query: `delete from ${table} where ${whereClauseId}`, params: []interface{}{}, metricCat: MetricsCatDML},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatOther},
+		{cmd: "INSERT", query: `insert into ${table} (${colId}) VALUES (${valId})`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
+		{cmd: "UPDATE", query: `update ${table} set ${setClause} where ${whereClauseId}`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
+		{cmd: "DELETE", query: `delete from ${table} where ${whereClauseId}`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
 	}
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
@@ -496,7 +498,7 @@ func TestConnProxy_ExecContext(t *testing.T) {
 				if _, err = conn.ExecContext(context.TODO(), ti.query, ti.params...); err != nil {
 					t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 				}
-				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 			}
 		})
 	}
@@ -515,7 +517,7 @@ func TestConnProxy_QueryContext(t *testing.T) {
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatDQL},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatDQL},
 	}
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
@@ -538,7 +540,7 @@ func TestConnProxy_QueryContext(t *testing.T) {
 				if _, err = conn.QueryContext(context.TODO(), ti.query, ti.params...); err != nil {
 					t.Fatalf("%s failed: %s", testName+"/"+dbtype, err)
 				}
-				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 			}
 		})
 	}
@@ -557,7 +559,7 @@ func TestConnProxy_QueryRowContext(t *testing.T) {
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatDQL},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatDQL},
 	}
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
@@ -580,7 +582,7 @@ func TestConnProxy_QueryRowContext(t *testing.T) {
 				if row := conn.QueryRowContext(context.TODO(), ti.query, ti.params...); row.Err() != nil {
 					t.Fatalf("%s failed: %s", testName+"/"+dbtype, row.Err())
 				}
-				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+				_sqlcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 			}
 		})
 	}
@@ -588,14 +590,14 @@ func TestConnProxy_QueryRowContext(t *testing.T) {
 
 /*---------- TxProxy ----------*/
 
-func _testTxProxy_Commit(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_Commit(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
 	if err := tx.Commit(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	}
-	_sqlcVerifyLastCommand(f, testName, sqlc, "commit", MetricsCatAll, MetricsCatOther)
+	_sqlcVerifyLastCommand(f, testName, sqlc, "commit", prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
-func _testTxProxy_DBBegin_Commit(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_Commit(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -603,7 +605,7 @@ func _testTxProxy_DBBegin_Commit(testName, dbtype string, sqlc *SqlConnect, db *
 	}
 }
 
-func _testTxProxy_DBBeginTx_Commit(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_Commit(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -611,7 +613,7 @@ func _testTxProxy_DBBeginTx_Commit(testName, dbtype string, sqlc *SqlConnect, db
 	}
 }
 
-func _testTxProxy_ConnBeginTx_Commit(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_Commit(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -669,14 +671,14 @@ func TestTxProxy_Conn_Commit(t *testing.T) {
 	}
 }
 
-func _testTxProxy_Rollback(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_Rollback(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
 	if err := tx.Rollback(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	}
-	_sqlcVerifyLastCommand(f, testName, sqlc, "rollback", MetricsCatAll, MetricsCatOther)
+	_sqlcVerifyLastCommand(f, testName, sqlc, "rollback", prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
-func _testTxProxy_DBBegin_Rollback(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_Rollback(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -684,7 +686,7 @@ func _testTxProxy_DBBegin_Rollback(testName, dbtype string, sqlc *SqlConnect, db
 	}
 }
 
-func _testTxProxy_DBBeginTx_Rollback(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_Rollback(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -692,7 +694,7 @@ func _testTxProxy_DBBeginTx_Rollback(testName, dbtype string, sqlc *SqlConnect, 
 	}
 }
 
-func _testTxProxy_ConnBeginTx_Rollback(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_Rollback(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -750,17 +752,17 @@ func TestTxProxy_Conn_Rollback(t *testing.T) {
 	}
 }
 
-func _testTxProxy_Prepare(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_Prepare(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
 	if err := sqlInitTable(sqlc, testSqlTableName, false); err != nil {
 		f(fmt.Sprintf("%s failed: error [%s]", testName+"/sqlInitTable/"+dbtype, err))
 	}
 	if _, err := tx.Prepare("SELECT * FROM " + testSqlTableName); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	}
-	_sqlcVerifyLastCommand(f, testName, sqlc, "prepare", MetricsCatAll, MetricsCatOther)
+	_sqlcVerifyLastCommand(f, testName, sqlc, "prepare", prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
-func _testTxProxy_DBBegin_Prepare(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_Prepare(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -769,7 +771,7 @@ func _testTxProxy_DBBegin_Prepare(testName, dbtype string, sqlc *SqlConnect, db 
 	}
 }
 
-func _testTxProxy_DBBeginTx_Prepare(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_Prepare(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -778,7 +780,7 @@ func _testTxProxy_DBBeginTx_Prepare(testName, dbtype string, sqlc *SqlConnect, d
 	}
 }
 
-func _testTxProxy_ConnBeginTx_Prepare(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_Prepare(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -837,17 +839,17 @@ func TestTxProxy_Conn_Prepare(t *testing.T) {
 	}
 }
 
-func _testTxProxy_PrepareContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_PrepareContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
 	if err := sqlInitTable(sqlc, testSqlTableName, false); err != nil {
 		f(fmt.Sprintf("%s failed: error [%s]", testName+"/sqlInitTable/"+dbtype, err))
 	}
 	if _, err := tx.PrepareContext(context.TODO(), "SELECT * FROM "+testSqlTableName); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	}
-	_sqlcVerifyLastCommand(f, testName, sqlc, "prepare", MetricsCatAll, MetricsCatOther)
+	_sqlcVerifyLastCommand(f, testName, sqlc, "prepare", prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
-func _testTxProxy_DBBegin_PrepareContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_PrepareContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -856,7 +858,7 @@ func _testTxProxy_DBBegin_PrepareContext(testName, dbtype string, sqlc *SqlConne
 	}
 }
 
-func _testTxProxy_DBBeginTx_PrepareContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_PrepareContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -865,7 +867,7 @@ func _testTxProxy_DBBeginTx_PrepareContext(testName, dbtype string, sqlc *SqlCon
 	}
 }
 
-func _testTxProxy_ConnBeginTx_PrepareContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_PrepareContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -924,17 +926,17 @@ func TestTxProxy_Conn_PrepareContext(t *testing.T) {
 	}
 }
 
-func _testTxProxy_Exec(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_Exec(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatOther},
-		{cmd: "INSERT", query: `insert into ${table} (${colId}) VALUES (${valId})`, params: []interface{}{}, metricCat: MetricsCatDML},
-		{cmd: "UPDATE", query: `update ${table} set ${setClause} where ${whereClauseId}`, params: []interface{}{}, metricCat: MetricsCatDML},
-		{cmd: "DELETE", query: `delete from ${table} where ${whereClauseId}`, params: []interface{}{}, metricCat: MetricsCatDML},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatOther},
+		{cmd: "INSERT", query: `insert into ${table} (${colId}) VALUES (${valId})`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
+		{cmd: "UPDATE", query: `update ${table} set ${setClause} where ${whereClauseId}`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
+		{cmd: "DELETE", query: `delete from ${table} where ${whereClauseId}`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
 	}
 	if err := sqlInitTable(sqlc, testSqlTableName, false); err != nil {
 		f(fmt.Sprintf("%s failed: error [%s]", testName+"/sqlInitTable/"+dbtype, err))
@@ -958,11 +960,11 @@ func _testTxProxy_Exec(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f
 		if _, err := tx.Exec(ti.query, ti.params...); err != nil {
 			f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 		}
-		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 	}
 }
 
-func _testTxProxy_DBBegin_Exec(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_Exec(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -971,7 +973,7 @@ func _testTxProxy_DBBegin_Exec(testName, dbtype string, sqlc *SqlConnect, db *DB
 	}
 }
 
-func _testTxProxy_DBBeginTx_Exec(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_Exec(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -980,7 +982,7 @@ func _testTxProxy_DBBeginTx_Exec(testName, dbtype string, sqlc *SqlConnect, db *
 	}
 }
 
-func _testTxProxy_ConnBeginTx_Exec(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_Exec(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1039,17 +1041,17 @@ func TestTxProxy_Conn_Exec(t *testing.T) {
 	}
 }
 
-func _testTxProxy_ExecContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ExecContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatOther},
-		{cmd: "INSERT", query: `insert into ${table} (${colId}) VALUES (${valId})`, params: []interface{}{}, metricCat: MetricsCatDML},
-		{cmd: "UPDATE", query: `update ${table} set ${setClause} where ${whereClauseId}`, params: []interface{}{}, metricCat: MetricsCatDML},
-		{cmd: "DELETE", query: `delete from ${table} where ${whereClauseId}`, params: []interface{}{}, metricCat: MetricsCatDML},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatOther},
+		{cmd: "INSERT", query: `insert into ${table} (${colId}) VALUES (${valId})`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
+		{cmd: "UPDATE", query: `update ${table} set ${setClause} where ${whereClauseId}`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
+		{cmd: "DELETE", query: `delete from ${table} where ${whereClauseId}`, params: []interface{}{}, metricCat: prom.MetricsCatDML},
 	}
 	if err := sqlInitTable(sqlc, testSqlTableName, false); err != nil {
 		f(fmt.Sprintf("%s failed: error [%s]", testName+"/sqlInitTable/"+dbtype, err))
@@ -1073,11 +1075,11 @@ func _testTxProxy_ExecContext(testName, dbtype string, sqlc *SqlConnect, tx *TxP
 		if _, err := tx.ExecContext(context.TODO(), ti.query, ti.params...); err != nil {
 			f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 		}
-		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 	}
 }
 
-func _testTxProxy_DBBegin_ExecContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_ExecContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1086,7 +1088,7 @@ func _testTxProxy_DBBegin_ExecContext(testName, dbtype string, sqlc *SqlConnect,
 	}
 }
 
-func _testTxProxy_DBBeginTx_ExecContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_ExecContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1095,7 +1097,7 @@ func _testTxProxy_DBBeginTx_ExecContext(testName, dbtype string, sqlc *SqlConnec
 	}
 }
 
-func _testTxProxy_ConnBeginTx_ExecContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_ExecContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1154,14 +1156,14 @@ func TestTxProxy_Conn_ExecContext(t *testing.T) {
 	}
 }
 
-func _testTxProxy_Query(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_Query(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatDQL},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatDQL},
 	}
 	if err := sqlInitTable(sqlc, testSqlTableName, false); err != nil {
 		f(fmt.Sprintf("%s failed: error [%s]", testName+"/sqlInitTable/"+dbtype, err))
@@ -1177,11 +1179,11 @@ func _testTxProxy_Query(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, 
 		if _, err := tx.Query(ti.query, ti.params...); err != nil {
 			f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 		}
-		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 	}
 }
 
-func _testTxProxy_DBBegin_Query(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_Query(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1190,7 +1192,7 @@ func _testTxProxy_DBBegin_Query(testName, dbtype string, sqlc *SqlConnect, db *D
 	}
 }
 
-func _testTxProxy_DBBeginTx_Query(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_Query(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1199,7 +1201,7 @@ func _testTxProxy_DBBeginTx_Query(testName, dbtype string, sqlc *SqlConnect, db 
 	}
 }
 
-func _testTxProxy_ConnBeginTx_Query(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_Query(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1258,14 +1260,14 @@ func TestTxProxy_Conn_Query(t *testing.T) {
 	}
 }
 
-func _testTxProxy_QueryContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_QueryContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatDQL},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatDQL},
 	}
 	if err := sqlInitTable(sqlc, testSqlTableName, false); err != nil {
 		f(fmt.Sprintf("%s failed: error [%s]", testName+"/sqlInitTable/"+dbtype, err))
@@ -1281,11 +1283,11 @@ func _testTxProxy_QueryContext(testName, dbtype string, sqlc *SqlConnect, tx *Tx
 		if _, err := tx.QueryContext(context.TODO(), ti.query, ti.params...); err != nil {
 			f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 		}
-		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 	}
 }
 
-func _testTxProxy_DBBegin_QueryContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_QueryContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1294,7 +1296,7 @@ func _testTxProxy_DBBegin_QueryContext(testName, dbtype string, sqlc *SqlConnect
 	}
 }
 
-func _testTxProxy_DBBeginTx_QueryContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_QueryContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1303,7 +1305,7 @@ func _testTxProxy_DBBeginTx_QueryContext(testName, dbtype string, sqlc *SqlConne
 	}
 }
 
-func _testTxProxy_ConnBeginTx_QueryContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_QueryContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1362,14 +1364,14 @@ func TestTxProxy_Conn_QueryContext(t *testing.T) {
 	}
 }
 
-func _testTxProxy_QueryRow(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_QueryRow(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatDQL},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatDQL},
 	}
 	if err := sqlInitTable(sqlc, testSqlTableName, false); err != nil {
 		f(fmt.Sprintf("%s failed: error [%s]", testName+"/sqlInitTable/"+dbtype, err))
@@ -1385,11 +1387,11 @@ func _testTxProxy_QueryRow(testName, dbtype string, sqlc *SqlConnect, tx *TxProx
 		if row := tx.QueryRow(ti.query, ti.params...); row.Err() != nil {
 			f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, row.Err()))
 		}
-		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 	}
 }
 
-func _testTxProxy_DBBegin_QueryRow(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_QueryRow(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1398,7 +1400,7 @@ func _testTxProxy_DBBegin_QueryRow(testName, dbtype string, sqlc *SqlConnect, db
 	}
 }
 
-func _testTxProxy_DBBeginTx_QueryRow(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_QueryRow(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1407,7 +1409,7 @@ func _testTxProxy_DBBeginTx_QueryRow(testName, dbtype string, sqlc *SqlConnect, 
 	}
 }
 
-func _testTxProxy_ConnBeginTx_QueryRow(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_QueryRow(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1466,14 +1468,14 @@ func TestTxProxy_Conn_QueryRow(t *testing.T) {
 	}
 }
 
-func _testTxProxy_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
 		metricCat  string
 	}
 	testInfoList := []testInfo{
-		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: MetricsCatDQL},
+		{cmd: "SELECT", query: `select * from ${table}`, params: []interface{}{}, metricCat: prom.MetricsCatDQL},
 	}
 	if err := sqlInitTable(sqlc, testSqlTableName, false); err != nil {
 		f(fmt.Sprintf("%s failed: error [%s]", testName+"/sqlInitTable/"+dbtype, err))
@@ -1489,11 +1491,11 @@ func _testTxProxy_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, tx 
 		if row := tx.QueryRowContext(context.TODO(), ti.query, ti.params...); row.Err() != nil {
 			f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, row.Err()))
 		}
-		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, MetricsCatAll, ti.metricCat)
+		_sqlcVerifyLastCommand(f, testName, sqlc, ti.cmd, prom.MetricsCatAll, ti.metricCat)
 	}
 }
 
-func _testTxProxy_DBBegin_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1502,7 +1504,7 @@ func _testTxProxy_DBBegin_QueryRowContext(testName, dbtype string, sqlc *SqlConn
 	}
 }
 
-func _testTxProxy_DBBeginTx_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1511,7 +1513,7 @@ func _testTxProxy_DBBeginTx_QueryRowContext(testName, dbtype string, sqlc *SqlCo
 	}
 }
 
-func _testTxProxy_ConnBeginTx_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f TestFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {

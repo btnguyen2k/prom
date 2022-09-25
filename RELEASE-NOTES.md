@@ -36,20 +36,20 @@ Support simple logging and metrics:
 
 ## 2021-08-30 - v0.2.12
 
-- ['Prom' for database/sql](sql.md): bug fixes & enhancements with date/time types.
+- ['Prom' for database/sql](sql/sql.md): bug fixes & enhancements with date/time types.
 
 ## 2021-03-10 - v0.2.11
 
-- ['Prom' for database/sql](sql.md): bug fixes, enhancements and unit test rewritten.
+- ['Prom' for database/sql](sql/sql.md): bug fixes, enhancements and unit test rewritten.
 
 ## 2021-02-19 - v0.2.10
 
-- ['Prom' for database/sql](sql.md):
+- ['Prom' for database/sql](sql/sql.md):
   - Quick fix for Oracle's `NUMBER` data type.
 
 ## 2020-12-26 - v0.2.9
 
-- ['Prom' for database/sql](sql.md):
+- ['Prom' for database/sql](sql/sql.md):
   - Add `FlavorCosmosDb` && [Azure Cosmos DB](https://docs.microsoft.com/en-us/azure/cosmos-db/) support.
 - More unit tests.
 - Update dependencies.
@@ -65,7 +65,7 @@ Support simple logging and metrics:
   - New getter/setter & `MongoConnect.Init` functions.
   - `MongoConnect.NewContext` now returns single `context.Context` result.
   - New functions `MongoConnect.NewContextIfNil` and `MongoConnect.NewContextWithCancel`.
-- ['Prom' for database/sql](sql.md):
+- ['Prom' for database/sql](sql/sql.md):
   - New getter/setter & `SqlConnect.Init` functions
   - New db flavor for SQLite
   - `SqlConnect.NewContext` now returns single `context.Context` result
@@ -80,7 +80,7 @@ Support simple logging and metrics:
   - `AwsDynamodbConnect.PutItemIfNotExist` returns `(nil, nil)` if the item being put already existed.
 - ['Prom' for the official Go driver for MongoDB](mongo.md):
   - Clean up deprecated functions.
-- ['Prom' for database/sql](sql.md):
+- ['Prom' for database/sql](sql/sql.md):
   - Clean up deprecated functions.
   - Migrate Oracle driver to `github.com/godror/godror` due to naming (trademark) issues.
   - Migrate PostgreSQL driver to `github.com/jackc/pgx/v4/stdlib`.
@@ -155,13 +155,13 @@ Support simple logging and metrics:
 
 ## 2019-04-03 - v0.1.2
 
-- ['Prom' for database/sql](sql.md):
+- ['Prom' for database/sql](sql/sql.md):
   - Add timezone location attribute to `SqlConnect` struct.
   - Correctly parse date/time data from db using timezone location attribute.
 
 ## 2019-04-01 - v0.1.1
 
-- ['Prom' for database/sql](sql.md): solve the case when Mysql's `TIME` is loaded as `[]byte`.
+- ['Prom' for database/sql](sql/sql.md): solve the case when Mysql's `TIME` is loaded as `[]byte`.
 
 ## 2019-03-27 - v0.1.0
 
@@ -175,7 +175,7 @@ Support simple logging and metrics:
 
 ## 2019-03-19 - v0.0.4
 
-- New ['Prom' for database/sql](sql.md):
+- New ['Prom' for database/sql](sql/sql.md):
   - Go's database/sql package: https://pkg.go.dev/database/sql
   - Type: `SqlConnect`.
   - Usage examples: [MySQL](examples/example_mysql.go), [PostgreSQL](examples/example_pgsql.go)

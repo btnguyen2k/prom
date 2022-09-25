@@ -1,4 +1,4 @@
-package prom
+package sql
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/btnguyen2k/prom"
 )
 
 // DbFlavor specifies the flavor or database server/vendor.
@@ -49,15 +51,15 @@ var defaultSqlPoolOptions = &SqlPoolOptions{ConnMaxLifetime: 1 * time.Hour, MaxI
 
 // SqlConnect holds a database/sql DB instance (https://golang.org/pkg/database/sql/#DB) that can be shared within the application.
 type SqlConnect struct {
-	driver, dsn    string          // driver and data source name (DSN)
-	poolOptions    *SqlPoolOptions // connection pool options
-	timeoutMs      int             // default timeout for db operations, in milliseconds
-	flavor         DbFlavor        // database flavor
-	db             *sql.DB         // database instance
-	dbProxy        *DBProxy        // (since v0.3.0) wrapper around the real sql.DB instance
-	loc            *time.Location  // timezone location to parse date/time data, new since v0.1.2
-	mysqlParseTime bool            // set to 'true' if specifying parseTime=true in MySQL connection string, new since v0.2.12
-	metricsLogger  IMetricsLogger  // (since v0.3.0) if non-nil, SqlConnect automatically logs executing commands.
+	driver, dsn    string              // driver and data source name (DSN)
+	poolOptions    *SqlPoolOptions     // connection pool options
+	timeoutMs      int                 // default timeout for db operations, in milliseconds
+	flavor         DbFlavor            // database flavor
+	db             *sql.DB             // database instance
+	dbProxy        *DBProxy            // (since v0.3.0) wrapper around the real sql.DB instance
+	loc            *time.Location      // timezone location to parse date/time data, new since v0.1.2
+	mysqlParseTime bool                // set to 'true' if specifying parseTime=true in MySQL connection string, new since v0.2.12
+	metricsLogger  prom.IMetricsLogger // (since v0.3.0) if non-nil, SqlConnect automatically logs executing commands.
 }
 
 // NewSqlConnect constructs a new SqlConnect instance.
@@ -97,7 +99,7 @@ func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOptio
 		timeoutMs:     defaultTimeoutMs,
 		flavor:        flavor,
 		loc:           time.UTC,
-		metricsLogger: NewMemoryStoreMetricsLogger(1028),
+		metricsLogger: prom.NewMemoryStoreMetricsLogger(1028),
 	}
 	return sc, sc.Init()
 }
@@ -125,7 +127,7 @@ func (sc *SqlConnect) Init() error {
 		}
 	}
 	if sc.metricsLogger == nil {
-		sc.RegisterMetricsLogger(NewMemoryStoreMetricsLogger(1028))
+		sc.RegisterMetricsLogger(prom.NewMemoryStoreMetricsLogger(1028))
 	}
 	sc.db = db
 	sc.dbProxy = &DBProxy{DB: db, sqlc: sc}
@@ -136,7 +138,7 @@ func (sc *SqlConnect) Init() error {
 // If non-nil, SqlConnect automatically logs executing commands.
 //
 // Available since v0.3.0
-func (sc *SqlConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *SqlConnect {
+func (sc *SqlConnect) RegisterMetricsLogger(metricsLogger prom.IMetricsLogger) *SqlConnect {
 	sc.metricsLogger = metricsLogger
 	return sc
 }
@@ -144,7 +146,7 @@ func (sc *SqlConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *SqlCo
 // MetricsLogger returns the associated IMetricsLogger instance.
 //
 // Available since v0.3.0
-func (sc *SqlConnect) MetricsLogger() IMetricsLogger {
+func (sc *SqlConnect) MetricsLogger() prom.IMetricsLogger {
 	return sc.metricsLogger
 }
 
@@ -153,9 +155,9 @@ func (sc *SqlConnect) MetricsLogger() IMetricsLogger {
 // The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
 //
 // Available since v0.3.0
-func (sc *SqlConnect) NewCmdExecInfo() *CmdExecInfo {
-	return &CmdExecInfo{
-		Id:        NewId(),
+func (sc *SqlConnect) NewCmdExecInfo() *prom.CmdExecInfo {
+	return &prom.CmdExecInfo{
+		Id:        prom.NewId(),
 		BeginTime: time.Now(),
 		Cost:      -1,
 	}
@@ -166,7 +168,7 @@ func (sc *SqlConnect) NewCmdExecInfo() *CmdExecInfo {
 // This function is silently no-op of the input if nil or there is no associated metrics logger.
 //
 // Available since v0.3.0
-func (sc *SqlConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
+func (sc *SqlConnect) LogMetrics(category string, cmd *prom.CmdExecInfo) error {
 	if cmd != nil && sc.metricsLogger != nil {
 		return sc.metricsLogger.Put(category, cmd)
 	}
@@ -178,7 +180,7 @@ func (sc *SqlConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
 // This function is silently no-op of there is no associated metrics logger.
 //
 // Available since v0.3.0
-func (sc *SqlConnect) Metrics(category string, opts ...MetricsOpts) (*Metrics, error) {
+func (sc *SqlConnect) Metrics(category string, opts ...prom.MetricsOpts) (*prom.Metrics, error) {
 	if sc.metricsLogger != nil {
 		return sc.metricsLogger.Metrics(category, opts...)
 	}
