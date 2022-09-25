@@ -1,4 +1,4 @@
-package prom
+package mongo
 
 import (
 	"context"
@@ -13,10 +13,13 @@ import (
 
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/consu/semita"
+	"github.com/btnguyen2k/prom"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+type _testFailedWithMsgFunc func(msg string)
 
 func TestNewMongoConnect(t *testing.T) {
 	testName := "TestNewMongoConnect"
@@ -149,17 +152,17 @@ func TestMongoConnect_Metrics(t *testing.T) {
 		t.Fatalf("%s failed: nil", testName)
 	}
 
-	ml := NewMemoryStoreMetricsLogger(1028)
+	ml := prom.NewMemoryStoreMetricsLogger(1028)
 	mc.RegisterMetricsLogger(ml)
 	if mc.MetricsLogger() != ml {
 		t.Fatalf("%s failed", testName)
 	}
 
 	cmd := mc.NewCmdExecInfo()
-	if err := mc.LogMetrics(MetricsCatAll, cmd); err != nil {
+	if err := mc.LogMetrics(prom.MetricsCatAll, cmd); err != nil {
 		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
-	m, err := mc.Metrics(MetricsCatAll, MetricsOpts{ReturnLatestCommands: 1})
+	m, err := mc.Metrics(prom.MetricsCatAll, prom.MetricsOpts{ReturnLatestCommands: 1})
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
@@ -371,9 +374,9 @@ func _createMongoConnect(t *testing.T, testName string) *MongoConnect {
 	return mc
 }
 
-func _mcVerifyLastCommand(f TestFailedWithMsgFunc, testName string, mc *MongoConnect, cmdName string, cmdCats ...string) {
+func _mcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, mc *MongoConnect, cmdName string, cmdCats ...string) {
 	for _, cat := range cmdCats {
-		m, err := mc.Metrics(cat, MetricsOpts{ReturnLatestCommands: 1})
+		m, err := mc.Metrics(cat, prom.MetricsOpts{ReturnLatestCommands: 1})
 		if err != nil {
 			f(fmt.Sprintf("%s failed: error [%e]", testName+"/Metrics("+cat+")", err))
 		}
@@ -385,10 +388,10 @@ func _mcVerifyLastCommand(f TestFailedWithMsgFunc, testName string, mc *MongoCon
 		}
 		cmd := m.LastNCmds[0]
 		cmd.CmdRequest, cmd.CmdResponse, cmd.CmdMeta = nil, nil, nil
-		if cmd.CmdName != cmdName || cmd.Result != CmdResultOk || cmd.Error != nil || cmd.Cost < 0 {
+		if cmd.CmdName != cmdName || cmd.Result != prom.CmdResultOk || cmd.Error != nil || cmd.Cost < 0 {
 			f(fmt.Sprintf("%s failed: invalid last command metrics.\nExpected: [Name=%v / Result=%v / Error = %e / Cost = %v]\nReceived: [Name=%v / Result=%v / Error = %s / Cost = %v]",
 				testName+"/Metrics("+cat+")",
-				cmdName, CmdResultOk, error(nil), ">= 0",
+				cmdName, prom.CmdResultOk, error(nil), ">= 0",
 				cmd.CmdName, cmd.Result, cmd.Error, cmd.Cost))
 		}
 	}
@@ -402,7 +405,7 @@ func TestMongoConnect_Ping(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "ping", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "ping", prom.MetricsCatAll)
 }
 
 func TestMongoConnect_IsConnected(t *testing.T) {
@@ -412,7 +415,7 @@ func TestMongoConnect_IsConnected(t *testing.T) {
 	if !mc.IsConnected() {
 		t.Fatalf("%s failed: not connected", testName)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "ping", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "ping", prom.MetricsCatAll)
 }
 
 func TestMongoConnect_HasDatabase(t *testing.T) {
@@ -427,7 +430,7 @@ func TestMongoConnect_HasDatabase(t *testing.T) {
 	if !ok {
 		t.Fatalf("%s failed: no database [%s]", testName, mc.db)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listDatabases", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listDatabases", prom.MetricsCatAll)
 
 	ok, err = mc.HasDatabase("should_not_exist")
 	if err != nil {
@@ -436,7 +439,7 @@ func TestMongoConnect_HasDatabase(t *testing.T) {
 	if ok {
 		t.Fatalf("%s failed: database [%s]", testName, "should_not_exist")
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listDatabases", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listDatabases", prom.MetricsCatAll)
 }
 
 func _initMongoCollection(mc *MongoConnect, collectionName string) error {
@@ -466,7 +469,7 @@ func TestMongoConnect_View(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/CreateView", err)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createView", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createView", prom.MetricsCatAll)
 
 	ok, err := mc.HasCollection(viewName)
 	if err != nil {
@@ -475,7 +478,7 @@ func TestMongoConnect_View(t *testing.T) {
 	if !ok {
 		t.Fatalf("%s failed: view not created [%s]", testName+"/HasCollection", viewName)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", prom.MetricsCatAll)
 
 	dataJson := `[
 	{ "sID": 22001, "name": "Alex", "year": 1, "score": 4.0 },
@@ -498,7 +501,7 @@ func TestMongoConnect_View(t *testing.T) {
 	if err := mc.DropCollection(viewName); err != nil {
 		t.Fatalf("%s failed: view not created [%s]", testName+"/DropCollection", viewName)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "dropCollection", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "dropCollection", prom.MetricsCatAll)
 
 	ok, err = mc.HasCollection(viewName)
 	if err != nil {
@@ -507,7 +510,7 @@ func TestMongoConnect_View(t *testing.T) {
 	if ok {
 		t.Fatalf("%s failed: view should no longer exist [%s]", testName+"/HasCollection", viewName)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", prom.MetricsCatAll)
 }
 
 func TestMongoConnect_HasCollection(t *testing.T) {
@@ -519,7 +522,7 @@ func TestMongoConnect_HasCollection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createCollection", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createCollection", prom.MetricsCatAll)
 
 	ok, err := mc.HasCollection(testMongoCollection)
 	if err != nil {
@@ -528,7 +531,7 @@ func TestMongoConnect_HasCollection(t *testing.T) {
 	if !ok {
 		t.Fatalf("%s failed: no collection [%s]", testName, testMongoCollection)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", prom.MetricsCatAll)
 
 	ok, err = mc.HasCollection("should_not_exist")
 	if err != nil {
@@ -537,7 +540,7 @@ func TestMongoConnect_HasCollection(t *testing.T) {
 	if ok {
 		t.Fatalf("%s failed: collection [%s]", testName, "should_not_exist")
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", prom.MetricsCatAll)
 }
 
 func TestMongoConnect_Collection(t *testing.T) {
@@ -554,7 +557,7 @@ func TestMongoConnect_Collection(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/GetCollection", err)
 		}
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", prom.MetricsCatAll)
 
 	ok, err = mc.HasCollection(testMongoCollection)
 	if err != nil {
@@ -563,13 +566,13 @@ func TestMongoConnect_Collection(t *testing.T) {
 	if ok {
 		t.Fatalf("%s failed: collection not deleted [%s]", testName+"/HasCollection", testMongoCollection)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", prom.MetricsCatAll)
 
 	err = mc.CreateCollection(testMongoCollection)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/CreateCollection", err)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createCollection", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createCollection", prom.MetricsCatAll)
 
 	ok, err = mc.HasCollection(testMongoCollection)
 	if err != nil {
@@ -578,7 +581,7 @@ func TestMongoConnect_Collection(t *testing.T) {
 	if !ok {
 		t.Fatalf("%s failed: collection not created [%s]", testName+"/HasCollection", testMongoCollection)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", prom.MetricsCatAll)
 }
 
 func TestMongoConnect_CreateIndexes1(t *testing.T) {
@@ -619,7 +622,7 @@ func TestMongoConnect_CreateIndexes1(t *testing.T) {
 			t.Fatalf("%s failed: error creating indexes: %#v", testName, idxResult)
 		}
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createIndexes", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createIndexes", prom.MetricsCatAll)
 
 	cur, err := mc.GetCollection(testMongoCollection).Indexes().List(nil)
 	if err != nil {
@@ -687,7 +690,7 @@ func TestMongoConnect_CreateIndexes2(t *testing.T) {
 			t.Fatalf("%s failed: error creating indexes: %#v", testName, idxResult)
 		}
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createIndexes", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createIndexes", prom.MetricsCatAll)
 
 	cur, err := mc.GetCollection(testMongoCollection).Indexes().List(nil)
 	if err != nil {
@@ -756,7 +759,7 @@ func TestMongoConnect_CreateIndexes3(t *testing.T) {
 			t.Fatalf("%s failed: error creating indexes: %#v", testName, idxResult)
 		}
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createIndexes", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createIndexes", prom.MetricsCatAll)
 
 	cur, err := mc.GetCollection(testMongoCollection).Indexes().List(nil)
 	if err != nil {
@@ -806,10 +809,10 @@ func TestMongoConnect_DecodeSingleResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/InsertOne", err)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", prom.MetricsCatAll)
 
 	singleResult := collection.FindOne(nil, bson.M{"username": "btnguyen2k"})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", prom.MetricsCatAll)
 	row, err := mc.DecodeSingleResult(singleResult)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/DecodeSingleResult", err)
@@ -819,7 +822,7 @@ func TestMongoConnect_DecodeSingleResult(t *testing.T) {
 	}
 
 	singleResult = collection.FindOne(nil, bson.M{"username": "not-exists"})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", prom.MetricsCatAll)
 	row, err = mc.DecodeSingleResult(singleResult)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/DecodeSingleResult", err)
@@ -850,10 +853,10 @@ func TestMongoConnect_DecodeSingleResultRaw(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/InsertOne", err)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", prom.MetricsCatAll)
 
 	singleResult := collection.FindOne(nil, bson.M{"username": "btnguyen2k"})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", prom.MetricsCatAll)
 	row, err := mc.DecodeSingleResultRaw(singleResult)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/DecodeSingleResultRaw", err)
@@ -863,7 +866,7 @@ func TestMongoConnect_DecodeSingleResultRaw(t *testing.T) {
 	}
 
 	singleResult = collection.FindOne(nil, bson.M{"username": "not-exists"})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", prom.MetricsCatAll)
 	row, err = mc.DecodeSingleResultRaw(singleResult)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/DecodeSingleResultRaw", err)
@@ -896,7 +899,7 @@ func TestMongoConnect_DecodeResultCallback(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/InsertOne", err)
 		}
-		_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", MetricsCatAll)
+		_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", prom.MetricsCatAll)
 	}
 
 	numDocs := 0
@@ -904,7 +907,7 @@ func TestMongoConnect_DecodeResultCallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/Find", err)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", prom.MetricsCatAll)
 	mc.DecodeResultCallback(nil, cursor, func(docNum int, doc bson.M, err error) bool {
 		if err == nil {
 			numDocs++
@@ -940,7 +943,7 @@ func TestMongoConnect_DecodeResultCallbackRaw(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/InsertOne", err)
 		}
-		_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", MetricsCatAll)
+		_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", prom.MetricsCatAll)
 	}
 
 	numDocs := 0
@@ -948,7 +951,7 @@ func TestMongoConnect_DecodeResultCallbackRaw(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/Find", err)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", prom.MetricsCatAll)
 	mc.DecodeResultCallbackRaw(nil, cursor, func(docNum int, doc []byte, err error) bool {
 		if err == nil {
 			numDocs++

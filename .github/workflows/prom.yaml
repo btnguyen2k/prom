@@ -67,7 +67,7 @@ jobs:
       run: |
         export MONGO_DB="test"
         export MONGO_URL="mongodb://test:test@localhost:27017/?authSource=admin"
-        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mongo_singleserver.txt -run "Mongo" .
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mongo_singleserver.txt ./mongo
     - name: Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -90,7 +90,7 @@ jobs:
       run: |
         export MONGO_DB="test"
         export MONGO_URL="mongodb://root:test@localhost:27017/?authSource=admin&replicaSet=replicaset"
-        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mongo_replicaset.txt -run "Mongo" .
+        go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mongo_replicaset.txt ./mongo
     - name: Codecov
       uses: codecov/codecov-action@v3
       with:

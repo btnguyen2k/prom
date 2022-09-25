@@ -1,4 +1,4 @@
-package prom
+package mongo
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/consu/semita"
+	"github.com/btnguyen2k/prom"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -17,13 +18,13 @@ import (
 
 // MongoConnect holds a MongoDB client (https://github.com/mongodb/mongo-go-driver) that can be shared within the application.
 type MongoConnect struct {
-	url           string            // connection url, including authentication credentials
-	db            string            // database name
-	client        *mongo.Client     // instance of MongoDB client
-	clientProxy   *MongoClientProxy // (since v0.3.0) wrapper around the real MongoDB client
-	timeoutMs     int               // default timeout for db operations, in milliseconds
-	poolOpts      *MongoPoolOpts    // MongoDB connection pool options
-	metricsLogger IMetricsLogger    // (since v0.3.0) if non-nil, MongoConnect automatically logs executing commands.
+	url           string              // connection url, including authentication credentials
+	db            string              // database name
+	client        *mongo.Client       // instance of MongoDB client
+	clientProxy   *MongoClientProxy   // (since v0.3.0) wrapper around the real MongoDB client
+	timeoutMs     int                 // default timeout for db operations, in milliseconds
+	poolOpts      *MongoPoolOpts      // MongoDB connection pool options
+	metricsLogger prom.IMetricsLogger // (since v0.3.0) if non-nil, MongoConnect automatically logs executing commands.
 }
 
 // MongoPoolOpts holds options to configure MongoDB connection pool.
@@ -109,7 +110,7 @@ func NewMongoConnectWithPoolOptions(url, db string, defaultTimeoutMs int, poolOp
 		db:            db,
 		timeoutMs:     defaultTimeoutMs,
 		poolOpts:      poolOpts,
-		metricsLogger: NewMemoryStoreMetricsLogger(1028),
+		metricsLogger: prom.NewMemoryStoreMetricsLogger(1028),
 	}
 	return m, m.Init()
 }
@@ -147,7 +148,7 @@ func (m *MongoConnect) Init() error {
 		return err
 	}
 	if m.metricsLogger == nil {
-		m.RegisterMetricsLogger(NewMemoryStoreMetricsLogger(1028))
+		m.RegisterMetricsLogger(prom.NewMemoryStoreMetricsLogger(1028))
 	}
 	m.client = client
 	m.clientProxy = &MongoClientProxy{Client: client, mc: m}
@@ -158,7 +159,7 @@ func (m *MongoConnect) Init() error {
 // If non-nil, MongoConnect automatically logs executing commands.
 //
 // Available since v0.3.0
-func (m *MongoConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *MongoConnect {
+func (m *MongoConnect) RegisterMetricsLogger(metricsLogger prom.IMetricsLogger) *MongoConnect {
 	m.metricsLogger = metricsLogger
 	return m
 }
@@ -166,7 +167,7 @@ func (m *MongoConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *Mong
 // MetricsLogger returns the associated IMetricsLogger instance.
 //
 // Available since v0.3.0
-func (m *MongoConnect) MetricsLogger() IMetricsLogger {
+func (m *MongoConnect) MetricsLogger() prom.IMetricsLogger {
 	return m.metricsLogger
 }
 
@@ -175,9 +176,9 @@ func (m *MongoConnect) MetricsLogger() IMetricsLogger {
 // The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
 //
 // Available since v0.3.0
-func (m *MongoConnect) NewCmdExecInfo() *CmdExecInfo {
-	return &CmdExecInfo{
-		Id:        NewId(),
+func (m *MongoConnect) NewCmdExecInfo() *prom.CmdExecInfo {
+	return &prom.CmdExecInfo{
+		Id:        prom.NewId(),
 		BeginTime: time.Now(),
 		Cost:      -1,
 	}
@@ -188,7 +189,7 @@ func (m *MongoConnect) NewCmdExecInfo() *CmdExecInfo {
 // This function is silently no-op of the input if nil or there is no associated metrics logger.
 //
 // Available since v0.3.0
-func (m *MongoConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
+func (m *MongoConnect) LogMetrics(category string, cmd *prom.CmdExecInfo) error {
 	if cmd != nil && m.metricsLogger != nil {
 		return m.metricsLogger.Put(category, cmd)
 	}
@@ -200,7 +201,7 @@ func (m *MongoConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
 // This function is silently no-op of there is no associated metrics logger.
 //
 // Available since v0.3.0
-func (m *MongoConnect) Metrics(category string, opts ...MetricsOpts) (*Metrics, error) {
+func (m *MongoConnect) Metrics(category string, opts ...prom.MetricsOpts) (*prom.Metrics, error) {
 	if m.metricsLogger != nil {
 		return m.metricsLogger.Metrics(category, opts...)
 	}

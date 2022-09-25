@@ -1,8 +1,9 @@
-package prom
+package mongo
 
 import (
 	"testing"
 
+	"github.com/btnguyen2k/prom"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -19,7 +20,7 @@ func TestMongoClientProxy_Ping(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "ping", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "ping", prom.MetricsCatAll)
 }
 
 func TestMongoClientProxy_ListDatabases(t *testing.T) {
@@ -29,7 +30,7 @@ func TestMongoClientProxy_ListDatabases(t *testing.T) {
 
 	cp := mc.GetMongoClientProxy()
 	cp.ListDatabases(mc.NewContext(), bson.M{})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listDatabases", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listDatabases", prom.MetricsCatAll)
 }
 
 func TestMongoClientProxy_ListDatabaseNames(t *testing.T) {
@@ -39,7 +40,7 @@ func TestMongoClientProxy_ListDatabaseNames(t *testing.T) {
 
 	cp := mc.GetMongoClientProxy()
 	cp.ListDatabaseNames(mc.NewContext(), bson.M{})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listDatabases", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listDatabases", prom.MetricsCatAll)
 }
 
 func TestMongoClientProxy_DatabaseProxy(t *testing.T) {
@@ -66,7 +67,7 @@ func TestMongoDatabaseProxy_Aggregate(t *testing.T) {
 	if result != nil {
 		result.Close(mc.NewContext())
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "aggregate", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "aggregate", prom.MetricsCatAll)
 }
 
 func TestMongoDatabaseProxy_RunCommand(t *testing.T) {
@@ -76,7 +77,7 @@ func TestMongoDatabaseProxy_RunCommand(t *testing.T) {
 
 	dp := mc.GetDatabaseProxy()
 	dp.RunCommand(mc.NewContext(), bson.M{"hello": 1})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "runCommand", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "runCommand", prom.MetricsCatAll)
 }
 
 func TestMongoDatabaseProxy_RunCommandCursor(t *testing.T) {
@@ -93,7 +94,7 @@ func TestMongoDatabaseProxy_RunCommandCursor(t *testing.T) {
 	if result != nil {
 		result.Close(mc.NewContext())
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "runCommand", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "runCommand", prom.MetricsCatAll)
 }
 
 func TestMongoDatabaseProxy_ListCollectionSpecifications(t *testing.T) {
@@ -103,7 +104,7 @@ func TestMongoDatabaseProxy_ListCollectionSpecifications(t *testing.T) {
 
 	dp := mc.GetDatabaseProxy()
 	dp.ListCollectionSpecifications(mc.NewContext(), bson.M{})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", prom.MetricsCatAll)
 }
 
 func TestMongoDatabaseProxy_ListCollections(t *testing.T) {
@@ -113,7 +114,7 @@ func TestMongoDatabaseProxy_ListCollections(t *testing.T) {
 
 	dp := mc.GetDatabaseProxy()
 	dp.ListCollections(mc.NewContext(), bson.M{})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", prom.MetricsCatAll)
 }
 
 func TestMongoDatabaseProxy_ListCollectionNames(t *testing.T) {
@@ -123,7 +124,7 @@ func TestMongoDatabaseProxy_ListCollectionNames(t *testing.T) {
 
 	dp := mc.GetDatabaseProxy()
 	dp.ListCollectionNames(mc.NewContext(), bson.M{})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listCollections", prom.MetricsCatAll)
 }
 
 func TestMongoDatabaseProxy_CreateCollection(t *testing.T) {
@@ -134,7 +135,7 @@ func TestMongoDatabaseProxy_CreateCollection(t *testing.T) {
 	dp := mc.GetDatabaseProxy()
 	dp.Collection(testMongoCollection).Drop(mc.NewContext())
 	dp.CreateCollection(mc.NewContext(), testMongoCollection)
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createCollection", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createCollection", prom.MetricsCatAll)
 }
 
 func TestMongoDatabaseProxy_CreateView(t *testing.T) {
@@ -145,7 +146,7 @@ func TestMongoDatabaseProxy_CreateView(t *testing.T) {
 	dp := mc.GetDatabaseProxy()
 	dp.Collection(testMongoCollection + "_view").Drop(mc.NewContext())
 	dp.CreateView(mc.NewContext(), testMongoCollection+"_view", testMongoCollection, bson.A{bson.M{"$match": bson.M{"year": 1}}})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createView", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createView", prom.MetricsCatAll)
 }
 
 func TestMongoDatabaseProxy_CollectionProxy(t *testing.T) {
@@ -171,7 +172,7 @@ func TestMongoCollectionProxy_BulkWrite(t *testing.T) {
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	documents := []mongo.WriteModel{mongo.NewInsertOneModel().SetDocument(bson.M{"year": 1, "name": "Thanh Nguyen"})}
 	cp.BulkWrite(mc.NewContext(), documents)
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "bulkWrite", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "bulkWrite", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_InsertOne(t *testing.T) {
@@ -183,7 +184,7 @@ func TestMongoCollectionProxy_InsertOne(t *testing.T) {
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	document := bson.M{"year": 1, "name": "Thanh Nguyen"}
 	cp.InsertOne(mc.NewContext(), document)
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_InsertMany(t *testing.T) {
@@ -196,7 +197,7 @@ func TestMongoCollectionProxy_InsertMany(t *testing.T) {
 	document1 := bson.M{"year": 1, "name": "Thanh Nguyen"}
 	document2 := bson.M{"year": 2, "name": "Tom Nguyen"}
 	cp.InsertMany(mc.NewContext(), bson.A{document1, document2})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "insert", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_DeleteOne(t *testing.T) {
@@ -207,7 +208,7 @@ func TestMongoCollectionProxy_DeleteOne(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.DeleteOne(mc.NewContext(), bson.M{})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "delete", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "delete", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_DeleteMany(t *testing.T) {
@@ -218,7 +219,7 @@ func TestMongoCollectionProxy_DeleteMany(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.DeleteMany(mc.NewContext(), bson.M{})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "delete", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "delete", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_UpdateByID(t *testing.T) {
@@ -229,7 +230,7 @@ func TestMongoCollectionProxy_UpdateByID(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.UpdateByID(mc.NewContext(), "1", bson.M{"$set": bson.M{"year": 1}})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "update", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "update", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_UpdateOne(t *testing.T) {
@@ -240,7 +241,7 @@ func TestMongoCollectionProxy_UpdateOne(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.UpdateOne(mc.NewContext(), bson.M{"_id": "1"}, bson.M{"$set": bson.M{"year": 1}})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "update", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "update", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_UpdateMany(t *testing.T) {
@@ -251,7 +252,7 @@ func TestMongoCollectionProxy_UpdateMany(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.UpdateMany(mc.NewContext(), bson.M{"_id": "1"}, bson.M{"$set": bson.M{"year": 1}})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "update", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "update", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_ReplaceOne(t *testing.T) {
@@ -262,7 +263,7 @@ func TestMongoCollectionProxy_ReplaceOne(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.ReplaceOne(mc.NewContext(), bson.M{"_id": "1"}, bson.M{"year": 1})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "update", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "update", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_Aggregate(t *testing.T) {
@@ -273,7 +274,7 @@ func TestMongoCollectionProxy_Aggregate(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.Aggregate(mc.NewContext(), bson.A{bson.M{"$count": "year"}})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "aggregate", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "aggregate", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_CountDocuments(t *testing.T) {
@@ -284,7 +285,7 @@ func TestMongoCollectionProxy_CountDocuments(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.CountDocuments(mc.NewContext(), bson.M{"year": 1})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "aggregate", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "aggregate", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_EstimatedDocumentCount(t *testing.T) {
@@ -295,7 +296,7 @@ func TestMongoCollectionProxy_EstimatedDocumentCount(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.EstimatedDocumentCount(mc.NewContext())
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "count", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "count", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_Distinct(t *testing.T) {
@@ -306,7 +307,7 @@ func TestMongoCollectionProxy_Distinct(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.Distinct(mc.NewContext(), "year", bson.D{})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "distinct", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "distinct", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_Find(t *testing.T) {
@@ -317,7 +318,7 @@ func TestMongoCollectionProxy_Find(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.Find(mc.NewContext(), bson.M{"year": 1})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_FindOne(t *testing.T) {
@@ -328,7 +329,7 @@ func TestMongoCollectionProxy_FindOne(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.FindOne(mc.NewContext(), bson.M{"year": 1})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "find", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_FindOneAndDelete(t *testing.T) {
@@ -339,7 +340,7 @@ func TestMongoCollectionProxy_FindOneAndDelete(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.FindOneAndDelete(mc.NewContext(), bson.M{"year": 1})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "findAndModify", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "findAndModify", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_FindOneAndReplace(t *testing.T) {
@@ -350,7 +351,7 @@ func TestMongoCollectionProxy_FindOneAndReplace(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.FindOneAndReplace(mc.NewContext(), bson.M{"_id": "1"}, bson.M{"name": "Thanh Nguyen", "year": 2})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "findAndModify", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "findAndModify", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_FindOneAndUpdate(t *testing.T) {
@@ -361,7 +362,7 @@ func TestMongoCollectionProxy_FindOneAndUpdate(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	cp := mc.GetCollectionProxy(testMongoCollection)
 	cp.FindOneAndUpdate(mc.NewContext(), bson.M{"_id": "1"}, bson.M{"$set": bson.M{"year": 2}})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "findAndModify", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "findAndModify", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_Drop(t *testing.T) {
@@ -373,10 +374,10 @@ func TestMongoCollectionProxy_Drop(t *testing.T) {
 
 	mc.CreateCollection(testMongoCollection)
 	cp.Drop(mc.NewContext())
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "dropCollection", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "dropCollection", prom.MetricsCatAll)
 
 	cp.Drop(mc.NewContext())
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "dropCollection", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "dropCollection", prom.MetricsCatAll)
 }
 
 func TestMongoCollectionProxy_IndexesProxy(t *testing.T) {
@@ -403,7 +404,7 @@ func TestMongoIndexViewProxy_List(t *testing.T) {
 	if result != nil {
 		result.Close(mc.NewContext())
 	}
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listIndexes", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listIndexes", prom.MetricsCatAll)
 }
 
 func TestMongoIndexViewProxy_ListSpecifications(t *testing.T) {
@@ -413,7 +414,7 @@ func TestMongoIndexViewProxy_ListSpecifications(t *testing.T) {
 
 	ivp := mc.GetCollectionProxy(testMongoCollection).IndexesProxy()
 	ivp.ListSpecifications(mc.NewContext())
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listIndexes", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "listIndexes", prom.MetricsCatAll)
 }
 
 func TestMongoIndexViewProxy_CreateOne(t *testing.T) {
@@ -425,7 +426,7 @@ func TestMongoIndexViewProxy_CreateOne(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	ivp := mc.GetCollectionProxy(testMongoCollection).IndexesProxy()
 	ivp.CreateOne(mc.NewContext(), mongo.IndexModel{Keys: bson.M{"year": 1}})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createIndexes", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createIndexes", prom.MetricsCatAll)
 }
 
 func TestMongoIndexViewProxy_CreateMany(t *testing.T) {
@@ -437,7 +438,7 @@ func TestMongoIndexViewProxy_CreateMany(t *testing.T) {
 	mc.CreateCollection(testMongoCollection)
 	ivp := mc.GetCollectionProxy(testMongoCollection).IndexesProxy()
 	ivp.CreateMany(mc.NewContext(), []mongo.IndexModel{{Keys: bson.M{"year": 1}}, {Keys: bson.M{"grade": 1}}})
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createIndexes", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "createIndexes", prom.MetricsCatAll)
 }
 
 func TestMongoIndexViewProxy_DropOne(t *testing.T) {
@@ -451,7 +452,7 @@ func TestMongoIndexViewProxy_DropOne(t *testing.T) {
 	idxName := "idx_year"
 	ivp.CreateOne(mc.NewContext(), mongo.IndexModel{Keys: bson.M{"year": 1}, Options: &options.IndexOptions{Name: &idxName}})
 	ivp.DropOne(mc.NewContext(), idxName)
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "dropIndexes", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "dropIndexes", prom.MetricsCatAll)
 }
 
 func TestMongoIndexViewProxy_DropAll(t *testing.T) {
@@ -464,5 +465,5 @@ func TestMongoIndexViewProxy_DropAll(t *testing.T) {
 	ivp := mc.GetCollectionProxy(testMongoCollection).IndexesProxy()
 	ivp.CreateMany(mc.NewContext(), []mongo.IndexModel{{Keys: bson.M{"year": 1}}, {Keys: bson.M{"grade": 1}}})
 	ivp.DropAll(mc.NewContext())
-	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "dropIndexes", MetricsCatAll)
+	_mcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, mc, "dropIndexes", prom.MetricsCatAll)
 }
