@@ -1,8 +1,8 @@
 **'Prom' for the official Go driver for MongoDB (https://github.com/mongodb/mongo-go-driver)**
 
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom#MongoConnect)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom/mongo)
 
-> Supported libraries/drivers+version: `go.mongodb.org/mongo-driver v1.9.1`.
+> Supported/Tested libraries/drivers+version: `go.mongodb.org/mongo-driver v1.9.1`.
 
 Usage:
 

@@ -1,14 +1,20 @@
 **'Prom' for go-redis library (https://github.com/go-redis/redis)**
 
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom#GoRedisConnect)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom/goredis)
+
+> Supported/Tested libraries/drivers+version: `github.com/go-redis/redis/v8 v8.11.5`.
 
 Usage:
 
 ```go
+import (
+    "github.com/btnguyen2k/prom/goredis"
+)
+
 hostsAndPorts  := "host1:6379,host2;host3:6380"
 password       := ""
 maxRetries     := 3
-goRedisConnect := prom.NewGoRedisConnect(hostsAndPorts, password, maxRetries)
+goRedisConnect := goredis.NewGoRedisConnect(hostsAndPorts, password, maxRetries)
 
 // Enable read-only commands for slave nodes. Used by cluster clients only!
 goRedisConnect.SetSlaveReadOnly(true)
@@ -31,5 +37,5 @@ clusterClient := goRedisConnect.GetClusterClient()
 ```
 
 See more:
-- [examples](examples/)
+- [examples](../examples/goredis/)
 - [go-redis](https://godoc.org/github.com/go-redis/redis)

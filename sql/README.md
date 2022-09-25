@@ -1,36 +1,29 @@
 **'Prom' for the `database/sql` package (https://pkg.go.dev/database/sql)**
 
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom#SqlConnect)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom/sql)
 
-Prom for `database/sql` has been tested and supports with the following drivers:
-
-- [x] Azure Cosmos DB: [github.com/btnguyen2k/gocosmos](https://github.com/btnguyen2k/gocosmos).
-- [x] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb).
-- [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql).
-- [x] Oracle: [github.com/godror/godror](https://github.com/godror/godror).
-- [x] PostgreSQL:[github.com/jackc/pgx](https://github.com/jackc/pgx).
-- [x] SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3).
+> Supported/Tested libraries/drivers+version:
+> - [x] Azure Cosmos DB: [github.com/btnguyen2k/gocosmos](https://github.com/btnguyen2k/gocosmos) v0.1.6.
+> - [x] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb) v0.12.2.
+> - [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql) v1.6.0.
+> - [x] Oracle: [github.com/godror/godror](https://github.com/godror/godror) v0.33.3.
+> - [x] PostgreSQL:[github.com/jackc/pgx/v4](https://github.com/jackc/pgx) v4.16.1.
+> - [x] SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3) v1.14.14.
 
 Sample usage (MySQL):
 
 ```go
 import (
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/sql"
 	_ "github.com/go-sql-driver/mysql"
-	...
 )
 
 driver := "mysql"
 dsn := "user:passwd@tcp(localhost:3306)/dbname"
 timeoutMs := 10000
-sqlConnect, err := prom.NewSqlConnectWithFlavor(driver, dsn, timeoutMs, nil, prom.FlavorMySql)
+sqlConnect, err := sql.NewSqlConnectWithFlavor(driver, dsn, timeoutMs, nil, sql.FlavorMySql)
 if sqlConnect == nil || err != nil {
-    if err != nil {
-	    fmt.Println("Error:", err)
-	}
-	if sqlConnect == nil {
-		panic("error creating [prom.SqlConnect] instance")
-	}
+	panic("error creating SqlConnect instance")
 }
 
 // from now on, one SqlConnect instance can be shared & used by all goroutines within the application
@@ -63,6 +56,6 @@ for i := 1; i <= n; i++ {
 ```
 
 See more:
-- [examples](examples/)
-- Package [database/sql](https://golang.org/pkg/database/sql/)
+- [examples](../examples/sql/)
+- [database/sql](https://golang.org/pkg/database/sql/)
 - [SQL database drivers](https://github.com/golang/go/wiki/SQLDrivers) for Go
