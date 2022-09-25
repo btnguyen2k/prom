@@ -31,7 +31,9 @@ func getMacAddrAsLong() int64 {
 
 var olaf = olaf2.NewOlaf(getMacAddrAsLong())
 
-// newId generates a new unique id.
-func newId() string {
+// NewId generates a new unique id.
+//
+// prom's internal use only!
+func NewId() string {
 	return strings.ToLower(olaf.Id128Hex())
 }

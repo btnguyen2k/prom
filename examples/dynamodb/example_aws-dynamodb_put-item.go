@@ -1,3 +1,4 @@
+// go run example_aws-dynamodb_base.go example_aws-dynamodb_put-item.go
 package main
 
 import (
@@ -6,12 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/dynamodb"
 )
 
-func awsDynamodbPutItem(adc *prom.AwsDynamodbConnect, table string, pkAttrs []string) {
-	fmt.Println("-== Put Items to Table ==-")
-
+func awsDynamodbPutItem(adc *dynamodb.AwsDynamodbConnect, table string, pkAttrs []string) {
+	fmt.Printf("-== Put items to table [%s]==-\n", table)
 	for i := 0; i < awsDynamodbNumItems; i++ {
 		a := []interface{}{i%2 == 0, 1, "a"}
 		m := map[string]interface{}{"b": i%2 == 0, "n": 2, "s": "m"}
@@ -67,7 +67,7 @@ func awsDynamodbPutItem(adc *prom.AwsDynamodbConnect, table string, pkAttrs []st
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	adc := createAwsDynamodbConnect("ap-southeast-1")
+	adc := createAwsDynamodbConnect()
 	defer adc.Close()
 
 	awsDynamodbPutItem(adc, "test1", []string{"username"})

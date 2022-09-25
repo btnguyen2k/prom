@@ -1,27 +1,26 @@
+// go run example_aws-dynamodb_base.go example_aws-dynamodb_write-tx.go
 package main
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
-
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/dynamodb"
 )
 
-func _txInitData(adc *prom.AwsDynamodbConnect, tableName string, accounts []string, initBalance int) {
+func _txInitData(adc *dynamodb.AwsDynamodbConnect, tableName string, accounts []string, initBalance int) {
 	if ok, err := adc.HasTable(nil, tableName); err != nil {
 		panic(err)
 	} else if !ok {
-		var attrDefs, pkDefs []prom.AwsDynamodbNameAndType
-		attrDefs = []prom.AwsDynamodbNameAndType{
-			{Name: "id", Type: prom.AwsAttrTypeString},
+		var attrDefs, pkDefs []dynamodb.AwsDynamodbNameAndType
+		attrDefs = []dynamodb.AwsDynamodbNameAndType{
+			{Name: "id", Type: dynamodb.AwsAttrTypeString},
 		}
-		pkDefs = []prom.AwsDynamodbNameAndType{
-			{Name: "id", Type: prom.AwsKeyTypePartition},
+		pkDefs = []dynamodb.AwsDynamodbNameAndType{
+			{Name: "id", Type: dynamodb.AwsKeyTypePartition},
 		}
 		if err := adc.CreateTable(nil, tableName, 1, 1, attrDefs, pkDefs); err != nil {
 			panic(err)
@@ -34,7 +33,7 @@ func _txInitData(adc *prom.AwsDynamodbConnect, tableName string, accounts []stri
 	} else {
 		// delete all items
 		pkAttrs := []string{"id"}
-		adc.ScanItemsWithCallback(nil, tableName, nil, prom.AwsDynamodbNoIndex, nil, func(item prom.AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (b bool, e error) {
+		adc.ScanItemsWithCallback(nil, tableName, nil, dynamodb.AwsDynamodbNoIndex, nil, func(item dynamodb.AwsDynamodbItem, lastEvaluatedKey map[string]*awsdynamodb.AttributeValue) (b bool, e error) {
 			keyFilter := make(map[string]interface{})
 			for _, v := range pkAttrs {
 				keyFilter[v] = item[v]
@@ -52,8 +51,8 @@ func _txInitData(adc *prom.AwsDynamodbConnect, tableName string, accounts []stri
 	}
 }
 
-func _txTransferMoney(adc *prom.AwsDynamodbConnect, tableName, from, to string, amount int) {
-	txItems := make([]*dynamodb.TransactWriteItem, 0)
+func _txTransferMoney(adc *dynamodb.AwsDynamodbConnect, tableName, from, to string, amount int) {
+	txItems := make([]*awsdynamodb.TransactWriteItem, 0)
 	conditionFrom := expression.Name("balance").GreaterThanEqual(expression.Value(amount))
 	if txItem, err := adc.BuildTxAddValuesToAttributes(tableName, map[string]interface{}{"id": from}, &conditionFrom, map[string]interface{}{"balance": -amount}); err == nil && txItem != nil {
 		txItems = append(txItems, txItem)
@@ -67,7 +66,7 @@ func _txTransferMoney(adc *prom.AwsDynamodbConnect, tableName, from, to string, 
 		panic(err)
 	}
 	fmt.Printf("Transferring [%d] from [%s] to [%s]...\n", amount, from, to)
-	_, err := adc.ExecTxWriteItems(nil, &dynamodb.TransactWriteItemsInput{
+	_, err := adc.ExecTxWriteItems(nil, &awsdynamodb.TransactWriteItemsInput{
 		ReturnConsumedCapacity: aws.String("INDEXES"),
 		TransactItems:          txItems,
 	})
@@ -77,14 +76,13 @@ func _txTransferMoney(adc *prom.AwsDynamodbConnect, tableName, from, to string, 
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-	adc := createAwsDynamodbConnect("ap-southeast-1")
+	adc := createAwsDynamodbConnect()
 	defer adc.Close()
 
 	tableName := "test_account"
 	_txInitData(adc, tableName, []string{"btnguyen2k", "thanhnb", "nbthanh"}, 1000)
 
-	txItems := make([]*dynamodb.TransactWriteItem, 0)
+	txItems := make([]*awsdynamodb.TransactWriteItem, 0)
 	if txItem, err := adc.BuildTxPutIfNotExist(tableName, map[string]interface{}{"id": "btnguyen2k", "balance": 1234}, []string{"id"}); err == nil && txItem != nil {
 		txItems = append(txItems, txItem)
 	} else {
@@ -100,7 +98,7 @@ func main() {
 	} else {
 		panic(err)
 	}
-	_, err := adc.ExecTxWriteItems(nil, &dynamodb.TransactWriteItemsInput{
+	_, err := adc.ExecTxWriteItems(nil, &awsdynamodb.TransactWriteItemsInput{
 		ReturnConsumedCapacity: aws.String("INDEXES"),
 		TransactItems:          txItems,
 	})

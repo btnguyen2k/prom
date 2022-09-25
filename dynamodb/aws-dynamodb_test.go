@@ -1,4 +1,4 @@
-package prom
+package dynamodb
 
 import (
 	"errors"
@@ -16,8 +16,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"github.com/btnguyen2k/prom"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+type _testFailedWithMsgFunc func(msg string)
+
+/*----------------------------------------------------------------------*/
 
 func TestIsAwsError(t *testing.T) {
 	testName := "TestIsAwsError"
@@ -456,7 +461,7 @@ func TestNewAwsDynamodbConnect_MetricsLogger(t *testing.T) {
 		t.Fatalf("%s failed: nil", testName)
 	}
 
-	ml := &MemoryStoreMetricsLogger{capacity: 1028}
+	ml := prom.NewMemoryStoreMetricsLogger(1028)
 	adc.RegisterMetricsLogger(ml)
 	if adc.MetricsLogger() != ml {
 		t.Fatalf("%s failed.", testName)
@@ -558,7 +563,7 @@ var (
 
 func _adcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, adc *AwsDynamodbConnect, cmdName string, ignoreErrorCodes []string, cmdCats ...string) {
 	for _, cat := range cmdCats {
-		m, err := adc.Metrics(cat, MetricsOpts{ReturnLatestCommands: 1})
+		m, err := adc.Metrics(cat, prom.MetricsOpts{ReturnLatestCommands: 1})
 		if err != nil {
 			f(fmt.Sprintf("%s failed: error [%s]", testName+"/Metrics("+cat+")", err))
 		}
@@ -577,10 +582,10 @@ func _adcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, adc *AwsDy
 				}
 			}
 		}
-		if cmd.CmdName != cmdName || cmd.Result != CmdResultOk || cmd.Error != nil || cmd.Cost < 0 {
+		if cmd.CmdName != cmdName || cmd.Result != prom.CmdResultOk || cmd.Error != nil || cmd.Cost < 0 {
 			f(fmt.Sprintf("%s failed: invalid last command metrics.\nExpected: [Name=%v / Result=%v / Error = %s / Cost = %v]\nReceived: [Name=%v / Result=%v / Error = %s / Cost = %v]",
 				testName+"/Metrics("+cat+")",
-				cmdName, CmdResultOk, error(nil), ">= 0",
+				cmdName, prom.CmdResultOk, error(nil), ">= 0",
 				cmd.CmdName, cmd.Result, cmd.Error, cmd.Cost))
 		}
 	}
@@ -608,7 +613,7 @@ func TestAwsDynamodbConnect_ListTables(t *testing.T) {
 	if tables == nil {
 		t.Fatalf("%s failed: nil", testName)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
@@ -625,7 +630,7 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 	if err = AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException); err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/CreateTable", err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateTable, []string{dynamodb.ErrCodeResourceInUseException}, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateTable, []string{dynamodb.ErrCodeResourceInUseException}, prom.MetricsCatAll, prom.MetricsCatDDL)
 
 	ok, err := adc.HasTable(nil, testDynamodbTableName)
 	if err != nil {
@@ -635,10 +640,10 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 		t.Fatalf("%s failed: table [%s] not found", testName+"/HasTable", testDynamodbTableName)
 	}
 	fmt.Printf("\tCreated table [%s]\n", testDynamodbTableName)
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 
 	AwsDynamodbWaitForTableStatus(adc, testDynamodbTableName, []string{"ACTIVE"}, 5*time.Second, 60*time.Second)
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 
 	if os.Getenv(dynamodbTestGsiName) != "" {
 		testDynamodbGsiName = os.Getenv(dynamodbTestGsiName)
@@ -649,9 +654,9 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/DeleteGlobalSecondaryIndex", err)
 		}
 		fmt.Printf("\tDeleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, []string{dynamodb.ErrCodeResourceNotFoundException}, MetricsCatAll, MetricsCatDDL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, []string{dynamodb.ErrCodeResourceNotFoundException}, prom.MetricsCatAll, prom.MetricsCatDDL)
 		AwsDynamodbWaitForGsiStatus(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 5*time.Second, 60*time.Second)
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, MetricsCatAll, MetricsCatOther)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 	}
 
 	err = adc.CreateGlobalSecondaryIndex(nil, testDynamodbTableName, testDynamodbGsiName, 1, 1,
@@ -661,10 +666,10 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 		t.Fatalf("%s failed: error [%s]", testName+"/CreateGlobalSecondaryIndex", err)
 	}
 	fmt.Printf("\tCreated GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, []string{dynamodb.ErrCodeResourceInUseException}, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, []string{dynamodb.ErrCodeResourceInUseException}, prom.MetricsCatAll, prom.MetricsCatDDL)
 
 	AwsDynamodbWaitForGsiStatus(adc, testDynamodbTableName, testDynamodbGsiName, []string{"ACTIVE", "CREATING"}, 5*time.Second, 60*time.Second)
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 
 	time.Sleep(10 * time.Second)
 
@@ -673,20 +678,20 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 		t.Fatalf("%s failed: error [%s]", testName+"/DeleteGlobalSecondaryIndex", err)
 	}
 	fmt.Printf("\tDeleted GSI [%s] on table [%s]\n", testDynamodbGsiName, testDynamodbTableName)
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, []string{dynamodb.ErrCodeResourceInUseException}, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, []string{dynamodb.ErrCodeResourceInUseException}, prom.MetricsCatAll, prom.MetricsCatDDL)
 
 	AwsDynamodbWaitForGsiStatus(adc, testDynamodbTableName, testDynamodbGsiName, []string{""}, 5*time.Second, 60*time.Second)
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 
 	err = adc.DeleteTable(nil, testDynamodbTableName)
 	if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeResourceInUseException) != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/DeleteTable", err)
 	}
 	fmt.Printf("\tDeleted table [%s]\n", testDynamodbTableName)
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteTable, nil, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteTable, nil, prom.MetricsCatAll, prom.MetricsCatDDL)
 
 	AwsDynamodbWaitForTableStatus(adc, testDynamodbTableName, []string{""}, 5*time.Second, 60*time.Second)
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, []string{dynamodb.ErrCodeResourceNotFoundException}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, []string{dynamodb.ErrCodeResourceNotFoundException}, prom.MetricsCatAll, prom.MetricsCatOther)
 
 	ok, err = adc.HasTable(nil, testDynamodbTableName)
 	if err != nil {
@@ -695,7 +700,7 @@ func TestAwsDynamodbConnect_TableAndIndex(t *testing.T) {
 	if ok {
 		t.Fatalf("%s failed: table [%s] not deleted", testName+"/HasTable", testDynamodbTableName)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestAwsDynamodbConnect_PutItem(t *testing.T) {
@@ -713,12 +718,12 @@ func TestAwsDynamodbConnect_PutItem(t *testing.T) {
 	if _, err := adc.PutItem(nil, testDynamodbTableName, item, nil); err != nil {
 		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 	if _, err := adc.PutItem(nil, testDynamodbTableName, item, AwsDynamodbExistsAllBuilder([]string{"notexists"})); AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeConditionalCheckFailedException) != nil {
 		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestAwsDynamodbConnect_GetPutItem(t *testing.T) {
@@ -767,7 +772,7 @@ func TestAwsDynamodbConnect_GetPutItem(t *testing.T) {
 	} else if fetchedItem != nil {
 		t.Fatalf("%s failed: item should not exist", testName+"/GetItem")
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 
 	for i, data := range testData {
 		// PutItem: must be successful (new item or overriding existing one)
@@ -775,7 +780,7 @@ func TestAwsDynamodbConnect_GetPutItem(t *testing.T) {
 		if AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeConditionalCheckFailedException) != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// GetItem: must match the original one
 		if fetchedItem, err = adc.GetItem(nil, testDynamodbTableName, keyFilter); fetchedItem == nil || err != nil {
@@ -786,7 +791,7 @@ func TestAwsDynamodbConnect_GetPutItem(t *testing.T) {
 				t.Fatalf("%s failed: fetched [%#v] vs original [%#v]", testName+"/GetItem/"+strconv.Itoa(i), m, data.expectedItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -830,7 +835,7 @@ func TestAwsDynamodbConnect_PutItemIfNotExist(t *testing.T) {
 		if _, err = adc.PutItemIfNotExist(nil, testDynamodbTableName, data.item, pkAttrs); err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// GetItem: must match the expected one
 		if fetchedItem, err = adc.GetItem(nil, testDynamodbTableName, data.filter); fetchedItem == nil || err != nil {
@@ -841,7 +846,7 @@ func TestAwsDynamodbConnect_PutItemIfNotExist(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/GetItem/"+strconv.Itoa(i), m, data.expected)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -880,7 +885,7 @@ func TestAwsDynamodbConnect_DeleteItem(t *testing.T) {
 		if _, err = adc.PutItem(nil, testDynamodbTableName, data.item, nil); err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: delete it
 		if _, err = adc.DeleteItem(nil, testDynamodbTableName, data.keyFilter, data.condition); err != nil {
@@ -888,7 +893,7 @@ func TestAwsDynamodbConnect_DeleteItem(t *testing.T) {
 				t.Fatalf("%s failed: error [%s]", testName+"/DeleteItem/"+strconv.Itoa(i), err)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if fetchedItem, err = adc.GetItem(nil, testDynamodbTableName, data.keyFilter); err != nil {
@@ -946,7 +951,7 @@ func TestAwsDynamodbConnect_RemoveAttributes(t *testing.T) {
 		if _, err = adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil); err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: update it
 		if _, err = adc.RemoveAttributes(nil, testDynamodbTableName, keyFilter, data.condition, data.fieldsToRemove); err != nil {
@@ -954,7 +959,7 @@ func TestAwsDynamodbConnect_RemoveAttributes(t *testing.T) {
 				t.Fatalf("%s failed: error [%s]", testName+"/RemoveAttributes/"+strconv.Itoa(i), err)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if fetchedItem, err = adc.GetItem(nil, testDynamodbTableName, keyFilter); fetchedItem == nil || err != nil {
@@ -965,7 +970,7 @@ func TestAwsDynamodbConnect_RemoveAttributes(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/GetItem/"+strconv.Itoa(i), m, data.newItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -1010,7 +1015,7 @@ func TestAwsDynamodbConnect_SetAttributes(t *testing.T) {
 		if _, err = adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil); err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: update it
 		if _, err = adc.SetAttributes(nil, testDynamodbTableName, keyFilter, data.condition, data.newFieldsAndValues); err != nil {
@@ -1018,7 +1023,7 @@ func TestAwsDynamodbConnect_SetAttributes(t *testing.T) {
 				t.Fatalf("%s failed: error [%s]", testName+"/SetAttributes/"+strconv.Itoa(i), err)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if fetchedItem, err = adc.GetItem(nil, testDynamodbTableName, keyFilter); fetchedItem == nil || err != nil {
@@ -1029,7 +1034,7 @@ func TestAwsDynamodbConnect_SetAttributes(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/GetItem/"+strconv.Itoa(i), m, data.newItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -1087,7 +1092,7 @@ func TestAwsDynamodbConnect_AddValuesToAttributes(t *testing.T) {
 		if _, err = adc.PutItem(nil, testDynamodbTableName, data.orgItem, nil); err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: update it
 		if _, err = adc.AddValuesToAttributes(nil, testDynamodbTableName, keyFilter, data.condition, data.attrsAndValuesToAdd); err != nil {
@@ -1095,7 +1100,7 @@ func TestAwsDynamodbConnect_AddValuesToAttributes(t *testing.T) {
 				t.Fatalf("%s failed: error [%s]", testName+"/AddValuesToAttributes/"+strconv.Itoa(i), err)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if fetchedItem, err = adc.GetItem(nil, testDynamodbTableName, keyFilter); fetchedItem == nil || err != nil {
@@ -1106,7 +1111,7 @@ func TestAwsDynamodbConnect_AddValuesToAttributes(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/GetItem/"+strconv.Itoa(i), m, data.newItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -1176,7 +1181,7 @@ func TestAwsDynamodbConnect_AddValuesToSet(t *testing.T) {
 		if _, err = adc.PutItemRaw(nil, testDynamodbTableName, data.orgItem, nil); err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: update it
 		if _, err = adc.AddValuesToSet(nil, testDynamodbTableName, keyFilter, data.condition, data.attrsAndValuesToAdd); err != nil {
@@ -1184,7 +1189,7 @@ func TestAwsDynamodbConnect_AddValuesToSet(t *testing.T) {
 				t.Fatalf("%s failed: error [%s]", testName+"/AddValuesToSet/"+strconv.Itoa(i), err)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if fetchedItem, err = adc.GetItem(nil, testDynamodbTableName, keyFilter); fetchedItem == nil || err != nil {
@@ -1195,7 +1200,7 @@ func TestAwsDynamodbConnect_AddValuesToSet(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/GetItem/"+strconv.Itoa(i), m, data.newItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -1265,7 +1270,7 @@ func TestAwsDynamodbConnect_DeleteValuesFromSet(t *testing.T) {
 		if _, err = adc.PutItemRaw(nil, testDynamodbTableName, data.orgItem, nil); err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: update it
 		if _, err = adc.DeleteValuesFromSet(nil, testDynamodbTableName, keyFilter, data.condition, data.attrsAndValuesToDelete); err != nil {
@@ -1273,7 +1278,7 @@ func TestAwsDynamodbConnect_DeleteValuesFromSet(t *testing.T) {
 				t.Fatalf("%s failed: error [%s]", testName+"/DeleteValuesFromSet/"+strconv.Itoa(i), err)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if fetchedItem, err = adc.GetItem(nil, testDynamodbTableName, keyFilter); fetchedItem == nil || err != nil {
@@ -1284,7 +1289,7 @@ func TestAwsDynamodbConnect_DeleteValuesFromSet(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/GetItem/"+strconv.Itoa(i), m, data.newItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -1308,7 +1313,7 @@ func TestAwsDynamodbConnect_ScanItems(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[id] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1333,7 +1338,7 @@ func TestAwsDynamodbConnect_ScanItems(t *testing.T) {
 			t.Fatalf("%s failed: [%s>%s] or [%s<=%s] is not true", testName+"/ScanItems", username, filter1Str, email, filter2Str)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_ScanItemsOnGSI(t *testing.T) {
@@ -1355,7 +1360,7 @@ func TestAwsDynamodbConnect_ScanItemsOnGSI(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[id] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1380,7 +1385,7 @@ func TestAwsDynamodbConnect_ScanItemsOnGSI(t *testing.T) {
 			t.Fatalf("%s failed: [%s>%s] and [%s<=%s] is not true", testName+"/ScanItems", username, filter1Str, email, filter2Str)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_ScanItemsWithCallback(t *testing.T) {
@@ -1403,7 +1408,7 @@ func TestAwsDynamodbConnect_ScanItemsWithCallback(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[id] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1428,7 +1433,7 @@ func TestAwsDynamodbConnect_ScanItemsWithCallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/ScanItemsWithCallback", err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_ScanItemsOnGSIWithCallback(t *testing.T) {
@@ -1450,7 +1455,7 @@ func TestAwsDynamodbConnect_ScanItemsOnGSIWithCallback(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[id] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1475,7 +1480,7 @@ func TestAwsDynamodbConnect_ScanItemsOnGSIWithCallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/ScanItemsWithCallback", err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_QueryItems(t *testing.T) {
@@ -1499,7 +1504,7 @@ func TestAwsDynamodbConnect_QueryItems(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1531,7 +1536,7 @@ func TestAwsDynamodbConnect_QueryItems(t *testing.T) {
 			t.Fatalf("%s failed: [%s>%s] or [%s<=%s] is not true", testName+"/QueryItems", name, filter1NameStr, name, filter2NameStr)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_QueryItemsOnGSI(t *testing.T) {
@@ -1554,7 +1559,7 @@ func TestAwsDynamodbConnect_QueryItemsOnGSI(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1579,7 +1584,7 @@ func TestAwsDynamodbConnect_QueryItemsOnGSI(t *testing.T) {
 			t.Fatalf("%s failed: [%s==%s] and [%s>%s] is not true", testName+"/QueryItems", username, "btnguyen2k-0", email, filter1EmailStr)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_QueryItemsWithCallback(t *testing.T) {
@@ -1611,7 +1616,7 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1643,7 +1648,7 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/QueryItemsWithCallback", err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_QueryItemsOnGSIWithCallback(t *testing.T) {
@@ -1666,7 +1671,7 @@ func TestAwsDynamodbConnect_QueryItemsOnGSIWithCallback(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1691,7 +1696,7 @@ func TestAwsDynamodbConnect_QueryItemsOnGSIWithCallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/QueryItemsWithCallback", err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_QueryItems_Backward(t *testing.T) {
@@ -1715,7 +1720,7 @@ func TestAwsDynamodbConnect_QueryItems_Backward(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1755,7 +1760,7 @@ func TestAwsDynamodbConnect_QueryItems_Backward(t *testing.T) {
 			}
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_QueryItemsOnGSI_Backward(t *testing.T) {
@@ -1778,7 +1783,7 @@ func TestAwsDynamodbConnect_QueryItemsOnGSI_Backward(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1811,7 +1816,7 @@ func TestAwsDynamodbConnect_QueryItemsOnGSI_Backward(t *testing.T) {
 			}
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_QueryItemsWithCallback_Backward(t *testing.T) {
@@ -1835,7 +1840,7 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback_Backward(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1876,7 +1881,7 @@ func TestAwsDynamodbConnect_QueryItemsWithCallback_Backward(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/QueryItemsWithCallback", err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_QueryItemsOnGSIWithCallback_Backward(t *testing.T) {
@@ -1899,7 +1904,7 @@ func TestAwsDynamodbConnect_QueryItemsOnGSIWithCallback_Backward(t *testing.T) {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem", err)
 		}
 		itemsMap[email] = item
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -1933,7 +1938,7 @@ func TestAwsDynamodbConnect_QueryItemsOnGSIWithCallback_Backward(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName+"/QueryItemsWithCallback", err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestAwsDynamodbConnect_TxPut(t *testing.T) {
@@ -1958,7 +1963,7 @@ func TestAwsDynamodbConnect_TxPut(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s failed: error [%#e]", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestAwsDynamodbConnect_TxGetPut(t *testing.T) {
@@ -2003,7 +2008,7 @@ func TestAwsDynamodbConnect_TxGetPut(t *testing.T) {
 	} else if len(fetchedItems) != 0 {
 		t.Fatalf("%s failed: item should not exist", testName+"/WrapTxGetItems")
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 
 	for i, item := range items {
 		// PutItem: must be successful (new item or overriding existing one)
@@ -2013,7 +2018,7 @@ func TestAwsDynamodbConnect_TxGetPut(t *testing.T) {
 		if _, err = adc.WrapTxWriteItems(nil, "", txPut); err != nil {
 			t.Fatalf("%s failed: [%s]", testName+"/WrapTxWriteItems/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// GetItem: must match the original one
 		if fetchedItems, err = adc.WrapTxGetItems(nil, txGet); len(fetchedItems) == 0 || err != nil {
@@ -2024,7 +2029,7 @@ func TestAwsDynamodbConnect_TxGetPut(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/WrapTxGetItems/"+strconv.Itoa(i), m, item)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -2077,7 +2082,7 @@ func TestAwsDynamodbConnect_TxPutIfNotExist(t *testing.T) {
 				t.Fatalf("%s failed: [%s]", testName+"/WrapTxWriteItems/"+strconv.Itoa(i), err)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, []string{dynamodb.ErrCodeTransactionCanceledException}, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, []string{dynamodb.ErrCodeTransactionCanceledException}, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		expected := data.expected
 		filter := data.filter
@@ -2093,7 +2098,7 @@ func TestAwsDynamodbConnect_TxPutIfNotExist(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/WrapTxGetItems/"+strconv.Itoa(i), m, item)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -2133,7 +2138,7 @@ func TestAwsDynamodbConnect_TxDelete(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: delete it
 		keyFilter := data.keyFilter
@@ -2153,7 +2158,7 @@ func TestAwsDynamodbConnect_TxDelete(t *testing.T) {
 		if !data.shouldDelete {
 			ignoreErrorCodes = []string{dynamodb.ErrCodeTransactionCanceledException}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if txGet, err = adc.BuildTxGet(testDynamodbTableName, keyFilter); txGet == nil || err != nil {
@@ -2177,7 +2182,7 @@ func TestAwsDynamodbConnect_TxDelete(t *testing.T) {
 				}
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -2216,7 +2221,7 @@ func TestAwsDynamodbConnect_TxRemoveAttributes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: update it
 		condition := data.condition
@@ -2235,7 +2240,7 @@ func TestAwsDynamodbConnect_TxRemoveAttributes(t *testing.T) {
 		if !data.shouldUpdate {
 			ignoreErrorCodes = []string{dynamodb.ErrCodeTransactionCanceledException}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if txGet, err = adc.BuildTxGet(testDynamodbTableName, keyFilter); txGet == nil || err != nil {
@@ -2252,7 +2257,7 @@ func TestAwsDynamodbConnect_TxRemoveAttributes(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/WrapTxGetItems/"+strconv.Itoa(i), m, data.newItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -2298,7 +2303,7 @@ func TestAwsDynamodbConnect_TxSetAttributes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: update it
 		condition := data.condition
@@ -2317,7 +2322,7 @@ func TestAwsDynamodbConnect_TxSetAttributes(t *testing.T) {
 		if !data.shouldUpdate {
 			ignoreErrorCodes = []string{dynamodb.ErrCodeTransactionCanceledException}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if txGet, err = adc.BuildTxGet(testDynamodbTableName, keyFilter); txGet == nil || err != nil {
@@ -2334,7 +2339,7 @@ func TestAwsDynamodbConnect_TxSetAttributes(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/WrapTxGetItems/"+strconv.Itoa(i), m, data.newItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -2394,7 +2399,7 @@ func TestAwsDynamodbConnect_TxAddValuesToAttributes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: update it
 		condition := data.condition
@@ -2413,7 +2418,7 @@ func TestAwsDynamodbConnect_TxAddValuesToAttributes(t *testing.T) {
 		if !data.shouldUpdate {
 			ignoreErrorCodes = []string{dynamodb.ErrCodeTransactionCanceledException}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if txGet, err = adc.BuildTxGet(testDynamodbTableName, keyFilter); txGet == nil || err != nil {
@@ -2430,7 +2435,7 @@ func TestAwsDynamodbConnect_TxAddValuesToAttributes(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/WrapTxGetItems/"+strconv.Itoa(i), m, data.newItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -2502,7 +2507,7 @@ func TestAwsDynamodbConnect_TxAddValuesToSet(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s failed: error %s", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: update it
 		condition := data.condition
@@ -2521,7 +2526,7 @@ func TestAwsDynamodbConnect_TxAddValuesToSet(t *testing.T) {
 		if !data.shouldUpdate {
 			ignoreErrorCodes = []string{dynamodb.ErrCodeTransactionCanceledException}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if txGet, err = adc.BuildTxGet(testDynamodbTableName, keyFilter); txGet == nil || err != nil {
@@ -2538,7 +2543,7 @@ func TestAwsDynamodbConnect_TxAddValuesToSet(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/WrapTxGetItems/"+strconv.Itoa(i), m, data.newItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }
 
@@ -2610,7 +2615,7 @@ func TestAwsDynamodbConnect_TxDeleteValuesFromSet(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s failed: error %s", testName+"/PutItem/"+strconv.Itoa(i), err)
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// secondly: update it
 		condition := data.condition
@@ -2629,7 +2634,7 @@ func TestAwsDynamodbConnect_TxDeleteValuesFromSet(t *testing.T) {
 		if !data.shouldUpdate {
 			ignoreErrorCodes = []string{dynamodb.ErrCodeTransactionCanceledException}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, MetricsCatAll, MetricsCatDML)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, ignoreErrorCodes, prom.MetricsCatAll, prom.MetricsCatDML)
 
 		// lastly: fetch it back
 		if txGet, err = adc.BuildTxGet(testDynamodbTableName, keyFilter); txGet == nil || err != nil {
@@ -2646,6 +2651,6 @@ func TestAwsDynamodbConnect_TxDeleteValuesFromSet(t *testing.T) {
 				t.Fatalf("%s failed: fetched\n%#v\nvs original\n%#v", testName+"/WrapTxGetItems/"+strconv.Itoa(i), m, data.newItem)
 			}
 		}
-		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, MetricsCatAll, MetricsCatDQL)
+		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 	}
 }

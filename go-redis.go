@@ -140,7 +140,7 @@ func (r *GoRedisConnect) MetricsLogger() IMetricsLogger {
 // Available since v0.3.0
 func (r *GoRedisConnect) NewCmdExecInfo() *CmdExecInfo {
 	return &CmdExecInfo{
-		Id:        newId(),
+		Id:        NewId(),
 		BeginTime: time.Now(),
 		Cost:      -1,
 	}

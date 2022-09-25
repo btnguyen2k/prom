@@ -1,3 +1,4 @@
+// go run example_aws-dynamodb_base.go example_aws-dynamodb_order.go
 package main
 
 import (
@@ -5,10 +6,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
-
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/dynamodb"
 )
 
 const (
@@ -17,7 +17,7 @@ const (
 	_orderTable3 = "test_order_3"
 )
 
-func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
+func _orderCreateTables(adc *dynamodb.AwsDynamodbConnect) {
 	var rcu int64 = 2
 	var wcu int64 = 4
 
@@ -26,12 +26,12 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 	if ok, err := adc.HasTable(nil, table); err != nil {
 		panic(err)
 	} else if !ok {
-		var attrDefs, pkDefs []prom.AwsDynamodbNameAndType
-		attrDefs = []prom.AwsDynamodbNameAndType{
-			{Name: "id", Type: prom.AwsAttrTypeString},
+		var attrDefs, pkDefs []dynamodb.AwsDynamodbNameAndType
+		attrDefs = []dynamodb.AwsDynamodbNameAndType{
+			{Name: "id", Type: dynamodb.AwsAttrTypeString},
 		}
-		pkDefs = []prom.AwsDynamodbNameAndType{
-			{Name: "id", Type: prom.AwsKeyTypePartition},
+		pkDefs = []dynamodb.AwsDynamodbNameAndType{
+			{Name: "id", Type: dynamodb.AwsKeyTypePartition},
 		}
 		if err := adc.CreateTable(nil, table, rcu, wcu, attrDefs, pkDefs); err != nil {
 			panic(err)
@@ -44,7 +44,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 	} else {
 		// delete all items
 		pkAttrs := []string{"id"}
-		adc.ScanItemsWithCallback(nil, table, nil, prom.AwsDynamodbNoIndex, nil, func(item prom.AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (b bool, e error) {
+		adc.ScanItemsWithCallback(nil, table, nil, dynamodb.AwsDynamodbNoIndex, nil, func(item dynamodb.AwsDynamodbItem, lastEvaluatedKey map[string]*awsdynamodb.AttributeValue) (b bool, e error) {
 			keyFilter := make(map[string]interface{})
 			for _, v := range pkAttrs {
 				keyFilter[v] = item[v]
@@ -59,14 +59,14 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 	if ok, err := adc.HasTable(nil, table); err != nil {
 		panic(err)
 	} else if !ok {
-		var attrDefs, pkDefs []prom.AwsDynamodbNameAndType
-		attrDefs = []prom.AwsDynamodbNameAndType{
-			{Name: "id", Type: prom.AwsAttrTypeString},
-			{Name: "username", Type: prom.AwsAttrTypeString},
+		var attrDefs, pkDefs []dynamodb.AwsDynamodbNameAndType
+		attrDefs = []dynamodb.AwsDynamodbNameAndType{
+			{Name: "id", Type: dynamodb.AwsAttrTypeString},
+			{Name: "username", Type: dynamodb.AwsAttrTypeString},
 		}
-		pkDefs = []prom.AwsDynamodbNameAndType{
-			{Name: "id", Type: prom.AwsKeyTypePartition},
-			{Name: "username", Type: prom.AwsKeyTypeSort},
+		pkDefs = []dynamodb.AwsDynamodbNameAndType{
+			{Name: "id", Type: dynamodb.AwsKeyTypePartition},
+			{Name: "username", Type: dynamodb.AwsKeyTypeSort},
 		}
 		if err := adc.CreateTable(nil, table, rcu, wcu, attrDefs, pkDefs); err != nil {
 			panic(err)
@@ -79,7 +79,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 	} else {
 		// delete all items
 		pkAttrs := []string{"id", "username"}
-		adc.ScanItemsWithCallback(nil, table, nil, prom.AwsDynamodbNoIndex, nil, func(item prom.AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (b bool, e error) {
+		adc.ScanItemsWithCallback(nil, table, nil, dynamodb.AwsDynamodbNoIndex, nil, func(item dynamodb.AwsDynamodbItem, lastEvaluatedKey map[string]*awsdynamodb.AttributeValue) (b bool, e error) {
 			keyFilter := make(map[string]interface{})
 			for _, v := range pkAttrs {
 				keyFilter[v] = item[v]
@@ -94,12 +94,12 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 	if ok, err := adc.HasTable(nil, table); err != nil {
 		panic(err)
 	} else if !ok {
-		var attrDefs, pkDefs []prom.AwsDynamodbNameAndType
-		attrDefs = []prom.AwsDynamodbNameAndType{
-			{Name: "id", Type: prom.AwsAttrTypeString},
+		var attrDefs, pkDefs []dynamodb.AwsDynamodbNameAndType
+		attrDefs = []dynamodb.AwsDynamodbNameAndType{
+			{Name: "id", Type: dynamodb.AwsAttrTypeString},
 		}
-		pkDefs = []prom.AwsDynamodbNameAndType{
-			{Name: "id", Type: prom.AwsKeyTypePartition},
+		pkDefs = []dynamodb.AwsDynamodbNameAndType{
+			{Name: "id", Type: dynamodb.AwsKeyTypePartition},
 		}
 		if err := adc.CreateTable(nil, table, rcu, wcu, attrDefs, pkDefs); err != nil {
 			panic(err)
@@ -112,7 +112,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 	} else {
 		// delete all items
 		pkAttrs := []string{"id"}
-		adc.ScanItemsWithCallback(nil, table, nil, prom.AwsDynamodbNoIndex, nil, func(item prom.AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (b bool, e error) {
+		adc.ScanItemsWithCallback(nil, table, nil, dynamodb.AwsDynamodbNoIndex, nil, func(item dynamodb.AwsDynamodbItem, lastEvaluatedKey map[string]*awsdynamodb.AttributeValue) (b bool, e error) {
 			keyFilter := make(map[string]interface{})
 			for _, v := range pkAttrs {
 				keyFilter[v] = item[v]
@@ -124,14 +124,14 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 	}
 	idxName := "idx_username"
 	if status, _ := adc.GetGlobalSecondaryIndexStatus(nil, table, idxName); status == "" {
-		var attrDefs, pkDefs []prom.AwsDynamodbNameAndType
-		attrDefs = []prom.AwsDynamodbNameAndType{
-			{Name: "id", Type: prom.AwsAttrTypeString},
-			{Name: "username", Type: prom.AwsAttrTypeString},
+		var attrDefs, pkDefs []dynamodb.AwsDynamodbNameAndType
+		attrDefs = []dynamodb.AwsDynamodbNameAndType{
+			{Name: "id", Type: dynamodb.AwsAttrTypeString},
+			{Name: "username", Type: dynamodb.AwsAttrTypeString},
 		}
-		pkDefs = []prom.AwsDynamodbNameAndType{
-			{Name: "id", Type: prom.AwsKeyTypePartition},
-			{Name: "username", Type: prom.AwsKeyTypeSort},
+		pkDefs = []dynamodb.AwsDynamodbNameAndType{
+			{Name: "id", Type: dynamodb.AwsKeyTypePartition},
+			{Name: "username", Type: dynamodb.AwsKeyTypeSort},
 		}
 		if err := adc.CreateGlobalSecondaryIndex(nil, table, idxName, 1, 1, attrDefs, pkDefs); err != nil {
 			fmt.Println(err)
@@ -145,7 +145,7 @@ func _orderCreateTables(adc *prom.AwsDynamodbConnect) {
 	}
 }
 
-func _orderInitData(adc *prom.AwsDynamodbConnect, tableName string) {
+func _orderInitData(adc *dynamodb.AwsDynamodbConnect, tableName string) {
 	for i := 0; i < 100; i++ {
 		id := fmt.Sprintf("%03d", rand.Int31n(1000))
 		if tableName == _orderTable2 {
@@ -160,14 +160,14 @@ func _orderInitData(adc *prom.AwsDynamodbConnect, tableName string) {
 	}
 }
 
-func _orderLoadItems1(adc *prom.AwsDynamodbConnect) {
+func _orderLoadItems1(adc *dynamodb.AwsDynamodbConnect) {
 	tableName := _orderTable1
 	indexName := ""
 	fmt.Printf("Fetching items from table [%s] with index [%s]...\n", tableName, indexName)
 	filter := expression.Name("username").GreaterThanEqual(expression.Value("123"))
 	fmt.Println("    Filter:", filter)
 	counter := 0
-	err := adc.ScanItemsWithCallback(nil, tableName, &filter, indexName, nil, func(item prom.AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (b bool, e error) {
+	err := adc.ScanItemsWithCallback(nil, tableName, &filter, indexName, nil, func(item dynamodb.AwsDynamodbItem, lastEvaluatedKey map[string]*awsdynamodb.AttributeValue) (b bool, e error) {
 		fmt.Printf("    %v\n", item)
 		counter++
 		return true, nil
@@ -175,14 +175,14 @@ func _orderLoadItems1(adc *prom.AwsDynamodbConnect) {
 	fmt.Println("Finish:", counter, err)
 }
 
-func _orderLoadItems2(adc *prom.AwsDynamodbConnect) {
+func _orderLoadItems2(adc *dynamodb.AwsDynamodbConnect) {
 	tableName := _orderTable2
 	indexName := ""
 	fmt.Printf("Fetching items from table [%s] with index [%s]...\n", tableName, indexName)
 	filter := expression.Name("id").Equal(expression.Value("000")).And(expression.Name("username").GreaterThanEqual(expression.Value("000")))
 	fmt.Println("    Filter:", filter)
 	counter := 0
-	err := adc.QueryItemsWithCallback(nil, tableName, &filter, nil, indexName, nil, func(item prom.AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (b bool, e error) {
+	err := adc.QueryItemsWithCallback(nil, tableName, &filter, nil, indexName, nil, func(item dynamodb.AwsDynamodbItem, lastEvaluatedKey map[string]*awsdynamodb.AttributeValue) (b bool, e error) {
 		fmt.Printf("    %v\n", item)
 		counter++
 		return true, nil
@@ -190,14 +190,14 @@ func _orderLoadItems2(adc *prom.AwsDynamodbConnect) {
 	fmt.Println("Finish:", counter, err)
 }
 
-func _orderLoadItems3(adc *prom.AwsDynamodbConnect) {
+func _orderLoadItems3(adc *dynamodb.AwsDynamodbConnect) {
 	tableName := _orderTable3
 	indexName := "idx_username"
 	fmt.Printf("Fetching items from table [%s] with index [%s]...\n", tableName, indexName)
 	filter := expression.Name("id").Equal(expression.Value("038"))
 	fmt.Println("    Filter:", filter)
 	counter := 0
-	err := adc.QueryItemsWithCallback(nil, tableName, &filter, nil, indexName, nil, func(item prom.AwsDynamodbItem, lastEvaluatedKey map[string]*dynamodb.AttributeValue) (b bool, e error) {
+	err := adc.QueryItemsWithCallback(nil, tableName, &filter, nil, indexName, nil, func(item dynamodb.AwsDynamodbItem, lastEvaluatedKey map[string]*awsdynamodb.AttributeValue) (b bool, e error) {
 		fmt.Printf("    %v\n", item)
 		counter++
 		return true, nil
@@ -207,15 +207,15 @@ func _orderLoadItems3(adc *prom.AwsDynamodbConnect) {
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	adc := createAwsDynamodbConnect("ap-southeast-1")
+	adc := createAwsDynamodbConnect()
 	defer adc.Close()
 
-	// _orderCreateTables(adc)
-	// _orderInitData(adc, _orderTable1)
-	// _orderInitData(adc, _orderTable2)
-	// _orderInitData(adc, _orderTable3)
+	_orderCreateTables(adc)
+	_orderInitData(adc, _orderTable1)
+	_orderInitData(adc, _orderTable2)
+	_orderInitData(adc, _orderTable3)
 
-	// _orderLoadItems1(adc)
-	// _orderLoadItems2(adc)
+	_orderLoadItems1(adc)
+	_orderLoadItems2(adc)
 	_orderLoadItems3(adc)
 }

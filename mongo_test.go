@@ -371,7 +371,7 @@ func _createMongoConnect(t *testing.T, testName string) *MongoConnect {
 	return mc
 }
 
-func _mcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, mc *MongoConnect, cmdName string, cmdCats ...string) {
+func _mcVerifyLastCommand(f TestFailedWithMsgFunc, testName string, mc *MongoConnect, cmdName string, cmdCats ...string) {
 	for _, cat := range cmdCats {
 		m, err := mc.Metrics(cat, MetricsOpts{ReturnLatestCommands: 1})
 		if err != nil {

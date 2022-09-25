@@ -1,14 +1,12 @@
+// go run example_aws-dynamodb_base.go example_aws-dynamodb_dbinfo.go
 package main
 
 import (
 	"fmt"
-	"math/rand"
-	"time"
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-	adc := createAwsDynamodbConnect("ap-southeast-1")
+	adc := createAwsDynamodbConnect()
 	defer adc.Close()
 
 	fmt.Println("-== Database Info ==-")

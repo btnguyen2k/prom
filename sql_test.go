@@ -399,7 +399,7 @@ var (
 	dbtypeList []string
 )
 
-var _setupTestSqlConnect _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
+var _setupTestSqlConnect TestSetupOrTeardownFunc = func(t *testing.T, testName string) {
 	sqlcList = make([]*SqlConnect, 0)
 	sqlc2List = make([]*SqlConnect, 0)
 	dbtypeList = make([]string, 0)
@@ -445,7 +445,7 @@ var _setupTestSqlConnect _testSetupOrTeardownFunc = func(t *testing.T, testName 
 	}
 }
 
-var _teardownTestSqlConnect _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
+var _teardownTestSqlConnect TestSetupOrTeardownFunc = func(t *testing.T, testName string) {
 	for _, sqlc := range sqlcList {
 		if sqlc != nil {
 			go sqlc.Close()

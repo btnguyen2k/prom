@@ -18,13 +18,13 @@ Support simple logging and metrics:
 
 ## 2021-10-10 - v0.2.15
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - New struct `AwsQueryOpt`: to supply additional options to `AwsDynamodbConnect.QueryItems` and `AwsDynamodbConnect.QueryItemsWithCallback`.
   - `AwsDynamodbConnect.QueryItems` and `AwsDynamodbConnect.QueryItemsWithCallback` now support `ScanIndexBackward`.
 
 ## 2021-09-22 - v0.2.14
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md): new helper functions:
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md): new helper functions:
   - `AwsDynamodbWaitForGsiStatus`: periodically check if table's GSI status reaches a desired value, or timeout.
   - `AwsDynamodbWaitForTableStatus`: periodically check if table's status reaches a desired value, or timeout.
 
@@ -76,7 +76,7 @@ Support simple logging and metrics:
 
 ## 2020-06-10 - v0.2.7
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - `AwsDynamodbConnect.PutItemIfNotExist` returns `(nil, nil)` if the item being put already existed.
 - ['Prom' for the official Go driver for MongoDB](mongo.md):
   - Clean up deprecated functions.
@@ -90,13 +90,13 @@ Support simple logging and metrics:
 
 ## 2019-11-19 - v0.2.6
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - New functions `AwsDynamodbConnect.BuildxxxInput` and `AwsDynamodbConnect.xxxWithInput`.
   - Doc fixes and updates.
 
 ## 2019-11-17 - v0.2.5
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - Add new function `IsAwsError(err error, code string) bool`
   - No longer ignore certain AWS errors, lets caller decide to call `AwsIgnoreErrorIfMatched` if needed.
 - Update dependencies.
@@ -104,7 +104,7 @@ Support simple logging and metrics:
 
 ## 2019-11-14 - v0.2.4
 
-- ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - New constants `AwsAttrTypeString`, `AwsAttrTypeNumber` and `AwsAttrTypeBinary`.
   - New constants `AwsKeyTypePartition` and `AwsKeyTypeSort`.
   - Add transaction-supported functions.
@@ -131,7 +131,7 @@ Support simple logging and metrics:
 
 ## 2019-10-12 - v0.2.0
 
-- New ['Prom' for AWS DyamoDB](aws-dynamodb.md):
+- New ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md):
   - AWS SDK for Go: https://github.com/aws/aws-sdk-go
   - Type: `AwsDynamodbConnect`.
   - [Usage examples](examples/example_aws-dynamodb_base.go).

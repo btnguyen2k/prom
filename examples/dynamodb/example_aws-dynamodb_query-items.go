@@ -1,16 +1,14 @@
+// go run example_aws-dynamodb_base.go example_aws-dynamodb_query-items.go
 package main
 
 import (
 	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
-
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/dynamodb"
 )
 
-func awsDynamodbQueryItems(adc *prom.AwsDynamodbConnect, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string) {
+func awsDynamodbQueryItems(adc *dynamodb.AwsDynamodbConnect, table string, keyFilter, nonKeyFilter *expression.ConditionBuilder, indexName string) {
 	if indexName == "" {
 		fmt.Printf("  Querying items from table [%s] with filter: %v/%v\n", table, keyFilter, nonKeyFilter)
 	} else {
@@ -29,8 +27,7 @@ func awsDynamodbQueryItems(adc *prom.AwsDynamodbConnect, table string, keyFilter
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-	adc := createAwsDynamodbConnect("ap-southeast-1")
+	adc := createAwsDynamodbConnect()
 	defer adc.Close()
 
 	var keyFilter, nonKeyFilter expression.ConditionBuilder

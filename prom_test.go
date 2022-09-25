@@ -4,10 +4,17 @@ import (
 	"testing"
 )
 
-type _testFailedWithMsgFunc func(msg string)
-type _testSetupOrTeardownFunc func(t *testing.T, testName string)
+// TestFailedWithMsgFunc is called when test run fails.
+//
+// prom's internal use only!
+type TestFailedWithMsgFunc func(msg string)
 
-func setupTest(t *testing.T, testName string, extraSetupFunc, extraTeardownFunc _testSetupOrTeardownFunc) func(t *testing.T) {
+// TestSetupOrTeardownFunc is called before and after a test run.
+//
+// prom's internal use only!
+type TestSetupOrTeardownFunc func(t *testing.T, testName string)
+
+func setupTest(t *testing.T, testName string, extraSetupFunc, extraTeardownFunc TestSetupOrTeardownFunc) func(t *testing.T) {
 	if extraSetupFunc != nil {
 		extraSetupFunc(t, testName)
 	}
@@ -17,6 +24,3 @@ func setupTest(t *testing.T, testName string, extraSetupFunc, extraTeardownFunc 
 		}
 	}
 }
-
-//
-// type _m map[string]interface{}

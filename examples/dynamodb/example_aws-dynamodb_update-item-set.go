@@ -1,23 +1,20 @@
+// go run example_aws-dynamodb_base.go example_aws-dynamodb_update-item-set.go
 package main
 
 import (
 	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
-
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/dynamodb"
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-	adc := createAwsDynamodbConnect("ap-southeast-1")
+	adc := createAwsDynamodbConnect()
 	defer adc.Close()
 
-	item := map[string]*dynamodb.AttributeValue{
+	item := map[string]*awsdynamodb.AttributeValue{
 		"username": {S: aws.String("user-update")},
 		"email":    {S: aws.String("user-update@test.com")},
 		"an": {
@@ -26,13 +23,13 @@ func main() {
 		"as": {
 			SS: []*string{aws.String("1"), aws.String("2"), aws.String("3")},
 		},
-		"m": {M: map[string]*dynamodb.AttributeValue{}},
-		"a": {L: []*dynamodb.AttributeValue{}},
+		"m": {M: map[string]*awsdynamodb.AttributeValue{}},
+		"a": {L: []*awsdynamodb.AttributeValue{}},
 	}
 	keyFilter := map[string]interface{}{"username": "user-update"}
-	key := make(map[string]*dynamodb.AttributeValue)
+	key := make(map[string]*awsdynamodb.AttributeValue)
 	for k, v := range keyFilter {
-		key[k] = prom.AwsDynamodbToAttributeValue(v)
+		key[k] = dynamodb.AwsDynamodbToAttributeValue(v)
 	}
 
 	{

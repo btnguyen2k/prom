@@ -1,4 +1,4 @@
-package prom
+package dynamodb
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
 	"github.com/btnguyen2k/consu/reddo"
+	"github.com/btnguyen2k/prom"
 )
 
 const (
@@ -323,7 +324,7 @@ type AwsDynamodbConnect struct {
 	dbProxy           *DynamoDbProxy     // (since v0.3.0) wrapper around the real aws dynamodb instance
 	timeoutMs         int                // timeout in milliseconds
 	ownDb, ownSession bool
-	metricsLogger     IMetricsLogger // (since v0.3.0) if non-nil, AwsDynamodbConnect automatically logs executing commands.
+	metricsLogger     prom.IMetricsLogger // (since v0.3.0) if non-nil, AwsDynamodbConnect automatically logs executing commands.
 }
 
 // NewAwsDynamodbConnect constructs a new AwsDynamodbConnect instance.
@@ -351,7 +352,7 @@ func NewAwsDynamodbConnect(cfg *aws.Config, sess *session.Session, db *dynamodb.
 		session:       sess,
 		db:            db,
 		timeoutMs:     defaultTimeoutMs,
-		metricsLogger: NewMemoryStoreMetricsLogger(1028),
+		metricsLogger: prom.NewMemoryStoreMetricsLogger(1028),
 	}
 	if adc.db == nil {
 		if adc.session == nil {
@@ -384,13 +385,13 @@ func (adc *AwsDynamodbConnect) Init() error {
 // If non-nil, AwsDynamodbConnect automatically logs executing commands.
 //
 // Available since v0.3.0
-func (adc *AwsDynamodbConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *AwsDynamodbConnect {
+func (adc *AwsDynamodbConnect) RegisterMetricsLogger(metricsLogger prom.IMetricsLogger) *AwsDynamodbConnect {
 	adc.metricsLogger = metricsLogger
 	return adc
 }
 
 // MetricsLogger returns the associated IMetricsLogger instance.
-func (adc *AwsDynamodbConnect) MetricsLogger() IMetricsLogger {
+func (adc *AwsDynamodbConnect) MetricsLogger() prom.IMetricsLogger {
 	return adc.metricsLogger
 }
 
@@ -399,9 +400,9 @@ func (adc *AwsDynamodbConnect) MetricsLogger() IMetricsLogger {
 // The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
 //
 // Available since v0.3.0
-func (adc *AwsDynamodbConnect) NewCmdExecInfo() *CmdExecInfo {
-	return &CmdExecInfo{
-		Id:        newId(),
+func (adc *AwsDynamodbConnect) NewCmdExecInfo() *prom.CmdExecInfo {
+	return &prom.CmdExecInfo{
+		Id:        prom.NewId(),
 		BeginTime: time.Now(),
 		Cost:      -1,
 	}
@@ -412,7 +413,7 @@ func (adc *AwsDynamodbConnect) NewCmdExecInfo() *CmdExecInfo {
 // This function is silently no-op of the input if nil or there is no associated metrics logger.
 //
 // Available since v0.3.0
-func (adc *AwsDynamodbConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
+func (adc *AwsDynamodbConnect) LogMetrics(category string, cmd *prom.CmdExecInfo) error {
 	if cmd != nil && adc.metricsLogger != nil {
 		return adc.metricsLogger.Put(category, cmd)
 	}
@@ -424,7 +425,7 @@ func (adc *AwsDynamodbConnect) LogMetrics(category string, cmd *CmdExecInfo) err
 // This function is silently no-op of there is no associated metrics logger.
 //
 // Available since v0.3.0
-func (adc *AwsDynamodbConnect) Metrics(category string, opts ...MetricsOpts) (*Metrics, error) {
+func (adc *AwsDynamodbConnect) Metrics(category string, opts ...prom.MetricsOpts) (*prom.Metrics, error) {
 	if adc.metricsLogger != nil {
 		return adc.metricsLogger.Metrics(category, opts...)
 	}

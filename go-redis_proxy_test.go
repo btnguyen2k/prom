@@ -11,7 +11,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-func _rcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, rc *GoRedisConnect, cmdName string, ignoredErrs []error, cmdCats ...string) {
+func _rcVerifyLastCommand(f TestFailedWithMsgFunc, testName string, rc *GoRedisConnect, cmdName string, ignoredErrs []error, cmdCats ...string) {
 	for _, cat := range cmdCats {
 		m, err := rc.Metrics(cat, MetricsOpts{ReturnLatestCommands: 1})
 		if err != nil {
@@ -110,7 +110,7 @@ var _testList = []string{"Normal", "Failover", "Cluster"}
 var _testRcList []*GoRedisConnect
 var _testCmdableList []redis.Cmdable
 
-var _setupTestRedisProxy _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
+var _setupTestRedisProxy TestSetupOrTeardownFunc = func(t *testing.T, testName string) {
 	_testRcList = make([]*GoRedisConnect, len(_testList))
 	_testCmdableList = make([]redis.Cmdable, len(_testList))
 	for i, testItem := range _testList {
@@ -139,7 +139,7 @@ var _setupTestRedisProxy _testSetupOrTeardownFunc = func(t *testing.T, testName 
 	}
 }
 
-var _teardownTestRedisProxy _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
+var _teardownTestRedisProxy TestSetupOrTeardownFunc = func(t *testing.T, testName string) {
 	for _, rc := range _testRcList {
 		if rc != nil {
 			go rc.Close()

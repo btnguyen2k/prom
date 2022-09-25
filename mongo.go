@@ -177,7 +177,7 @@ func (m *MongoConnect) MetricsLogger() IMetricsLogger {
 // Available since v0.3.0
 func (m *MongoConnect) NewCmdExecInfo() *CmdExecInfo {
 	return &CmdExecInfo{
-		Id:        newId(),
+		Id:        NewId(),
 		BeginTime: time.Now(),
 		Cost:      -1,
 	}

@@ -1,15 +1,14 @@
+// go run example_aws-dynamodb_base.go example_aws-dynamodb_get-item.go
 package main
 
 import (
 	"fmt"
-	"math/rand"
 	"strconv"
-	"time"
 
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/dynamodb"
 )
 
-func awsDynamodbGetItem(adc *prom.AwsDynamodbConnect, table string, filter map[string]interface{}) {
+func awsDynamodbGetItem(adc *dynamodb.AwsDynamodbConnect, table string, filter map[string]interface{}) {
 	fmt.Printf("  Loading an item from table [%s] with filter: %v\n", table, filter)
 	result, err := adc.GetItem(nil, table, filter)
 	if err != nil {
@@ -22,11 +21,10 @@ func awsDynamodbGetItem(adc *prom.AwsDynamodbConnect, table string, filter map[s
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-	adc := createAwsDynamodbConnect("ap-southeast-1")
+	adc := createAwsDynamodbConnect()
 	defer adc.Close()
 
-	fmt.Println("-== Get Single Item from Table ==-")
+	fmt.Println("-== Get single item from table ==-")
 	awsDynamodbGetItem(adc, "test1", map[string]interface{}{"username": "user-0"})
 	awsDynamodbGetItem(adc, "test1", map[string]interface{}{"username": "user-not-exist"})
 	awsDynamodbGetItem(adc, "test1", map[string]interface{}{"email": "email-0@test.com"})
@@ -35,7 +33,7 @@ func main() {
 	}
 	fmt.Println(awsDynamodbSep)
 
-	fmt.Println("-== Get Single Item from Table ==-")
+	fmt.Println("-== Get single item from table ==-")
 	awsDynamodbGetItem(adc, "test2", map[string]interface{}{"username": "user-0"})
 	awsDynamodbGetItem(adc, "test2", map[string]interface{}{"username": "user-not-exist"})
 	awsDynamodbGetItem(adc, "test2", map[string]interface{}{"email": "email-0@test.com"})

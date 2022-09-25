@@ -1,4 +1,4 @@
-package prom
+package dynamodb
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
+	"github.com/btnguyen2k/prom"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -56,7 +57,7 @@ func TestDynamodbProxy_BatchExecuteStatement(t *testing.T) {
 	if _, err = db.BatchExecuteStatement(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchExecStm, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchExecStm, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_BatchExecuteStatementWithContext(t *testing.T) {
@@ -82,7 +83,7 @@ func TestDynamodbProxy_BatchExecuteStatementWithContext(t *testing.T) {
 	if _, err = db.BatchExecuteStatementWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchExecStm, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchExecStm, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_BatchGetItem(t *testing.T) {
@@ -100,7 +101,7 @@ func TestDynamodbProxy_BatchGetItem(t *testing.T) {
 	if _, err := db.BatchGetItem(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchGetItem, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_BatchGetItemWithContext(t *testing.T) {
@@ -118,7 +119,7 @@ func TestDynamodbProxy_BatchGetItemWithContext(t *testing.T) {
 	if _, err := db.BatchGetItemWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchGetItem, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_BatchGetItemPages(t *testing.T) {
@@ -138,7 +139,7 @@ func TestDynamodbProxy_BatchGetItemPages(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchGetItem, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_BatchGetItemPagesWithContext(t *testing.T) {
@@ -158,7 +159,7 @@ func TestDynamodbProxy_BatchGetItemPagesWithContext(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchGetItem, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_BatchWriteItem(t *testing.T) {
@@ -182,7 +183,7 @@ func TestDynamodbProxy_BatchWriteItem(t *testing.T) {
 	if _, err := db.BatchWriteItem(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchWriteItem, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchWriteItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestDynamodbProxy_BatchWriteItemWithContext(t *testing.T) {
@@ -206,7 +207,7 @@ func TestDynamodbProxy_BatchWriteItemWithContext(t *testing.T) {
 	if _, err := db.BatchWriteItemWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchWriteItem, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbBatchWriteItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestDynamodbProxy_CreateBackup(t *testing.T) {
@@ -223,7 +224,7 @@ func TestDynamodbProxy_CreateBackup(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateBackup, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateBackup, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_CreateBackupWithContext(t *testing.T) {
@@ -240,7 +241,7 @@ func TestDynamodbProxy_CreateBackupWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateBackup, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateBackup, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_CreateGlobalTable(t *testing.T) {
@@ -262,7 +263,7 @@ func TestDynamodbProxy_CreateGlobalTable(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateGlobalTable, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateGlobalTable, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatDDL)
 }
 
 func TestDynamodbProxy_CreateGlobalTableWithContext(t *testing.T) {
@@ -284,7 +285,7 @@ func TestDynamodbProxy_CreateGlobalTableWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateGlobalTable, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateGlobalTable, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatDDL)
 }
 
 func TestDynamodbProxy_CreateTable(t *testing.T) {
@@ -304,7 +305,7 @@ func TestDynamodbProxy_CreateTable(t *testing.T) {
 	if _, err := db.CreateTable(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateTable, nil, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateTable, nil, prom.MetricsCatAll, prom.MetricsCatDDL)
 }
 
 func TestDynamodbProxy_CreateTableWithContext(t *testing.T) {
@@ -324,7 +325,7 @@ func TestDynamodbProxy_CreateTableWithContext(t *testing.T) {
 	if _, err := db.CreateTableWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateTable, nil, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbCreateTable, nil, prom.MetricsCatAll, prom.MetricsCatDDL)
 }
 
 func TestDynamodbProxy_DeleteBackup(t *testing.T) {
@@ -343,7 +344,7 @@ func TestDynamodbProxy_DeleteBackup(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteBackup, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteBackup, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DeleteBackupWithContext(t *testing.T) {
@@ -362,7 +363,7 @@ func TestDynamodbProxy_DeleteBackupWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteBackup, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteBackup, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DeleteItem(t *testing.T) {
@@ -381,7 +382,7 @@ func TestDynamodbProxy_DeleteItem(t *testing.T) {
 	if _, err := db.DeleteItem(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteItem, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestDynamodbProxy_DeleteItemWithContext(t *testing.T) {
@@ -400,7 +401,7 @@ func TestDynamodbProxy_DeleteItemWithContext(t *testing.T) {
 	if _, err := db.DeleteItemWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteItem, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestDynamodbProxy_DeleteTable(t *testing.T) {
@@ -416,7 +417,7 @@ func TestDynamodbProxy_DeleteTable(t *testing.T) {
 	if _, err := db.DeleteTable(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteTable, nil, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteTable, nil, prom.MetricsCatAll, prom.MetricsCatDDL)
 }
 
 func TestDynamodbProxy_DeleteTableWithContext(t *testing.T) {
@@ -432,7 +433,7 @@ func TestDynamodbProxy_DeleteTableWithContext(t *testing.T) {
 	if _, err := db.DeleteTableWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteTable, nil, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDeleteTable, nil, prom.MetricsCatAll, prom.MetricsCatDDL)
 }
 
 func TestDynamodbProxy_DescribeBackup(t *testing.T) {
@@ -451,7 +452,7 @@ func TestDynamodbProxy_DescribeBackup(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescBackup, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescBackup, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeBackupWithContext(t *testing.T) {
@@ -470,7 +471,7 @@ func TestDynamodbProxy_DescribeBackupWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescBackup, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescBackup, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeContinuousBackups(t *testing.T) {
@@ -489,7 +490,7 @@ func TestDynamodbProxy_DescribeContinuousBackups(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescContinuousBackups, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescContinuousBackups, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeContinuousBackupsWithContext(t *testing.T) {
@@ -508,7 +509,7 @@ func TestDynamodbProxy_DescribeContinuousBackupsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescContinuousBackups, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescContinuousBackups, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeContributorInsights(t *testing.T) {
@@ -527,7 +528,7 @@ func TestDynamodbProxy_DescribeContributorInsights(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescContributorInsights, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescContributorInsights, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeContributorInsightsWithContext(t *testing.T) {
@@ -546,7 +547,7 @@ func TestDynamodbProxy_DescribeContributorInsightsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescContributorInsights, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescContributorInsights, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeEndpoints(t *testing.T) {
@@ -563,7 +564,7 @@ func TestDynamodbProxy_DescribeEndpoints(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescEndpoints, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescEndpoints, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeEndpointsWithContext(t *testing.T) {
@@ -580,7 +581,7 @@ func TestDynamodbProxy_DescribeEndpointsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescEndpoints, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescEndpoints, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeExport(t *testing.T) {
@@ -599,7 +600,7 @@ func TestDynamodbProxy_DescribeExport(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescExport, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescExport, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeExportWithContext(t *testing.T) {
@@ -618,7 +619,7 @@ func TestDynamodbProxy_DescribeExportWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescExport, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescExport, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeGlobalTable(t *testing.T) {
@@ -637,7 +638,7 @@ func TestDynamodbProxy_DescribeGlobalTable(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescGlobalTable, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescGlobalTable, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeGlobalTableWithContext(t *testing.T) {
@@ -656,7 +657,7 @@ func TestDynamodbProxy_DescribeGlobalTableWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescGlobalTable, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescGlobalTable, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeGlobalTableSettings(t *testing.T) {
@@ -675,7 +676,7 @@ func TestDynamodbProxy_DescribeGlobalTableSettings(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescGlobalTableSettings, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescGlobalTableSettings, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeGlobalTableSettingsWithContext(t *testing.T) {
@@ -694,7 +695,7 @@ func TestDynamodbProxy_DescribeGlobalTableSettingsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescGlobalTableSettings, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescGlobalTableSettings, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeKinesisStreamingDestination(t *testing.T) {
@@ -713,7 +714,7 @@ func TestDynamodbProxy_DescribeKinesisStreamingDestination(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescKinesisStreamingDestination, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescKinesisStreamingDestination, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeKinesisStreamingDestinationWithContext(t *testing.T) {
@@ -732,7 +733,7 @@ func TestDynamodbProxy_DescribeKinesisStreamingDestinationWithContext(t *testing
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescKinesisStreamingDestination, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescKinesisStreamingDestination, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeLimits(t *testing.T) {
@@ -746,7 +747,7 @@ func TestDynamodbProxy_DescribeLimits(t *testing.T) {
 	if _, err := db.DescribeLimits(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescLimits, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescLimits, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeLimitsWithContext(t *testing.T) {
@@ -760,7 +761,7 @@ func TestDynamodbProxy_DescribeLimitsWithContext(t *testing.T) {
 	if _, err := db.DescribeLimitsWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescLimits, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescLimits, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeTable(t *testing.T) {
@@ -776,7 +777,7 @@ func TestDynamodbProxy_DescribeTable(t *testing.T) {
 	if _, err := db.DescribeTable(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeTableWithContext(t *testing.T) {
@@ -792,7 +793,7 @@ func TestDynamodbProxy_DescribeTableWithContext(t *testing.T) {
 	if _, err := db.DescribeTableWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTable, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeTableReplicaAutoScaling(t *testing.T) {
@@ -811,7 +812,7 @@ func TestDynamodbProxy_DescribeTableReplicaAutoScaling(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTableReplicaAutoScaling, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTableReplicaAutoScaling, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeTableReplicaAutoScalingWithContext(t *testing.T) {
@@ -830,7 +831,7 @@ func TestDynamodbProxy_DescribeTableReplicaAutoScalingWithContext(t *testing.T) 
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTableReplicaAutoScaling, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTableReplicaAutoScaling, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeTimeToLive(t *testing.T) {
@@ -846,7 +847,7 @@ func TestDynamodbProxy_DescribeTimeToLive(t *testing.T) {
 	if _, err := db.DescribeTimeToLive(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTTL, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTTL, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DescribeTimeToLiveWithContext(t *testing.T) {
@@ -862,7 +863,7 @@ func TestDynamodbProxy_DescribeTimeToLiveWithContext(t *testing.T) {
 	if _, err := db.DescribeTimeToLiveWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTTL, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDescTTL, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DisableKinesisStreamingDestination(t *testing.T) {
@@ -882,7 +883,7 @@ func TestDynamodbProxy_DisableKinesisStreamingDestination(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDisableKinesisStreamingDestination, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDisableKinesisStreamingDestination, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_DisableKinesisStreamingDestinationWithContext(t *testing.T) {
@@ -902,7 +903,7 @@ func TestDynamodbProxy_DisableKinesisStreamingDestinationWithContext(t *testing.
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDisableKinesisStreamingDestination, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbDisableKinesisStreamingDestination, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_EnableKinesisStreamingDestination(t *testing.T) {
@@ -922,7 +923,7 @@ func TestDynamodbProxy_EnableKinesisStreamingDestination(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbEnableKinesisStreamingDestination, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbEnableKinesisStreamingDestination, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_EnableKinesisStreamingDestinationWithContext(t *testing.T) {
@@ -942,7 +943,7 @@ func TestDynamodbProxy_EnableKinesisStreamingDestinationWithContext(t *testing.T
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbEnableKinesisStreamingDestination, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbEnableKinesisStreamingDestination, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ExecuteStatement(t *testing.T) {
@@ -964,7 +965,7 @@ func TestDynamodbProxy_ExecuteStatement(t *testing.T) {
 	if _, err = db.ExecuteStatement(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExecuteStatement, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExecuteStatement, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ExecuteStatementWithContext(t *testing.T) {
@@ -986,7 +987,7 @@ func TestDynamodbProxy_ExecuteStatementWithContext(t *testing.T) {
 	if _, err = db.ExecuteStatementWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExecuteStatement, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExecuteStatement, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ExecuteTransaction(t *testing.T) {
@@ -1012,7 +1013,7 @@ func TestDynamodbProxy_ExecuteTransaction(t *testing.T) {
 	if _, err = db.ExecuteTransaction(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExecuteTransaction, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExecuteTransaction, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ExecuteTransactionWithContext(t *testing.T) {
@@ -1038,7 +1039,7 @@ func TestDynamodbProxy_ExecuteTransactionWithContext(t *testing.T) {
 	if _, err = db.ExecuteTransactionWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExecuteTransaction, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExecuteTransaction, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ExportTableToPointInTime(t *testing.T) {
@@ -1058,7 +1059,7 @@ func TestDynamodbProxy_ExportTableToPointInTime(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExportTableToPIT, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExportTableToPIT, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ExportTableToPointInTimeWithContext(t *testing.T) {
@@ -1078,7 +1079,7 @@ func TestDynamodbProxy_ExportTableToPointInTimeWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExportTableToPIT, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbExportTableToPIT, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_GetItem(t *testing.T) {
@@ -1096,7 +1097,7 @@ func TestDynamodbProxy_GetItem(t *testing.T) {
 	if _, err := db.GetItem(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_GetItemWithContext(t *testing.T) {
@@ -1114,7 +1115,7 @@ func TestDynamodbProxy_GetItemWithContext(t *testing.T) {
 	if _, err := db.GetItemWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbGetItem, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_ListBackups(t *testing.T) {
@@ -1133,7 +1134,7 @@ func TestDynamodbProxy_ListBackups(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListBackups, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListBackups, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListBackupsWithContext(t *testing.T) {
@@ -1152,7 +1153,7 @@ func TestDynamodbProxy_ListBackupsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListBackups, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListBackups, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListContributorInsights(t *testing.T) {
@@ -1171,7 +1172,7 @@ func TestDynamodbProxy_ListContributorInsights(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListContributorInsights, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListContributorInsights, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListContributorInsightsWithContext(t *testing.T) {
@@ -1190,7 +1191,7 @@ func TestDynamodbProxy_ListContributorInsightsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListContributorInsights, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListContributorInsights, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListContributorInsightsPages(t *testing.T) {
@@ -1211,7 +1212,7 @@ func TestDynamodbProxy_ListContributorInsightsPages(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListContributorInsights, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListContributorInsights, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListContributorInsightsPagesWithContext(t *testing.T) {
@@ -1232,7 +1233,7 @@ func TestDynamodbProxy_ListContributorInsightsPagesWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListContributorInsights, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListContributorInsights, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListExports(t *testing.T) {
@@ -1251,7 +1252,7 @@ func TestDynamodbProxy_ListExports(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListExports, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListExports, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListExportsWithContext(t *testing.T) {
@@ -1270,7 +1271,7 @@ func TestDynamodbProxy_ListExportsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListExports, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListExports, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListExportsPages(t *testing.T) {
@@ -1291,7 +1292,7 @@ func TestDynamodbProxy_ListExportsPages(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListExports, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListExports, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListExportsPagesWithContext(t *testing.T) {
@@ -1312,7 +1313,7 @@ func TestDynamodbProxy_ListExportsPagesWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListExports, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListExports, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListGlobalTables(t *testing.T) {
@@ -1329,7 +1330,7 @@ func TestDynamodbProxy_ListGlobalTables(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListGlobalTables, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListGlobalTables, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListGlobalTablesWithContext(t *testing.T) {
@@ -1346,7 +1347,7 @@ func TestDynamodbProxy_ListGlobalTablesWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListGlobalTables, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListGlobalTables, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListTables(t *testing.T) {
@@ -1360,7 +1361,7 @@ func TestDynamodbProxy_ListTables(t *testing.T) {
 	if _, err := db.ListTables(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListTablesWithContext(t *testing.T) {
@@ -1374,7 +1375,7 @@ func TestDynamodbProxy_ListTablesWithContext(t *testing.T) {
 	if _, err := db.ListTablesWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListTablesPages(t *testing.T) {
@@ -1390,7 +1391,7 @@ func TestDynamodbProxy_ListTablesPages(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListTablesPagesWithContext(t *testing.T) {
@@ -1406,7 +1407,7 @@ func TestDynamodbProxy_ListTablesPagesWithContext(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTables, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListTagsOfResource(t *testing.T) {
@@ -1425,7 +1426,7 @@ func TestDynamodbProxy_ListTagsOfResource(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTagsOfResource, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTagsOfResource, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_ListTagsOfResourceWithContext(t *testing.T) {
@@ -1444,7 +1445,7 @@ func TestDynamodbProxy_ListTagsOfResourceWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTagsOfResource, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbListTagsOfResource, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_PutItem(t *testing.T) {
@@ -1463,7 +1464,7 @@ func TestDynamodbProxy_PutItem(t *testing.T) {
 	if _, err := db.PutItem(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestDynamodbProxy_PutItemWithContext(t *testing.T) {
@@ -1482,7 +1483,7 @@ func TestDynamodbProxy_PutItemWithContext(t *testing.T) {
 	if _, err := db.PutItemWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestDynamodbProxy_Query(t *testing.T) {
@@ -1505,7 +1506,7 @@ func TestDynamodbProxy_Query(t *testing.T) {
 	if _, err := db.Query(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_QueryWithContext(t *testing.T) {
@@ -1528,7 +1529,7 @@ func TestDynamodbProxy_QueryWithContext(t *testing.T) {
 	if _, err := db.QueryWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_QueryPages(t *testing.T) {
@@ -1553,7 +1554,7 @@ func TestDynamodbProxy_QueryPages(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_QueryPagesWithContext(t *testing.T) {
@@ -1578,7 +1579,7 @@ func TestDynamodbProxy_QueryPagesWithContext(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbQueryItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_RestoreTableFromBackup(t *testing.T) {
@@ -1598,7 +1599,7 @@ func TestDynamodbProxy_RestoreTableFromBackup(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbRestoreTableFromBackup, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbRestoreTableFromBackup, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_RestoreTableFromBackupWithContext(t *testing.T) {
@@ -1618,7 +1619,7 @@ func TestDynamodbProxy_RestoreTableFromBackupWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbRestoreTableFromBackup, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbRestoreTableFromBackup, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_RestoreTableToPointInTime(t *testing.T) {
@@ -1637,7 +1638,7 @@ func TestDynamodbProxy_RestoreTableToPointInTime(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbRestoreTableToPIT, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbRestoreTableToPIT, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_RestoreTableToPointInTimeWithContext(t *testing.T) {
@@ -1656,7 +1657,7 @@ func TestDynamodbProxy_RestoreTableToPointInTimeWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbRestoreTableToPIT, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbRestoreTableToPIT, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_Scan(t *testing.T) {
@@ -1673,7 +1674,7 @@ func TestDynamodbProxy_Scan(t *testing.T) {
 	if _, err := db.Scan(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_ScanWithContext(t *testing.T) {
@@ -1690,7 +1691,7 @@ func TestDynamodbProxy_ScanWithContext(t *testing.T) {
 	if _, err := db.ScanWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_ScanPages(t *testing.T) {
@@ -1709,7 +1710,7 @@ func TestDynamodbProxy_ScanPages(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_ScanPagesWithContext(t *testing.T) {
@@ -1728,7 +1729,7 @@ func TestDynamodbProxy_ScanPagesWithContext(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbScanItems, nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_TagResource(t *testing.T) {
@@ -1750,7 +1751,7 @@ func TestDynamodbProxy_TagResource(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTagResource, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTagResource, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_TagResourceWithContext(t *testing.T) {
@@ -1772,7 +1773,7 @@ func TestDynamodbProxy_TagResourceWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTagResource, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTagResource, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_TransactGetItems(t *testing.T) {
@@ -1792,7 +1793,7 @@ func TestDynamodbProxy_TransactGetItems(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, []string{dynamodb.ErrCodeTransactionCanceledException}, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, []string{dynamodb.ErrCodeTransactionCanceledException}, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_TransactGetItemsWithContext(t *testing.T) {
@@ -1812,7 +1813,7 @@ func TestDynamodbProxy_TransactGetItemsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, []string{dynamodb.ErrCodeTransactionCanceledException}, MetricsCatAll, MetricsCatDQL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactGetItems, []string{dynamodb.ErrCodeTransactionCanceledException}, prom.MetricsCatAll, prom.MetricsCatDQL)
 }
 
 func TestDynamodbProxy_TransactWriteItems(t *testing.T) {
@@ -1830,7 +1831,7 @@ func TestDynamodbProxy_TransactWriteItems(t *testing.T) {
 	if _, err := db.TransactWriteItems(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestDynamodbProxy_TransactWriteItemsWithContext(t *testing.T) {
@@ -1848,7 +1849,7 @@ func TestDynamodbProxy_TransactWriteItemsWithContext(t *testing.T) {
 	if _, err := db.TransactWriteItemsWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbTransactWriteItems, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestDynamodbProxy_UntagResource(t *testing.T) {
@@ -1868,7 +1869,7 @@ func TestDynamodbProxy_UntagResource(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUntagResource, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUntagResource, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UntagResourceWithContext(t *testing.T) {
@@ -1888,7 +1889,7 @@ func TestDynamodbProxy_UntagResourceWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUntagResource, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUntagResource, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateContinuousBackups(t *testing.T) {
@@ -1908,7 +1909,7 @@ func TestDynamodbProxy_UpdateContinuousBackups(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateContinuousBackups, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateContinuousBackups, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateContinuousBackupsWithContext(t *testing.T) {
@@ -1928,7 +1929,7 @@ func TestDynamodbProxy_UpdateContinuousBackupsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateContinuousBackups, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateContinuousBackups, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateContributorInsights(t *testing.T) {
@@ -1948,7 +1949,7 @@ func TestDynamodbProxy_UpdateContributorInsights(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateContributorInsights, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateContributorInsights, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateContributorInsightsWithContext(t *testing.T) {
@@ -1968,7 +1969,7 @@ func TestDynamodbProxy_UpdateContributorInsightsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateContributorInsights, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateContributorInsights, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateGlobalTable(t *testing.T) {
@@ -1990,7 +1991,7 @@ func TestDynamodbProxy_UpdateGlobalTable(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateGlobalTable, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateGlobalTable, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateGlobalTableWithContext(t *testing.T) {
@@ -2012,7 +2013,7 @@ func TestDynamodbProxy_UpdateGlobalTableWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateGlobalTable, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateGlobalTable, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateGlobalTableSettings(t *testing.T) {
@@ -2031,7 +2032,7 @@ func TestDynamodbProxy_UpdateGlobalTableSettings(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateGlobalTableSettings, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateGlobalTableSettings, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateGlobalTableSettingsWithContext(t *testing.T) {
@@ -2050,7 +2051,7 @@ func TestDynamodbProxy_UpdateGlobalTableSettingsWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateGlobalTableSettings, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateGlobalTableSettings, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateItem(t *testing.T) {
@@ -2068,7 +2069,7 @@ func TestDynamodbProxy_UpdateItem(t *testing.T) {
 	if _, err := db.UpdateItem(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestDynamodbProxy_UpdateItemWithContext(t *testing.T) {
@@ -2086,7 +2087,7 @@ func TestDynamodbProxy_UpdateItemWithContext(t *testing.T) {
 	if _, err := db.UpdateItemWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, nil, MetricsCatAll, MetricsCatDML)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateItem, nil, prom.MetricsCatAll, prom.MetricsCatDML)
 }
 
 func TestDynamodbProxy_UpdateTable(t *testing.T) {
@@ -2103,7 +2104,7 @@ func TestDynamodbProxy_UpdateTable(t *testing.T) {
 	if _, err := db.UpdateTable(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, nil, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, nil, prom.MetricsCatAll, prom.MetricsCatDDL)
 }
 
 func TestDynamodbProxy_UpdateTableWithContext(t *testing.T) {
@@ -2120,7 +2121,7 @@ func TestDynamodbProxy_UpdateTableWithContext(t *testing.T) {
 	if _, err := db.UpdateTableWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, nil, MetricsCatAll, MetricsCatDDL)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTable, nil, prom.MetricsCatAll, prom.MetricsCatDDL)
 }
 
 func TestDynamodbProxy_UpdateTableReplicaAutoScaling(t *testing.T) {
@@ -2139,7 +2140,7 @@ func TestDynamodbProxy_UpdateTableReplicaAutoScaling(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTableReplicaAutoScaling, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTableReplicaAutoScaling, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateTableReplicaAutoScalingWithContext(t *testing.T) {
@@ -2158,7 +2159,7 @@ func TestDynamodbProxy_UpdateTableReplicaAutoScalingWithContext(t *testing.T) {
 			t.Fatalf("%s failed: %s", testName, err)
 		}
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTableReplicaAutoScaling, []string{"UnknownOperationException"}, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTableReplicaAutoScaling, []string{"UnknownOperationException"}, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateTimeToLive(t *testing.T) {
@@ -2178,7 +2179,7 @@ func TestDynamodbProxy_UpdateTimeToLive(t *testing.T) {
 	if _, err := db.UpdateTimeToLive(input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTTL, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTTL, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
 func TestDynamodbProxy_UpdateTimeToLiveWithContext(t *testing.T) {
@@ -2198,5 +2199,5 @@ func TestDynamodbProxy_UpdateTimeToLiveWithContext(t *testing.T) {
 	if _, err := db.UpdateTimeToLiveWithContext(context.TODO(), input); err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
-	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTTL, nil, MetricsCatAll, MetricsCatOther)
+	_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbUpdateTTL, nil, prom.MetricsCatAll, prom.MetricsCatOther)
 }

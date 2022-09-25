@@ -155,7 +155,7 @@ func (sc *SqlConnect) MetricsLogger() IMetricsLogger {
 // Available since v0.3.0
 func (sc *SqlConnect) NewCmdExecInfo() *CmdExecInfo {
 	return &CmdExecInfo{
-		Id:        newId(),
+		Id:        NewId(),
 		BeginTime: time.Now(),
 		Cost:      -1,
 	}

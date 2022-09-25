@@ -1,3 +1,4 @@
+// go run example_aws-dynamodb_base.go example_aws-dynamodb_update-item.go
 package main
 
 import (
@@ -6,11 +7,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/dynamodb/expression"
-
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/dynamodb"
 )
 
-func awsDynamodbRemoveAttrs(adc *prom.AwsDynamodbConnect, table string, data, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrs []string) {
+func awsDynamodbRemoveAttrs(adc *dynamodb.AwsDynamodbConnect, table string, data, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrs []string) {
 	fmt.Printf("  Inserting item: %s\n", toJsonDynamodb(data))
 	_, err := adc.PutItem(nil, table, data, nil)
 	if err != nil {
@@ -32,7 +32,7 @@ func awsDynamodbRemoveAttrs(adc *prom.AwsDynamodbConnect, table string, data, ke
 	}
 }
 
-func awsDynamodbSetAttrs(adc *prom.AwsDynamodbConnect, table string, data, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) {
+func awsDynamodbSetAttrs(adc *dynamodb.AwsDynamodbConnect, table string, data, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) {
 	fmt.Printf("  Inserting item: %s\n", toJsonDynamodb(data))
 	_, err := adc.PutItem(nil, table, data, nil)
 	if err != nil {
@@ -54,7 +54,7 @@ func awsDynamodbSetAttrs(adc *prom.AwsDynamodbConnect, table string, data, keyFi
 	}
 }
 
-func awsDynamodbAddValues(adc *prom.AwsDynamodbConnect, table string, data, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) {
+func awsDynamodbAddValues(adc *dynamodb.AwsDynamodbConnect, table string, data, keyFilter map[string]interface{}, condition *expression.ConditionBuilder, attrsAndValues map[string]interface{}) {
 	fmt.Printf("  Inserting item: %s\n", toJsonDynamodb(data))
 	_, err := adc.PutItem(nil, table, data, nil)
 	if err != nil {
@@ -78,7 +78,7 @@ func awsDynamodbAddValues(adc *prom.AwsDynamodbConnect, table string, data, keyF
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	adc := createAwsDynamodbConnect("ap-southeast-1")
+	adc := createAwsDynamodbConnect()
 	defer adc.Close()
 
 	a := []interface{}{rand.Int()%2 == 0, 1, "a"}

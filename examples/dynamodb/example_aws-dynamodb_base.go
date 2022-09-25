@@ -7,14 +7,17 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-
-	"github.com/btnguyen2k/prom"
+	"github.com/btnguyen2k/prom/dynamodb"
 )
 
 // construct an 'prom.AwsDynamodbConnect' instance
-func createAwsDynamodbConnect(region string) *prom.AwsDynamodbConnect {
+func createAwsDynamodbConnect() *dynamodb.AwsDynamodbConnect {
+	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
+	if awsRegion == "" {
+		awsRegion = "default"
+	}
 	cfg := &aws.Config{
-		Region:      aws.String(region),
+		Region:      aws.String(awsRegion),
 		Credentials: credentials.NewEnvCredentials(),
 	}
 	awsDynamodbEndpoint := strings.ReplaceAll(os.Getenv("AWS_DYNAMODB_ENDPOINT"), `"`, "")
@@ -22,7 +25,7 @@ func createAwsDynamodbConnect(region string) *prom.AwsDynamodbConnect {
 		cfg.Endpoint = aws.String(awsDynamodbEndpoint)
 		cfg.DisableSSL = aws.Bool(strings.HasPrefix(awsDynamodbEndpoint, "http://"))
 	}
-	adc, _ := prom.NewAwsDynamodbConnect(cfg, nil, nil, 10000)
+	adc, _ := dynamodb.NewAwsDynamodbConnect(cfg, nil, nil, 10000)
 	if adc == nil {
 		panic("error creating [prom.AwsDynamodbConnect] instance")
 	}

@@ -1,9 +1,10 @@
-package prom
+package dynamodb
 
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/btnguyen2k/prom"
 )
 
 const (
@@ -104,8 +105,8 @@ func (dp *DynamoDbProxy) BatchExecuteStatementWithContext(ctx aws.Context, input
 func (dp *DynamoDbProxy) metricsBatchExecuteStatement(withoutContext bool, ctx aws.Context, input *dynamodb.BatchExecuteStatementInput, opts ...request.Option) (output *dynamodb.BatchExecuteStatementOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbBatchExecStm, input
 	if withoutContext {
@@ -115,9 +116,9 @@ func (dp *DynamoDbProxy) metricsBatchExecuteStatement(withoutContext bool, ctx a
 	}
 	cmd.CmdResponse = output
 	if output != nil {
-		cmd.EndWithCost(dynamodbCombineConsumedCapacity(output.ConsumedCapacity), CmdResultOk, CmdResultError, err)
+		cmd.EndWithCost(dynamodbCombineConsumedCapacity(output.ConsumedCapacity), prom.CmdResultOk, prom.CmdResultError, err)
 	} else {
-		cmd.EndWithCost(0.0, CmdResultOk, CmdResultError, err)
+		cmd.EndWithCost(0.0, prom.CmdResultOk, prom.CmdResultError, err)
 	}
 	return output, err
 }
@@ -135,8 +136,8 @@ func (dp *DynamoDbProxy) BatchGetItemWithContext(ctx aws.Context, input *dynamod
 func (dp *DynamoDbProxy) metricsBatchGetItem(withoutContext bool, ctx aws.Context, input *dynamodb.BatchGetItemInput, opts ...request.Option) (output *dynamodb.BatchGetItemOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDQL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbBatchGetItem, input
 	if withoutContext {
@@ -146,9 +147,9 @@ func (dp *DynamoDbProxy) metricsBatchGetItem(withoutContext bool, ctx aws.Contex
 	}
 	cmd.CmdResponse = output
 	if output != nil {
-		cmd.EndWithCost(dynamodbCombineConsumedCapacity(output.ConsumedCapacity), CmdResultOk, CmdResultError, err)
+		cmd.EndWithCost(dynamodbCombineConsumedCapacity(output.ConsumedCapacity), prom.CmdResultOk, prom.CmdResultError, err)
 	} else {
-		cmd.EndWithCost(0.0, CmdResultOk, CmdResultError, err)
+		cmd.EndWithCost(0.0, prom.CmdResultOk, prom.CmdResultError, err)
 	}
 	return output, err
 }
@@ -166,8 +167,8 @@ func (dp *DynamoDbProxy) BatchGetItemPagesWithContext(ctx aws.Context, input *dy
 func (dp *DynamoDbProxy) metricsBatchGetItemPages(withoutContext bool, ctx aws.Context, input *dynamodb.BatchGetItemInput, fn func(*dynamodb.BatchGetItemOutput, bool) bool, opts ...request.Option) (err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDQL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbBatchGetItem, input
 	cost := 0.0
@@ -186,7 +187,7 @@ func (dp *DynamoDbProxy) metricsBatchGetItemPages(withoutContext bool, ctx aws.C
 			return fn(output, b)
 		}, opts...)
 	}
-	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(cost, prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -203,8 +204,8 @@ func (dp *DynamoDbProxy) BatchWriteItemWithContext(ctx aws.Context, input *dynam
 func (dp *DynamoDbProxy) metricsBatchWriteItem(withoutContext bool, ctx aws.Context, input *dynamodb.BatchWriteItemInput, opts ...request.Option) (output *dynamodb.BatchWriteItemOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDML, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbBatchWriteItem, input
 	if withoutContext {
@@ -214,9 +215,9 @@ func (dp *DynamoDbProxy) metricsBatchWriteItem(withoutContext bool, ctx aws.Cont
 	}
 	cmd.CmdResponse = output
 	if output != nil {
-		cmd.EndWithCost(dynamodbCombineConsumedCapacity(output.ConsumedCapacity), CmdResultOk, CmdResultError, err)
+		cmd.EndWithCost(dynamodbCombineConsumedCapacity(output.ConsumedCapacity), prom.CmdResultOk, prom.CmdResultError, err)
 	} else {
-		cmd.EndWithCost(0.0, CmdResultOk, CmdResultError, err)
+		cmd.EndWithCost(0.0, prom.CmdResultOk, prom.CmdResultError, err)
 	}
 	return output, err
 }
@@ -234,8 +235,8 @@ func (dp *DynamoDbProxy) CreateBackupWithContext(ctx aws.Context, input *dynamod
 func (dp *DynamoDbProxy) metricsCreateBackup(withoutContext bool, ctx aws.Context, input *dynamodb.CreateBackupInput, opts ...request.Option) (output *dynamodb.CreateBackupOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbCreateBackup, input
 	if withoutContext {
@@ -244,7 +245,7 @@ func (dp *DynamoDbProxy) metricsCreateBackup(withoutContext bool, ctx aws.Contex
 		output, err = dp.DynamoDB.CreateBackupWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -261,8 +262,8 @@ func (dp *DynamoDbProxy) CreateGlobalTableWithContext(ctx aws.Context, input *dy
 func (dp *DynamoDbProxy) metricsCreateGlobalTable(withoutContext bool, ctx aws.Context, input *dynamodb.CreateGlobalTableInput, opts ...request.Option) (output *dynamodb.CreateGlobalTableOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbCreateGlobalTable, input
 	if withoutContext {
@@ -271,7 +272,7 @@ func (dp *DynamoDbProxy) metricsCreateGlobalTable(withoutContext bool, ctx aws.C
 		output, err = dp.DynamoDB.CreateGlobalTableWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -288,8 +289,8 @@ func (dp *DynamoDbProxy) CreateTableWithContext(ctx aws.Context, input *dynamodb
 func (dp *DynamoDbProxy) metricsCreateTable(withoutContext bool, ctx aws.Context, input *dynamodb.CreateTableInput, opts ...request.Option) (output *dynamodb.CreateTableOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbCreateTable, input
 	if withoutContext {
@@ -298,7 +299,7 @@ func (dp *DynamoDbProxy) metricsCreateTable(withoutContext bool, ctx aws.Context
 		output, err = dp.DynamoDB.CreateTableWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -315,8 +316,8 @@ func (dp *DynamoDbProxy) DeleteBackupWithContext(ctx aws.Context, input *dynamod
 func (dp *DynamoDbProxy) metricsDeleteBackup(withoutContext bool, ctx aws.Context, input *dynamodb.DeleteBackupInput, opts ...request.Option) (output *dynamodb.DeleteBackupOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDeleteBackup, input
 	if withoutContext {
@@ -325,7 +326,7 @@ func (dp *DynamoDbProxy) metricsDeleteBackup(withoutContext bool, ctx aws.Contex
 		output, err = dp.DynamoDB.DeleteBackupWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -342,8 +343,8 @@ func (dp *DynamoDbProxy) DeleteItemWithContext(ctx aws.Context, input *dynamodb.
 func (dp *DynamoDbProxy) metricsDeleteItem(withoutContext bool, ctx aws.Context, input *dynamodb.DeleteItemInput, opts ...request.Option) (output *dynamodb.DeleteItemOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDML, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDeleteItem, input
 	if withoutContext {
@@ -353,9 +354,9 @@ func (dp *DynamoDbProxy) metricsDeleteItem(withoutContext bool, ctx aws.Context,
 	}
 	cmd.CmdResponse = output
 	if output != nil {
-		cmd.EndWithCost(dynamodbCombineConsumedCapacity([]*dynamodb.ConsumedCapacity{output.ConsumedCapacity}), CmdResultOk, CmdResultError, err)
+		cmd.EndWithCost(dynamodbCombineConsumedCapacity([]*dynamodb.ConsumedCapacity{output.ConsumedCapacity}), prom.CmdResultOk, prom.CmdResultError, err)
 	} else {
-		cmd.EndWithCost(0.0, CmdResultOk, CmdResultError, err)
+		cmd.EndWithCost(0.0, prom.CmdResultOk, prom.CmdResultError, err)
 	}
 	return output, err
 }
@@ -373,8 +374,8 @@ func (dp *DynamoDbProxy) DeleteTableWithContext(ctx aws.Context, input *dynamodb
 func (dp *DynamoDbProxy) metricsDeleteTable(withoutContext bool, ctx aws.Context, input *dynamodb.DeleteTableInput, opts ...request.Option) (output *dynamodb.DeleteTableOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDeleteTable, input
 	if withoutContext {
@@ -383,7 +384,7 @@ func (dp *DynamoDbProxy) metricsDeleteTable(withoutContext bool, ctx aws.Context
 		output, err = dp.DynamoDB.DeleteTableWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -400,8 +401,8 @@ func (dp *DynamoDbProxy) DescribeBackupWithContext(ctx aws.Context, input *dynam
 func (dp *DynamoDbProxy) metricsDescribeBackup(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeBackupInput, opts ...request.Option) (output *dynamodb.DescribeBackupOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescBackup, input
 	if withoutContext {
@@ -410,7 +411,7 @@ func (dp *DynamoDbProxy) metricsDescribeBackup(withoutContext bool, ctx aws.Cont
 		output, err = dp.DynamoDB.DescribeBackupWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -427,8 +428,8 @@ func (dp *DynamoDbProxy) DescribeContinuousBackupsWithContext(ctx aws.Context, i
 func (dp *DynamoDbProxy) metricsDescribeContinuousBackups(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeContinuousBackupsInput, opts ...request.Option) (output *dynamodb.DescribeContinuousBackupsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescContinuousBackups, input
 	if withoutContext {
@@ -437,7 +438,7 @@ func (dp *DynamoDbProxy) metricsDescribeContinuousBackups(withoutContext bool, c
 		output, err = dp.DynamoDB.DescribeContinuousBackupsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -454,8 +455,8 @@ func (dp *DynamoDbProxy) DescribeContributorInsightsWithContext(ctx aws.Context,
 func (dp *DynamoDbProxy) metricsDescribeContributorInsights(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeContributorInsightsInput, opts ...request.Option) (output *dynamodb.DescribeContributorInsightsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescContributorInsights, input
 	if withoutContext {
@@ -464,7 +465,7 @@ func (dp *DynamoDbProxy) metricsDescribeContributorInsights(withoutContext bool,
 		output, err = dp.DynamoDB.DescribeContributorInsightsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -481,8 +482,8 @@ func (dp *DynamoDbProxy) DescribeEndpointsWithContext(ctx aws.Context, input *dy
 func (dp *DynamoDbProxy) metricsDescribeEndpoints(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeEndpointsInput, opts ...request.Option) (output *dynamodb.DescribeEndpointsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescEndpoints, input
 	if withoutContext {
@@ -491,7 +492,7 @@ func (dp *DynamoDbProxy) metricsDescribeEndpoints(withoutContext bool, ctx aws.C
 		output, err = dp.DynamoDB.DescribeEndpointsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -508,8 +509,8 @@ func (dp *DynamoDbProxy) DescribeExportWithContext(ctx aws.Context, input *dynam
 func (dp *DynamoDbProxy) metricsDescribeExport(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeExportInput, opts ...request.Option) (output *dynamodb.DescribeExportOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescExport, input
 	if withoutContext {
@@ -518,7 +519,7 @@ func (dp *DynamoDbProxy) metricsDescribeExport(withoutContext bool, ctx aws.Cont
 		output, err = dp.DynamoDB.DescribeExportWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -535,8 +536,8 @@ func (dp *DynamoDbProxy) DescribeGlobalTableWithContext(ctx aws.Context, input *
 func (dp *DynamoDbProxy) metricsDescribeGlobalTable(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeGlobalTableInput, opts ...request.Option) (output *dynamodb.DescribeGlobalTableOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescGlobalTable, input
 	if withoutContext {
@@ -545,7 +546,7 @@ func (dp *DynamoDbProxy) metricsDescribeGlobalTable(withoutContext bool, ctx aws
 		output, err = dp.DynamoDB.DescribeGlobalTableWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -562,8 +563,8 @@ func (dp *DynamoDbProxy) DescribeGlobalTableSettingsWithContext(ctx aws.Context,
 func (dp *DynamoDbProxy) metricsDescribeGlobalTableSettings(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeGlobalTableSettingsInput, opts ...request.Option) (output *dynamodb.DescribeGlobalTableSettingsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescGlobalTableSettings, input
 	if withoutContext {
@@ -572,7 +573,7 @@ func (dp *DynamoDbProxy) metricsDescribeGlobalTableSettings(withoutContext bool,
 		output, err = dp.DynamoDB.DescribeGlobalTableSettingsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -589,8 +590,8 @@ func (dp *DynamoDbProxy) DescribeKinesisStreamingDestinationWithContext(ctx aws.
 func (dp *DynamoDbProxy) metricsDescribeKinesisStreamingDestination(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeKinesisStreamingDestinationInput, opts ...request.Option) (output *dynamodb.DescribeKinesisStreamingDestinationOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescKinesisStreamingDestination, input
 	if withoutContext {
@@ -599,7 +600,7 @@ func (dp *DynamoDbProxy) metricsDescribeKinesisStreamingDestination(withoutConte
 		output, err = dp.DynamoDB.DescribeKinesisStreamingDestinationWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -616,8 +617,8 @@ func (dp *DynamoDbProxy) DescribeLimitsWithContext(ctx aws.Context, input *dynam
 func (dp *DynamoDbProxy) metricsDescribeLimits(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeLimitsInput, opts ...request.Option) (output *dynamodb.DescribeLimitsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescLimits, input
 	if withoutContext {
@@ -626,7 +627,7 @@ func (dp *DynamoDbProxy) metricsDescribeLimits(withoutContext bool, ctx aws.Cont
 		output, err = dp.DynamoDB.DescribeLimitsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -643,8 +644,8 @@ func (dp *DynamoDbProxy) DescribeTableWithContext(ctx aws.Context, input *dynamo
 func (dp *DynamoDbProxy) metricsDescribeTable(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeTableInput, opts ...request.Option) (output *dynamodb.DescribeTableOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescTable, input
 	if withoutContext {
@@ -653,7 +654,7 @@ func (dp *DynamoDbProxy) metricsDescribeTable(withoutContext bool, ctx aws.Conte
 		output, err = dp.DynamoDB.DescribeTableWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -670,8 +671,8 @@ func (dp *DynamoDbProxy) DescribeTableReplicaAutoScalingWithContext(ctx aws.Cont
 func (dp *DynamoDbProxy) metricsDescribeTableReplicaAutoScaling(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeTableReplicaAutoScalingInput, opts ...request.Option) (output *dynamodb.DescribeTableReplicaAutoScalingOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescTableReplicaAutoScaling, input
 
@@ -681,7 +682,7 @@ func (dp *DynamoDbProxy) metricsDescribeTableReplicaAutoScaling(withoutContext b
 		output, err = dp.DynamoDB.DescribeTableReplicaAutoScalingWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -698,8 +699,8 @@ func (dp *DynamoDbProxy) DescribeTimeToLiveWithContext(ctx aws.Context, input *d
 func (dp *DynamoDbProxy) metricsDescribeTimeToLive(withoutContext bool, ctx aws.Context, input *dynamodb.DescribeTimeToLiveInput, opts ...request.Option) (output *dynamodb.DescribeTimeToLiveOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDescTTL, input
 	if withoutContext {
@@ -708,7 +709,7 @@ func (dp *DynamoDbProxy) metricsDescribeTimeToLive(withoutContext bool, ctx aws.
 		output, err = dp.DynamoDB.DescribeTimeToLiveWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -725,8 +726,8 @@ func (dp *DynamoDbProxy) DisableKinesisStreamingDestinationWithContext(ctx aws.C
 func (dp *DynamoDbProxy) metricsDisableKinesisStreamingDestination(withoutContext bool, ctx aws.Context, input *dynamodb.DisableKinesisStreamingDestinationInput, opts ...request.Option) (output *dynamodb.DisableKinesisStreamingDestinationOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbDisableKinesisStreamingDestination, input
 	if withoutContext {
@@ -735,7 +736,7 @@ func (dp *DynamoDbProxy) metricsDisableKinesisStreamingDestination(withoutContex
 		output, err = dp.DynamoDB.DisableKinesisStreamingDestinationWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -752,8 +753,8 @@ func (dp *DynamoDbProxy) EnableKinesisStreamingDestinationWithContext(ctx aws.Co
 func (dp *DynamoDbProxy) metricsEnableKinesisStreamingDestination(withoutContext bool, ctx aws.Context, input *dynamodb.EnableKinesisStreamingDestinationInput, opts ...request.Option) (output *dynamodb.EnableKinesisStreamingDestinationOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbEnableKinesisStreamingDestination, input
 	if withoutContext {
@@ -762,7 +763,7 @@ func (dp *DynamoDbProxy) metricsEnableKinesisStreamingDestination(withoutContext
 		output, err = dp.DynamoDB.EnableKinesisStreamingDestinationWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -779,8 +780,8 @@ func (dp *DynamoDbProxy) ExecuteStatementWithContext(ctx aws.Context, input *dyn
 func (dp *DynamoDbProxy) metricsExecuteStatement(withoutContext bool, ctx aws.Context, input *dynamodb.ExecuteStatementInput, opts ...request.Option) (output *dynamodb.ExecuteStatementOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbExecuteStatement, input
 	if withoutContext {
@@ -789,7 +790,7 @@ func (dp *DynamoDbProxy) metricsExecuteStatement(withoutContext bool, ctx aws.Co
 		output, err = dp.DynamoDB.ExecuteStatementWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCost(dynamodbCombineConsumedCapacity([]*dynamodb.ConsumedCapacity{output.ConsumedCapacity}), CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(dynamodbCombineConsumedCapacity([]*dynamodb.ConsumedCapacity{output.ConsumedCapacity}), prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -806,8 +807,8 @@ func (dp *DynamoDbProxy) ExecuteTransactionWithContext(ctx aws.Context, input *d
 func (dp *DynamoDbProxy) metricsExecuteTransaction(withoutContext bool, ctx aws.Context, input *dynamodb.ExecuteTransactionInput, opts ...request.Option) (output *dynamodb.ExecuteTransactionOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbExecuteTransaction, input
 	if withoutContext {
@@ -816,7 +817,7 @@ func (dp *DynamoDbProxy) metricsExecuteTransaction(withoutContext bool, ctx aws.
 		output, err = dp.DynamoDB.ExecuteTransactionWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCost(dynamodbCombineConsumedCapacity(output.ConsumedCapacity), CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(dynamodbCombineConsumedCapacity(output.ConsumedCapacity), prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -833,8 +834,8 @@ func (dp *DynamoDbProxy) ExportTableToPointInTimeWithContext(ctx aws.Context, in
 func (dp *DynamoDbProxy) metricsExportTableToPointInTime(withoutContext bool, ctx aws.Context, input *dynamodb.ExportTableToPointInTimeInput, opts ...request.Option) (output *dynamodb.ExportTableToPointInTimeOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbExportTableToPIT, input
 	if withoutContext {
@@ -843,7 +844,7 @@ func (dp *DynamoDbProxy) metricsExportTableToPointInTime(withoutContext bool, ct
 		output, err = dp.DynamoDB.ExportTableToPointInTimeWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -860,8 +861,8 @@ func (dp *DynamoDbProxy) GetItemWithContext(ctx aws.Context, input *dynamodb.Get
 func (dp *DynamoDbProxy) metricsGetItem(withoutContext bool, ctx aws.Context, input *dynamodb.GetItemInput, opts ...request.Option) (output *dynamodb.GetItemOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDQL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbGetItem, input
 	if withoutContext {
@@ -870,7 +871,7 @@ func (dp *DynamoDbProxy) metricsGetItem(withoutContext bool, ctx aws.Context, in
 		output, err = dp.DynamoDB.GetItemWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCost(dynamodbCombineConsumedCapacity([]*dynamodb.ConsumedCapacity{output.ConsumedCapacity}), CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(dynamodbCombineConsumedCapacity([]*dynamodb.ConsumedCapacity{output.ConsumedCapacity}), prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -887,8 +888,8 @@ func (dp *DynamoDbProxy) ListBackupsWithContext(ctx aws.Context, input *dynamodb
 func (dp *DynamoDbProxy) metricsListBackups(withoutContext bool, ctx aws.Context, input *dynamodb.ListBackupsInput, opts ...request.Option) (output *dynamodb.ListBackupsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbListBackups, input
 	if withoutContext {
@@ -897,7 +898,7 @@ func (dp *DynamoDbProxy) metricsListBackups(withoutContext bool, ctx aws.Context
 		output, err = dp.DynamoDB.ListBackupsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -914,8 +915,8 @@ func (dp *DynamoDbProxy) ListContributorInsightsWithContext(ctx aws.Context, inp
 func (dp *DynamoDbProxy) metricsListContributorInsights(withoutContext bool, ctx aws.Context, input *dynamodb.ListContributorInsightsInput, opts ...request.Option) (output *dynamodb.ListContributorInsightsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbListContributorInsights, input
 	if withoutContext {
@@ -924,7 +925,7 @@ func (dp *DynamoDbProxy) metricsListContributorInsights(withoutContext bool, ctx
 		output, err = dp.DynamoDB.ListContributorInsightsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -941,8 +942,8 @@ func (dp *DynamoDbProxy) ListContributorInsightsPagesWithContext(ctx aws.Context
 func (dp *DynamoDbProxy) metricsListContributorInsightsPages(withoutContext bool, ctx aws.Context, input *dynamodb.ListContributorInsightsInput, fn func(*dynamodb.ListContributorInsightsOutput, bool) bool, opts ...request.Option) (err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbListContributorInsights, input
 	if withoutContext {
@@ -950,7 +951,7 @@ func (dp *DynamoDbProxy) metricsListContributorInsightsPages(withoutContext bool
 	} else {
 		err = dp.DynamoDB.ListContributorInsightsPagesWithContext(ctx, input, fn, opts...)
 	}
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -967,8 +968,8 @@ func (dp *DynamoDbProxy) ListExportsWithContext(ctx aws.Context, input *dynamodb
 func (dp *DynamoDbProxy) metricsListExports(withoutContext bool, ctx aws.Context, input *dynamodb.ListExportsInput, opts ...request.Option) (output *dynamodb.ListExportsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbListExports, input
 	if withoutContext {
@@ -977,7 +978,7 @@ func (dp *DynamoDbProxy) metricsListExports(withoutContext bool, ctx aws.Context
 		output, err = dp.DynamoDB.ListExportsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -994,8 +995,8 @@ func (dp *DynamoDbProxy) ListExportsPagesWithContext(ctx aws.Context, input *dyn
 func (dp *DynamoDbProxy) metricsListExportsPages(withoutContext bool, ctx aws.Context, input *dynamodb.ListExportsInput, fn func(*dynamodb.ListExportsOutput, bool) bool, opts ...request.Option) (err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbListExports, input
 	if withoutContext {
@@ -1003,7 +1004,7 @@ func (dp *DynamoDbProxy) metricsListExportsPages(withoutContext bool, ctx aws.Co
 	} else {
 		err = dp.DynamoDB.ListExportsPagesWithContext(ctx, input, fn, opts...)
 	}
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -1020,8 +1021,8 @@ func (dp *DynamoDbProxy) ListGlobalTablesWithContext(ctx aws.Context, input *dyn
 func (dp *DynamoDbProxy) metricsListGlobalTables(withoutContext bool, ctx aws.Context, input *dynamodb.ListGlobalTablesInput, opts ...request.Option) (output *dynamodb.ListGlobalTablesOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbListGlobalTables, input
 	if withoutContext {
@@ -1030,7 +1031,7 @@ func (dp *DynamoDbProxy) metricsListGlobalTables(withoutContext bool, ctx aws.Co
 		output, err = dp.DynamoDB.ListGlobalTablesWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1047,8 +1048,8 @@ func (dp *DynamoDbProxy) ListTablesWithContext(ctx aws.Context, input *dynamodb.
 func (dp *DynamoDbProxy) metricsListTables(withoutContext bool, ctx aws.Context, input *dynamodb.ListTablesInput, opts ...request.Option) (output *dynamodb.ListTablesOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbListTables, input
 	if withoutContext {
@@ -1057,7 +1058,7 @@ func (dp *DynamoDbProxy) metricsListTables(withoutContext bool, ctx aws.Context,
 		output, err = dp.DynamoDB.ListTablesWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1074,8 +1075,8 @@ func (dp *DynamoDbProxy) ListTablesPagesWithContext(ctx aws.Context, input *dyna
 func (dp *DynamoDbProxy) metricsListTablesPages(withoutContext bool, ctx aws.Context, input *dynamodb.ListTablesInput, fn func(*dynamodb.ListTablesOutput, bool) bool, opts ...request.Option) (err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbListTables, input
 	if withoutContext {
@@ -1083,7 +1084,7 @@ func (dp *DynamoDbProxy) metricsListTablesPages(withoutContext bool, ctx aws.Con
 	} else {
 		err = dp.DynamoDB.ListTablesPagesWithContext(ctx, input, fn, opts...)
 	}
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -1100,8 +1101,8 @@ func (dp *DynamoDbProxy) ListTagsOfResourceWithContext(ctx aws.Context, input *d
 func (dp *DynamoDbProxy) metricsListTagsOfResource(withoutContext bool, ctx aws.Context, input *dynamodb.ListTagsOfResourceInput, opts ...request.Option) (output *dynamodb.ListTagsOfResourceOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbListTagsOfResource, input
 	if withoutContext {
@@ -1110,7 +1111,7 @@ func (dp *DynamoDbProxy) metricsListTagsOfResource(withoutContext bool, ctx aws.
 		output, err = dp.DynamoDB.ListTagsOfResourceWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1127,8 +1128,8 @@ func (dp *DynamoDbProxy) PutItemWithContext(ctx aws.Context, input *dynamodb.Put
 func (dp *DynamoDbProxy) metricsPutItem(withoutContext bool, ctx aws.Context, input *dynamodb.PutItemInput, opts ...request.Option) (output *dynamodb.PutItemOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDML, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbPutItem, input
 	if withoutContext {
@@ -1141,7 +1142,7 @@ func (dp *DynamoDbProxy) metricsPutItem(withoutContext bool, ctx aws.Context, in
 	if output != nil {
 		cost = dynamodbCombineConsumedCapacity([]*dynamodb.ConsumedCapacity{output.ConsumedCapacity})
 	}
-	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(cost, prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1158,8 +1159,8 @@ func (dp *DynamoDbProxy) QueryWithContext(ctx aws.Context, input *dynamodb.Query
 func (dp *DynamoDbProxy) metricsQuery(withoutContext bool, ctx aws.Context, input *dynamodb.QueryInput, opts ...request.Option) (output *dynamodb.QueryOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDQL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbQueryItems, input
 	if withoutContext {
@@ -1172,7 +1173,7 @@ func (dp *DynamoDbProxy) metricsQuery(withoutContext bool, ctx aws.Context, inpu
 	if output != nil {
 		cost = dynamodbCombineConsumedCapacity([]*dynamodb.ConsumedCapacity{output.ConsumedCapacity})
 	}
-	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(cost, prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1189,8 +1190,8 @@ func (dp *DynamoDbProxy) QueryPagesWithContext(ctx aws.Context, input *dynamodb.
 func (dp *DynamoDbProxy) metricsQueryPages(withoutContext bool, ctx aws.Context, input *dynamodb.QueryInput, fn func(*dynamodb.QueryOutput, bool) bool, opts ...request.Option) (err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDQL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbQueryItems, input
 	cost := 0.0
@@ -1209,7 +1210,7 @@ func (dp *DynamoDbProxy) metricsQueryPages(withoutContext bool, ctx aws.Context,
 			return fn(output, b)
 		}, opts...)
 	}
-	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(cost, prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -1226,8 +1227,8 @@ func (dp *DynamoDbProxy) RestoreTableFromBackupWithContext(ctx aws.Context, inpu
 func (dp *DynamoDbProxy) metricsRestoreTableFromBackup(withoutContext bool, ctx aws.Context, input *dynamodb.RestoreTableFromBackupInput, opts ...request.Option) (output *dynamodb.RestoreTableFromBackupOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbRestoreTableFromBackup, input
 	if withoutContext {
@@ -1236,7 +1237,7 @@ func (dp *DynamoDbProxy) metricsRestoreTableFromBackup(withoutContext bool, ctx 
 		output, err = dp.DynamoDB.RestoreTableFromBackupWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1253,8 +1254,8 @@ func (dp *DynamoDbProxy) RestoreTableToPointInTimeWithContext(ctx aws.Context, i
 func (dp *DynamoDbProxy) metricsRestoreTableToPointInTime(withoutContext bool, ctx aws.Context, input *dynamodb.RestoreTableToPointInTimeInput, opts ...request.Option) (output *dynamodb.RestoreTableToPointInTimeOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbRestoreTableToPIT, input
 	if withoutContext {
@@ -1263,7 +1264,7 @@ func (dp *DynamoDbProxy) metricsRestoreTableToPointInTime(withoutContext bool, c
 		output, err = dp.DynamoDB.RestoreTableToPointInTimeWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1280,8 +1281,8 @@ func (dp *DynamoDbProxy) ScanWithContext(ctx aws.Context, input *dynamodb.ScanIn
 func (dp *DynamoDbProxy) metricsScan(withoutContext bool, ctx aws.Context, input *dynamodb.ScanInput, opts ...request.Option) (output *dynamodb.ScanOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDQL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbScanItems, input
 	if withoutContext {
@@ -1294,7 +1295,7 @@ func (dp *DynamoDbProxy) metricsScan(withoutContext bool, ctx aws.Context, input
 	if output != nil {
 		cost = dynamodbCombineConsumedCapacity([]*dynamodb.ConsumedCapacity{output.ConsumedCapacity})
 	}
-	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(cost, prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1311,8 +1312,8 @@ func (dp *DynamoDbProxy) ScanPagesWithContext(ctx aws.Context, input *dynamodb.S
 func (dp *DynamoDbProxy) metricsScanPages(withoutContext bool, ctx aws.Context, input *dynamodb.ScanInput, fn func(*dynamodb.ScanOutput, bool) bool, opts ...request.Option) (err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDQL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbScanItems, input
 	cost := 0.0
@@ -1331,7 +1332,7 @@ func (dp *DynamoDbProxy) metricsScanPages(withoutContext bool, ctx aws.Context, 
 			return fn(output, b)
 		}, opts...)
 	}
-	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(cost, prom.CmdResultOk, prom.CmdResultError, err)
 	return err
 }
 
@@ -1348,8 +1349,8 @@ func (dp *DynamoDbProxy) TagResourceWithContext(ctx aws.Context, input *dynamodb
 func (dp *DynamoDbProxy) metricsTagResource(withoutContext bool, ctx aws.Context, input *dynamodb.TagResourceInput, opts ...request.Option) (output *dynamodb.TagResourceOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbTagResource, input
 	if withoutContext {
@@ -1358,7 +1359,7 @@ func (dp *DynamoDbProxy) metricsTagResource(withoutContext bool, ctx aws.Context
 		output, err = dp.DynamoDB.TagResourceWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1375,8 +1376,8 @@ func (dp *DynamoDbProxy) TransactGetItemsWithContext(ctx aws.Context, input *dyn
 func (dp *DynamoDbProxy) metricsTransactGetItems(withoutContext bool, ctx aws.Context, input *dynamodb.TransactGetItemsInput, opts ...request.Option) (output *dynamodb.TransactGetItemsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDQL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbTransactGetItems, input
 	if withoutContext {
@@ -1389,7 +1390,7 @@ func (dp *DynamoDbProxy) metricsTransactGetItems(withoutContext bool, ctx aws.Co
 	if output != nil {
 		cost = dynamodbCombineConsumedCapacity(output.ConsumedCapacity)
 	}
-	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(cost, prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1406,8 +1407,8 @@ func (dp *DynamoDbProxy) TransactWriteItemsWithContext(ctx aws.Context, input *d
 func (dp *DynamoDbProxy) metricsTransactWriteItems(withoutContext bool, ctx aws.Context, input *dynamodb.TransactWriteItemsInput, opts ...request.Option) (output *dynamodb.TransactWriteItemsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDML, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbTransactWriteItems, input
 	if withoutContext {
@@ -1420,7 +1421,7 @@ func (dp *DynamoDbProxy) metricsTransactWriteItems(withoutContext bool, ctx aws.
 	if output != nil {
 		cost = dynamodbCombineConsumedCapacity(output.ConsumedCapacity)
 	}
-	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(cost, prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1437,8 +1438,8 @@ func (dp *DynamoDbProxy) UntagResourceWithContext(ctx aws.Context, input *dynamo
 func (dp *DynamoDbProxy) metricsUntagResource(withoutContext bool, ctx aws.Context, input *dynamodb.UntagResourceInput, opts ...request.Option) (output *dynamodb.UntagResourceOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbUntagResource, input
 	if withoutContext {
@@ -1447,7 +1448,7 @@ func (dp *DynamoDbProxy) metricsUntagResource(withoutContext bool, ctx aws.Conte
 		output, err = dp.DynamoDB.UntagResourceWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1464,8 +1465,8 @@ func (dp *DynamoDbProxy) UpdateContinuousBackupsWithContext(ctx aws.Context, inp
 func (dp *DynamoDbProxy) metricsUpdateContinuousBackups(withoutContext bool, ctx aws.Context, input *dynamodb.UpdateContinuousBackupsInput, opts ...request.Option) (output *dynamodb.UpdateContinuousBackupsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbUpdateContinuousBackups, input
 	if withoutContext {
@@ -1474,7 +1475,7 @@ func (dp *DynamoDbProxy) metricsUpdateContinuousBackups(withoutContext bool, ctx
 		output, err = dp.DynamoDB.UpdateContinuousBackupsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1491,8 +1492,8 @@ func (dp *DynamoDbProxy) UpdateContributorInsightsWithContext(ctx aws.Context, i
 func (dp *DynamoDbProxy) metricsUpdateContributorInsights(withoutContext bool, ctx aws.Context, input *dynamodb.UpdateContributorInsightsInput, opts ...request.Option) (output *dynamodb.UpdateContributorInsightsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbUpdateContributorInsights, input
 	if withoutContext {
@@ -1501,7 +1502,7 @@ func (dp *DynamoDbProxy) metricsUpdateContributorInsights(withoutContext bool, c
 		output, err = dp.DynamoDB.UpdateContributorInsightsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1518,8 +1519,8 @@ func (dp *DynamoDbProxy) UpdateGlobalTableWithContext(ctx aws.Context, input *dy
 func (dp *DynamoDbProxy) metricsUpdateGlobalTable(withoutContext bool, ctx aws.Context, input *dynamodb.UpdateGlobalTableInput, opts ...request.Option) (output *dynamodb.UpdateGlobalTableOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbUpdateGlobalTable, input
 	if withoutContext {
@@ -1528,7 +1529,7 @@ func (dp *DynamoDbProxy) metricsUpdateGlobalTable(withoutContext bool, ctx aws.C
 		output, err = dp.DynamoDB.UpdateGlobalTableWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1545,8 +1546,8 @@ func (dp *DynamoDbProxy) UpdateGlobalTableSettingsWithContext(ctx aws.Context, i
 func (dp *DynamoDbProxy) metricsUpdateGlobalTableSettings(withoutContext bool, ctx aws.Context, input *dynamodb.UpdateGlobalTableSettingsInput, opts ...request.Option) (output *dynamodb.UpdateGlobalTableSettingsOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbUpdateGlobalTableSettings, input
 	if withoutContext {
@@ -1555,7 +1556,7 @@ func (dp *DynamoDbProxy) metricsUpdateGlobalTableSettings(withoutContext bool, c
 		output, err = dp.DynamoDB.UpdateGlobalTableSettingsWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1572,8 +1573,8 @@ func (dp *DynamoDbProxy) UpdateItemWithContext(ctx aws.Context, input *dynamodb.
 func (dp *DynamoDbProxy) metricsUpdateItem(withoutContext bool, ctx aws.Context, input *dynamodb.UpdateItemInput, opts ...request.Option) (output *dynamodb.UpdateItemOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDML, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbUpdateItem, input
 	if withoutContext {
@@ -1586,7 +1587,7 @@ func (dp *DynamoDbProxy) metricsUpdateItem(withoutContext bool, ctx aws.Context,
 	if output != nil {
 		cost = dynamodbCombineConsumedCapacity([]*dynamodb.ConsumedCapacity{output.ConsumedCapacity})
 	}
-	cmd.EndWithCost(cost, CmdResultOk, CmdResultError, err)
+	cmd.EndWithCost(cost, prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1603,8 +1604,8 @@ func (dp *DynamoDbProxy) UpdateTableWithContext(ctx aws.Context, input *dynamodb
 func (dp *DynamoDbProxy) metricsUpdateTable(withoutContext bool, ctx aws.Context, input *dynamodb.UpdateTableInput, opts ...request.Option) (output *dynamodb.UpdateTableOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatDDL, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbUpdateTable, input
 	if withoutContext {
@@ -1613,7 +1614,7 @@ func (dp *DynamoDbProxy) metricsUpdateTable(withoutContext bool, ctx aws.Context
 		output, err = dp.DynamoDB.UpdateTableWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1630,8 +1631,8 @@ func (dp *DynamoDbProxy) UpdateTableReplicaAutoScalingWithContext(ctx aws.Contex
 func (dp *DynamoDbProxy) metricsUpdateTableReplicaAutoScaling(withoutContext bool, ctx aws.Context, input *dynamodb.UpdateTableReplicaAutoScalingInput, opts ...request.Option) (output *dynamodb.UpdateTableReplicaAutoScalingOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbUpdateTableReplicaAutoScaling, input
 	if withoutContext {
@@ -1640,7 +1641,7 @@ func (dp *DynamoDbProxy) metricsUpdateTableReplicaAutoScaling(withoutContext boo
 		output, err = dp.DynamoDB.UpdateTableReplicaAutoScalingWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
 
@@ -1657,8 +1658,8 @@ func (dp *DynamoDbProxy) UpdateTimeToLiveWithContext(ctx aws.Context, input *dyn
 func (dp *DynamoDbProxy) metricsUpdateTimeToLive(withoutContext bool, ctx aws.Context, input *dynamodb.UpdateTimeToLiveInput, opts ...request.Option) (output *dynamodb.UpdateTimeToLiveOutput, err error) {
 	cmd := dp.adc.NewCmdExecInfo()
 	defer func() {
-		defer dp.adc.LogMetrics(MetricsCatAll, cmd)
-		defer dp.adc.LogMetrics(MetricsCatOther, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatAll, cmd)
+		defer dp.adc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = cmdDynamodbUpdateTTL, input
 	if withoutContext {
@@ -1667,6 +1668,6 @@ func (dp *DynamoDbProxy) metricsUpdateTimeToLive(withoutContext bool, ctx aws.Co
 		output, err = dp.DynamoDB.UpdateTimeToLiveWithContext(ctx, input, opts...)
 	}
 	cmd.CmdResponse = output
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return output, err
 }
