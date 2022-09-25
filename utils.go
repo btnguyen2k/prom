@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	olaf2 "github.com/btnguyen2k/consu/olaf"
+	olaflib "github.com/btnguyen2k/consu/olaf"
 )
 
 func getMacAddr() string {
@@ -27,7 +27,7 @@ func getMacAddrAsLong() int64 {
 	return mac
 }
 
-var olaf = olaf2.NewOlaf(getMacAddrAsLong())
+var olaf = olaflib.NewOlaf(getMacAddrAsLong())
 
 // NewId generates a new unique id.
 //

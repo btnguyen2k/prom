@@ -8,18 +8,24 @@
 
 Utility library to manage shared connections in Go.
 
-## Documentation
+## Documentations
 
-- ['Prom' for AWS DyamoDB](dynamodb/aws-dynamodb.md).
-- ['Prom' for the official Go driver for MongoDB](mongo.md).
-- ['Prom' for go-redis](goredis/go-redis.md).
-- ['Prom' for database/sql](sql/sql.md).
+- ['Prom' for AWS DyamoDB](dynamodb/).
+- ['Prom' for the official Go driver for MongoDB](mongo/).
+- ['Prom' for go-redis](goredis/).
+- ['Prom' for database/sql](sql/).
+
+## Examples
+
+- ['Prom' for AWS DyamoDB](./examples/dynamodb/).
+- ['Prom' for the official Go driver for MongoDB](./examples/mongo/).
+- ['Prom' for go-redis](./examples/goredis/).
+- ['Prom' for database/sql](./examples/sql/).
 
 ## Supported 3rd party libraries/drivers
 
 `prom` is supporting and has been tested against following libraries/drivers+version:
 
-- AWS DynamoDB: `github.com/aws/aws-sdk-go v1.44.44`
 - Redis: `github.com/go-redis/redis/v8 v8.11.5`
 - MongoDB: `go.mongodb.org/mongo-driver v1.9.1`
 - (database/sql driver) Azure Cosmos DB: `github.com/btnguyen2k/gocosmos v0.1.6`
