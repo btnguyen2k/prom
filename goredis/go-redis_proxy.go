@@ -1,11 +1,14 @@
-package prom
+package goredis
 
 import (
 	"context"
 	"time"
 
+	"github.com/btnguyen2k/prom"
 	"github.com/go-redis/redis/v8"
 )
+
+type m map[string]interface{}
 
 // RedisClientProxy is a proxy that can be used as replacement for redis.Client.
 //
@@ -20,14 +23,14 @@ type RedisClientProxy struct {
 func (cp *RedisClientProxy) Wait(ctx context.Context, numSlaves int, timeout time.Duration) *redis.IntCmd {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
-		cp.rc.LogMetrics(MetricsCatAll, cmd)
-		cp.rc.LogMetrics(MetricsCatOther, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "wait", m{"numSlaves": numSlaves, "timeout": timeout}
 	result := cp.Cmdable.(*redis.Client).Wait(ctx, numSlaves, timeout)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -35,12 +38,12 @@ func (cp *RedisClientProxy) Wait(ctx context.Context, numSlaves int, timeout tim
 func (cp *RedisClientProxy) PSubscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
-		cp.rc.LogMetrics(MetricsCatAll, cmd)
-		cp.rc.LogMetrics(MetricsCatOther, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "psubscribe", m{"channels": channels}
 	result := cp.Cmdable.(*redis.Client).PSubscribe(ctx, channels...)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, nil)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, nil)
 	return result
 }
 
@@ -48,12 +51,12 @@ func (cp *RedisClientProxy) PSubscribe(ctx context.Context, channels ...string) 
 func (cp *RedisClientProxy) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
-		cp.rc.LogMetrics(MetricsCatAll, cmd)
-		cp.rc.LogMetrics(MetricsCatOther, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "subscribe", m{"channels": channels}
 	result := cp.Cmdable.(*redis.Client).Subscribe(ctx, channels...)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, nil)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, nil)
 	return result
 }
 
@@ -83,14 +86,14 @@ type RedisClusterClientProxy struct {
 func (cp *RedisClusterClientProxy) Wait(ctx context.Context, numSlaves int, timeout time.Duration) *redis.IntCmd {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
-		cp.rc.LogMetrics(MetricsCatAll, cmd)
-		cp.rc.LogMetrics(MetricsCatOther, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "wait", m{"numSlaves": numSlaves, "timeout": timeout}
 	result := cp.Cmdable.(*redis.ClusterClient).Wait(ctx, numSlaves, timeout)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -98,12 +101,12 @@ func (cp *RedisClusterClientProxy) Wait(ctx context.Context, numSlaves int, time
 func (cp *RedisClusterClientProxy) PSubscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
-		cp.rc.LogMetrics(MetricsCatAll, cmd)
-		cp.rc.LogMetrics(MetricsCatOther, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "psubscribe", m{"channels": channels}
 	result := cp.Cmdable.(*redis.ClusterClient).PSubscribe(ctx, channels...)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, nil)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, nil)
 	return result
 }
 
@@ -111,12 +114,12 @@ func (cp *RedisClusterClientProxy) PSubscribe(ctx context.Context, channels ...s
 func (cp *RedisClusterClientProxy) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
-		cp.rc.LogMetrics(MetricsCatAll, cmd)
-		cp.rc.LogMetrics(MetricsCatOther, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		cp.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "subscribe", m{"channels": channels}
 	result := cp.Cmdable.(*redis.ClusterClient).Subscribe(ctx, channels...)
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, nil)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, nil)
 	return result
 }
 
@@ -133,14 +136,14 @@ type CmdableWrapper struct {
 func (c *CmdableWrapper) BitCount(ctx context.Context, key string, bitCount *redis.BitCount) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "bitCount", m{"key": key, "args": bitCount}
 	result := c.Cmdable.BitCount(ctx, key, bitCount)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -148,14 +151,14 @@ func (c *CmdableWrapper) BitCount(ctx context.Context, key string, bitCount *red
 func (c *CmdableWrapper) BitField(ctx context.Context, key string, args ...interface{}) *redis.IntSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "bitField", m{"key": key, "args": args}
 	result := c.Cmdable.BitField(ctx, key, args...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -163,14 +166,14 @@ func (c *CmdableWrapper) BitField(ctx context.Context, key string, args ...inter
 func (c *CmdableWrapper) BitOpAnd(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "bitOp", m{"op": "and", "destKey": destKey, "keys": keys}
 	result := c.Cmdable.BitOpAnd(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -178,14 +181,14 @@ func (c *CmdableWrapper) BitOpAnd(ctx context.Context, destKey string, keys ...s
 func (c *CmdableWrapper) BitOpOr(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "bitOp", m{"op": "or", "destKey": destKey, "keys": keys}
 	result := c.Cmdable.BitOpOr(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -193,14 +196,14 @@ func (c *CmdableWrapper) BitOpOr(ctx context.Context, destKey string, keys ...st
 func (c *CmdableWrapper) BitOpXor(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "bitOp", m{"op": "xor", "destKey": destKey, "keys": keys}
 	result := c.Cmdable.BitOpXor(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -208,14 +211,14 @@ func (c *CmdableWrapper) BitOpXor(ctx context.Context, destKey string, keys ...s
 func (c *CmdableWrapper) BitOpNot(ctx context.Context, destKey, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "bitOp", m{"op": "not", "destKey": destKey, "key": key}
 	result := c.Cmdable.BitOpNot(ctx, destKey, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -223,14 +226,14 @@ func (c *CmdableWrapper) BitOpNot(ctx context.Context, destKey, key string) *red
 func (c *CmdableWrapper) BitPos(ctx context.Context, key string, bit int64, pos ...int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "bitPos", m{"key": key, "bit": bit, "pos": pos}
 	result := c.Cmdable.BitPos(ctx, key, bit, pos...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -238,14 +241,14 @@ func (c *CmdableWrapper) BitPos(ctx context.Context, key string, bit int64, pos 
 func (c *CmdableWrapper) GetBit(ctx context.Context, key string, offset int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "getBit", m{"key": key, "offset": offset}
 	result := c.Cmdable.GetBit(ctx, key, offset)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -253,14 +256,14 @@ func (c *CmdableWrapper) GetBit(ctx context.Context, key string, offset int64) *
 func (c *CmdableWrapper) SetBit(ctx context.Context, key string, offset int64, value int) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "setBit", m{"key": key, "offset": offset, "value": value}
 	result := c.Cmdable.SetBit(ctx, key, offset, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -270,14 +273,14 @@ func (c *CmdableWrapper) SetBit(ctx context.Context, key string, offset int64, v
 func (c *CmdableWrapper) ReadOnly(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "readOnly", nil
 	result := c.Cmdable.ReadOnly(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -285,14 +288,14 @@ func (c *CmdableWrapper) ReadOnly(ctx context.Context) *redis.StatusCmd {
 func (c *CmdableWrapper) ReadWrite(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "readWrite", nil
 	result := c.Cmdable.ReadWrite(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -302,14 +305,14 @@ func (c *CmdableWrapper) ReadWrite(ctx context.Context) *redis.StatusCmd {
 func (c *CmdableWrapper) Copy(ctx context.Context, srcKey, destKey string, destDb int, replace bool) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "copy", m{"srcKey": srcKey, "destKey": destKey, "destDb": destDb, "replace": replace}
 	result := c.Cmdable.Copy(ctx, srcKey, destKey, destDb, replace)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -317,14 +320,14 @@ func (c *CmdableWrapper) Copy(ctx context.Context, srcKey, destKey string, destD
 func (c *CmdableWrapper) Del(ctx context.Context, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "del", m{"keys": keys}
 	result := c.Cmdable.Del(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -332,14 +335,14 @@ func (c *CmdableWrapper) Del(ctx context.Context, keys ...string) *redis.IntCmd 
 func (c *CmdableWrapper) Dump(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "dump", m{"key": key}
 	result := c.Cmdable.Dump(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -347,14 +350,14 @@ func (c *CmdableWrapper) Dump(ctx context.Context, key string) *redis.StringCmd 
 func (c *CmdableWrapper) Exists(ctx context.Context, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "exists", m{"keys": keys}
 	result := c.Cmdable.Exists(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -362,14 +365,14 @@ func (c *CmdableWrapper) Exists(ctx context.Context, keys ...string) *redis.IntC
 func (c *CmdableWrapper) Expire(ctx context.Context, key string, value time.Duration) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "expire", m{"key": key, "value": value}
 	result := c.Cmdable.Expire(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -377,14 +380,14 @@ func (c *CmdableWrapper) Expire(ctx context.Context, key string, value time.Dura
 func (c *CmdableWrapper) ExpireAt(ctx context.Context, key string, value time.Time) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "expireAt", m{"key": key, "value": value}
 	result := c.Cmdable.ExpireAt(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -392,14 +395,14 @@ func (c *CmdableWrapper) ExpireAt(ctx context.Context, key string, value time.Ti
 func (c *CmdableWrapper) Keys(ctx context.Context, pattern string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "keys", m{"pattern": pattern}
 	result := c.Cmdable.Keys(ctx, pattern)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -407,14 +410,14 @@ func (c *CmdableWrapper) Keys(ctx context.Context, pattern string) *redis.String
 func (c *CmdableWrapper) Migrate(ctx context.Context, host, port, key string, db int, timeout time.Duration) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "migrate", m{"host": host, "port": port, "key": key, "db": db, "timeout": timeout}
 	result := c.Cmdable.Migrate(ctx, host, port, key, db, timeout)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -422,14 +425,14 @@ func (c *CmdableWrapper) Migrate(ctx context.Context, host, port, key string, db
 func (c *CmdableWrapper) Move(ctx context.Context, key string, db int) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "move", m{"key": key, "db": db}
 	result := c.Cmdable.Move(ctx, key, db)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -437,14 +440,14 @@ func (c *CmdableWrapper) Move(ctx context.Context, key string, db int) *redis.Bo
 func (c *CmdableWrapper) ObjectEncoding(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "objectEncoding", m{"key": key}
 	result := c.Cmdable.ObjectEncoding(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -454,14 +457,14 @@ func (c *CmdableWrapper) ObjectEncoding(ctx context.Context, key string) *redis.
 func (c *CmdableWrapper) ObjectIdleTime(ctx context.Context, key string) *redis.DurationCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "objectIdleTime", m{"key": key}
 	result := c.Cmdable.ObjectIdleTime(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -469,14 +472,14 @@ func (c *CmdableWrapper) ObjectIdleTime(ctx context.Context, key string) *redis.
 func (c *CmdableWrapper) ObjectRefCount(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "objectRefCount", m{"key": key}
 	result := c.Cmdable.ObjectRefCount(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -484,14 +487,14 @@ func (c *CmdableWrapper) ObjectRefCount(ctx context.Context, key string) *redis.
 func (c *CmdableWrapper) Persist(ctx context.Context, key string) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "persist", m{"key": key}
 	result := c.Cmdable.Persist(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -499,14 +502,14 @@ func (c *CmdableWrapper) Persist(ctx context.Context, key string) *redis.BoolCmd
 func (c *CmdableWrapper) PExpire(ctx context.Context, key string, value time.Duration) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "pexpire", m{"key": key, "value": value}
 	result := c.Cmdable.PExpire(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -514,14 +517,14 @@ func (c *CmdableWrapper) PExpire(ctx context.Context, key string, value time.Dur
 func (c *CmdableWrapper) PExpireAt(ctx context.Context, key string, value time.Time) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "pexpireAt", m{"key": key, "value": value}
 	result := c.Cmdable.PExpireAt(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -529,14 +532,14 @@ func (c *CmdableWrapper) PExpireAt(ctx context.Context, key string, value time.T
 func (c *CmdableWrapper) Ping(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "ping", nil
 	result := c.Cmdable.Ping(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -544,14 +547,14 @@ func (c *CmdableWrapper) Ping(ctx context.Context) *redis.StatusCmd {
 func (c *CmdableWrapper) PTTL(ctx context.Context, key string) *redis.DurationCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "pttl", m{"key": key}
 	result := c.Cmdable.PTTL(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -559,14 +562,14 @@ func (c *CmdableWrapper) PTTL(ctx context.Context, key string) *redis.DurationCm
 func (c *CmdableWrapper) RandomKey(ctx context.Context) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "randomKey", nil
 	result := c.Cmdable.RandomKey(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -574,14 +577,14 @@ func (c *CmdableWrapper) RandomKey(ctx context.Context) *redis.StringCmd {
 func (c *CmdableWrapper) Rename(ctx context.Context, key, newKey string) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "rename", m{"key": key, "newKey": newKey}
 	result := c.Cmdable.Rename(ctx, key, newKey)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -589,14 +592,14 @@ func (c *CmdableWrapper) Rename(ctx context.Context, key, newKey string) *redis.
 func (c *CmdableWrapper) RenameNX(ctx context.Context, key, newKey string) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "renamenx", m{"key": key, "newKey": newKey}
 	result := c.Cmdable.RenameNX(ctx, key, newKey)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -604,14 +607,14 @@ func (c *CmdableWrapper) RenameNX(ctx context.Context, key, newKey string) *redi
 func (c *CmdableWrapper) Restore(ctx context.Context, key string, ttl time.Duration, value string) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "restore", m{"key": key, "ttl": ttl, "value": value}
 	result := c.Cmdable.Restore(ctx, key, ttl, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -619,14 +622,14 @@ func (c *CmdableWrapper) Restore(ctx context.Context, key string, ttl time.Durat
 func (c *CmdableWrapper) Scan(ctx context.Context, cursor uint64, match string, count int64) *redis.ScanCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "scan", m{"cursor": cursor, "match": match, "count": count}
 	result := c.Cmdable.Scan(ctx, cursor, match, count)
 	val, _, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -634,14 +637,14 @@ func (c *CmdableWrapper) Scan(ctx context.Context, cursor uint64, match string, 
 func (c *CmdableWrapper) Sort(ctx context.Context, key string, sort *redis.Sort) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "sort", m{"key": key, "args": sort}
 	result := c.Cmdable.Sort(ctx, key, sort)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -649,14 +652,14 @@ func (c *CmdableWrapper) Sort(ctx context.Context, key string, sort *redis.Sort)
 func (c *CmdableWrapper) Touch(ctx context.Context, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "touch", m{"keys": keys}
 	result := c.Cmdable.Touch(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -664,14 +667,14 @@ func (c *CmdableWrapper) Touch(ctx context.Context, keys ...string) *redis.IntCm
 func (c *CmdableWrapper) TTL(ctx context.Context, key string) *redis.DurationCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "ttl", m{"key": key}
 	result := c.Cmdable.TTL(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -679,14 +682,14 @@ func (c *CmdableWrapper) TTL(ctx context.Context, key string) *redis.DurationCmd
 func (c *CmdableWrapper) Type(ctx context.Context, key string) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "type", m{"key": key}
 	result := c.Cmdable.Type(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -694,14 +697,14 @@ func (c *CmdableWrapper) Type(ctx context.Context, key string) *redis.StatusCmd 
 func (c *CmdableWrapper) Unlink(ctx context.Context, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "unlink", m{"keys": keys}
 	result := c.Cmdable.Unlink(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -712,56 +715,56 @@ func (c *CmdableWrapper) Unlink(ctx context.Context, keys ...string) *redis.IntC
 func (c *CmdableWrapper) GeoAdd(ctx context.Context, key string, geoLocations ...*redis.GeoLocation) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "geoAdd", m{"key": key, "locations": geoLocations}
 	result := c.Cmdable.GeoAdd(ctx, key, geoLocations...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
 func (c *CmdableWrapper) GeoDist(ctx context.Context, key, member1, member2, unit string) *redis.FloatCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "geoDist", m{"key": key, "member1": member1, "member2": member2, "unit": unit}
 	result := c.Cmdable.GeoDist(ctx, key, member1, member2, unit)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
 func (c *CmdableWrapper) GeoHash(ctx context.Context, key string, members ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "geoHash", m{"key": key, "members": members}
 	result := c.Cmdable.GeoHash(ctx, key, members...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
 func (c *CmdableWrapper) GeoPos(ctx context.Context, key string, members ...string) *redis.GeoPosCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "geoPos", m{"key": key, "members": members}
 	result := c.Cmdable.GeoPos(ctx, key, members...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -770,42 +773,42 @@ func (c *CmdableWrapper) GeoPos(ctx context.Context, key string, members ...stri
 func (c *CmdableWrapper) GeoSearch(ctx context.Context, key string, query *redis.GeoSearchQuery) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "geoSearch", m{"key": key, "query": query}
 	result := c.Cmdable.GeoSearch(ctx, key, query)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
 func (c *CmdableWrapper) GeoSearchLocation(ctx context.Context, key string, query *redis.GeoSearchLocationQuery) *redis.GeoSearchLocationCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "geoSearchLocation", m{"key": key, "query": query}
 	result := c.Cmdable.GeoSearchLocation(ctx, key, query)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
 func (c *CmdableWrapper) GeoSearchStore(ctx context.Context, key, store string, query *redis.GeoSearchStoreQuery) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "geoSearchStore", m{"key": key, "store": store, "query": query}
 	result := c.Cmdable.GeoSearchStore(ctx, key, store, query)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -815,14 +818,14 @@ func (c *CmdableWrapper) GeoSearchStore(ctx context.Context, key, store string, 
 func (c *CmdableWrapper) HDel(ctx context.Context, key string, fields ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hdel", m{"key": key, "fields": fields}
 	result := c.Cmdable.HDel(ctx, key, fields...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -830,14 +833,14 @@ func (c *CmdableWrapper) HDel(ctx context.Context, key string, fields ...string)
 func (c *CmdableWrapper) HExists(ctx context.Context, key, field string) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hexists", m{"key": key, "field": field}
 	result := c.Cmdable.HExists(ctx, key, field)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -845,14 +848,14 @@ func (c *CmdableWrapper) HExists(ctx context.Context, key, field string) *redis.
 func (c *CmdableWrapper) HGet(ctx context.Context, key, field string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hget", m{"key": key, "field": field}
 	result := c.Cmdable.HGet(ctx, key, field)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -860,14 +863,14 @@ func (c *CmdableWrapper) HGet(ctx context.Context, key, field string) *redis.Str
 func (c *CmdableWrapper) HGetAll(ctx context.Context, key string) *redis.StringStringMapCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hgetAll", m{"key": key}
 	result := c.Cmdable.HGetAll(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -875,14 +878,14 @@ func (c *CmdableWrapper) HGetAll(ctx context.Context, key string) *redis.StringS
 func (c *CmdableWrapper) HIncrBy(ctx context.Context, key, field string, value int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hincrBy", m{"key": key, "field": field, "value": value}
 	result := c.Cmdable.HIncrBy(ctx, key, field, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -890,14 +893,14 @@ func (c *CmdableWrapper) HIncrBy(ctx context.Context, key, field string, value i
 func (c *CmdableWrapper) HIncrByFloat(ctx context.Context, key, field string, value float64) *redis.FloatCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hincrByFloat", m{"key": key, "field": field, "value": value}
 	result := c.Cmdable.HIncrByFloat(ctx, key, field, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -905,14 +908,14 @@ func (c *CmdableWrapper) HIncrByFloat(ctx context.Context, key, field string, va
 func (c *CmdableWrapper) HKeys(ctx context.Context, key string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hkeys", m{"key": key}
 	result := c.Cmdable.HKeys(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -920,14 +923,14 @@ func (c *CmdableWrapper) HKeys(ctx context.Context, key string) *redis.StringSli
 func (c *CmdableWrapper) HLen(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hlen", m{"key": key}
 	result := c.Cmdable.HLen(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -935,14 +938,14 @@ func (c *CmdableWrapper) HLen(ctx context.Context, key string) *redis.IntCmd {
 func (c *CmdableWrapper) HMGet(ctx context.Context, key string, fields ...string) *redis.SliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hmget", m{"key": key, "fields": fields}
 	result := c.Cmdable.HMGet(ctx, key, fields...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -952,14 +955,14 @@ func (c *CmdableWrapper) HMGet(ctx context.Context, key string, fields ...string
 func (c *CmdableWrapper) HRandField(ctx context.Context, key string, count int, withValues bool) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hrandField", m{"key": key, "count": count, "withValues": withValues}
 	result := c.Cmdable.HRandField(ctx, key, count, withValues)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -967,14 +970,14 @@ func (c *CmdableWrapper) HRandField(ctx context.Context, key string, count int, 
 func (c *CmdableWrapper) HScan(ctx context.Context, key string, cursor uint64, match string, count int64) *redis.ScanCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hscan", m{"key": key, "cursor": cursor, "match": match, "count": count}
 	result := c.Cmdable.HScan(ctx, key, cursor, match, count)
 	val, _, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -982,14 +985,14 @@ func (c *CmdableWrapper) HScan(ctx context.Context, key string, cursor uint64, m
 func (c *CmdableWrapper) HSet(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hset", m{"key": key, "values": values}
 	result := c.Cmdable.HSet(ctx, key, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -997,14 +1000,14 @@ func (c *CmdableWrapper) HSet(ctx context.Context, key string, values ...interfa
 func (c *CmdableWrapper) HSetNX(ctx context.Context, key, field string, value interface{}) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hsetnx", m{"key": key, "field": field, "value": value}
 	result := c.Cmdable.HSetNX(ctx, key, field, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1014,14 +1017,14 @@ func (c *CmdableWrapper) HSetNX(ctx context.Context, key, field string, value in
 func (c *CmdableWrapper) HVals(ctx context.Context, key string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "hvals", m{"key": key}
 	result := c.Cmdable.HVals(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1031,14 +1034,14 @@ func (c *CmdableWrapper) HVals(ctx context.Context, key string) *redis.StringSli
 func (c *CmdableWrapper) PFAdd(ctx context.Context, key string, elements ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "pfadd", m{"key": key, "elements": elements}
 	result := c.Cmdable.PFAdd(ctx, key, elements...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1046,14 +1049,14 @@ func (c *CmdableWrapper) PFAdd(ctx context.Context, key string, elements ...inte
 func (c *CmdableWrapper) PFCount(ctx context.Context, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "pfcount", m{"keys": keys}
 	result := c.Cmdable.PFCount(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1061,14 +1064,14 @@ func (c *CmdableWrapper) PFCount(ctx context.Context, keys ...string) *redis.Int
 func (c *CmdableWrapper) PFMerge(ctx context.Context, destKey string, keys ...string) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "pfmerge", m{"destKey": destKey, "keys": keys}
 	result := c.Cmdable.PFMerge(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1078,14 +1081,14 @@ func (c *CmdableWrapper) PFMerge(ctx context.Context, destKey string, keys ...st
 func (c *CmdableWrapper) BLMove(ctx context.Context, srcKey, destKey, srcPos, destPos string, timeout time.Duration) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "blmove", m{"srcKey": srcKey, "destKey": destKey, "srcPos": srcPos, "destPos": destPos, "timeout": timeout}
 	result := c.Cmdable.BLMove(ctx, srcKey, destKey, srcPos, destPos, timeout)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1093,14 +1096,14 @@ func (c *CmdableWrapper) BLMove(ctx context.Context, srcKey, destKey, srcPos, de
 func (c *CmdableWrapper) BLPop(ctx context.Context, timeout time.Duration, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "blpop", m{"keys": keys, "timeout": timeout}
 	result := c.Cmdable.BLPop(ctx, timeout, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1108,14 +1111,14 @@ func (c *CmdableWrapper) BLPop(ctx context.Context, timeout time.Duration, keys 
 func (c *CmdableWrapper) BRPop(ctx context.Context, timeout time.Duration, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "brpop", m{"keys": keys, "timeout": timeout}
 	result := c.Cmdable.BRPop(ctx, timeout, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1125,14 +1128,14 @@ func (c *CmdableWrapper) BRPop(ctx context.Context, timeout time.Duration, keys 
 func (c *CmdableWrapper) LIndex(ctx context.Context, key string, index int64) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "lindex", m{"key": key, "index": index}
 	result := c.Cmdable.LIndex(ctx, key, index)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1140,14 +1143,14 @@ func (c *CmdableWrapper) LIndex(ctx context.Context, key string, index int64) *r
 func (c *CmdableWrapper) LInsert(ctx context.Context, key, op string, pivot, value interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "linsert", m{"key": key, "op": op, "pivot": pivot, "value": value}
 	result := c.Cmdable.LInsert(ctx, key, op, pivot, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1155,14 +1158,14 @@ func (c *CmdableWrapper) LInsert(ctx context.Context, key, op string, pivot, val
 func (c *CmdableWrapper) LLen(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "llen", m{"key": key}
 	result := c.Cmdable.LLen(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1170,14 +1173,14 @@ func (c *CmdableWrapper) LLen(ctx context.Context, key string) *redis.IntCmd {
 func (c *CmdableWrapper) LMove(ctx context.Context, srcKey, destKey, srcPos, destPos string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "lmove", m{"srcKey": srcKey, "destKey": destKey, "srcPos": srcPos, "destPos": destPos}
 	result := c.Cmdable.LMove(ctx, srcKey, destKey, srcPos, destPos)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1185,14 +1188,14 @@ func (c *CmdableWrapper) LMove(ctx context.Context, srcKey, destKey, srcPos, des
 func (c *CmdableWrapper) LPop(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "lpop", m{"key": key}
 	result := c.Cmdable.LPop(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1200,14 +1203,14 @@ func (c *CmdableWrapper) LPop(ctx context.Context, key string) *redis.StringCmd 
 func (c *CmdableWrapper) LPos(ctx context.Context, key, value string, args redis.LPosArgs) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "lpos", m{"key": key, "value": value, "args": args}
 	result := c.Cmdable.LPos(ctx, key, value, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1215,14 +1218,14 @@ func (c *CmdableWrapper) LPos(ctx context.Context, key, value string, args redis
 func (c *CmdableWrapper) LPush(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "lpush", m{"key": key, "values": values}
 	result := c.Cmdable.LPush(ctx, key, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1230,14 +1233,14 @@ func (c *CmdableWrapper) LPush(ctx context.Context, key string, values ...interf
 func (c *CmdableWrapper) LPushX(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "lpushx", m{"key": key, "values": values}
 	result := c.Cmdable.LPushX(ctx, key, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1245,14 +1248,14 @@ func (c *CmdableWrapper) LPushX(ctx context.Context, key string, values ...inter
 func (c *CmdableWrapper) LRange(ctx context.Context, key string, start, stop int64) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "lrange", m{"key": key, "start": start, "stop": stop}
 	result := c.Cmdable.LRange(ctx, key, start, stop)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1260,14 +1263,14 @@ func (c *CmdableWrapper) LRange(ctx context.Context, key string, start, stop int
 func (c *CmdableWrapper) LRem(ctx context.Context, key string, count int64, value interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "lrem", m{"key": key, "count": count, "value": value}
 	result := c.Cmdable.LRem(ctx, key, count, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1275,14 +1278,14 @@ func (c *CmdableWrapper) LRem(ctx context.Context, key string, count int64, valu
 func (c *CmdableWrapper) LSet(ctx context.Context, key string, index int64, value interface{}) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "lset", m{"key": key, "index": index, "value": value}
 	result := c.Cmdable.LSet(ctx, key, index, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1290,14 +1293,14 @@ func (c *CmdableWrapper) LSet(ctx context.Context, key string, index int64, valu
 func (c *CmdableWrapper) LTrim(ctx context.Context, key string, start, stop int64) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "ltrim", m{"key": key, "start": start, "stop": stop}
 	result := c.Cmdable.LTrim(ctx, key, start, stop)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1305,14 +1308,14 @@ func (c *CmdableWrapper) LTrim(ctx context.Context, key string, start, stop int6
 func (c *CmdableWrapper) RPop(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "rpop", m{"key": key}
 	result := c.Cmdable.RPop(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1322,14 +1325,14 @@ func (c *CmdableWrapper) RPop(ctx context.Context, key string) *redis.StringCmd 
 func (c *CmdableWrapper) RPush(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "rpush", m{"key": key, "values": values}
 	result := c.Cmdable.RPush(ctx, key, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1337,14 +1340,14 @@ func (c *CmdableWrapper) RPush(ctx context.Context, key string, values ...interf
 func (c *CmdableWrapper) RPushX(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "rpushx", m{"key": key, "values": values}
 	result := c.Cmdable.RPushX(ctx, key, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1356,14 +1359,14 @@ func (c *CmdableWrapper) RPushX(ctx context.Context, key string, values ...inter
 func (c *CmdableWrapper) Publish(ctx context.Context, channel string, message interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "publish", m{"channel": channel, "message": message}
 	result := c.Cmdable.Publish(ctx, channel, message)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1371,14 +1374,14 @@ func (c *CmdableWrapper) Publish(ctx context.Context, channel string, message in
 func (c *CmdableWrapper) PubSubChannels(ctx context.Context, pattern string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "pubSubChannels", m{"pattern": pattern}
 	result := c.Cmdable.PubSubChannels(ctx, pattern)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1386,14 +1389,14 @@ func (c *CmdableWrapper) PubSubChannels(ctx context.Context, pattern string) *re
 func (c *CmdableWrapper) PubSubNumPat(ctx context.Context) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "pubSubNumPat", nil
 	result := c.Cmdable.PubSubNumPat(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1401,14 +1404,14 @@ func (c *CmdableWrapper) PubSubNumPat(ctx context.Context) *redis.IntCmd {
 func (c *CmdableWrapper) PubSubNumSub(ctx context.Context, channels ...string) *redis.StringIntMapCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "pubSubNumSub", m{"channels": channels}
 	result := c.Cmdable.PubSubNumSub(ctx, channels...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1420,14 +1423,14 @@ func (c *CmdableWrapper) PubSubNumSub(ctx context.Context, channels ...string) *
 func (c *CmdableWrapper) Eval(ctx context.Context, script string, keys []string, args ...interface{}) *redis.Cmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "eval", m{"script": script, "keys": keys, "args": args}
 	result := c.Cmdable.Eval(ctx, script, keys, args...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1435,14 +1438,14 @@ func (c *CmdableWrapper) Eval(ctx context.Context, script string, keys []string,
 func (c *CmdableWrapper) EvalSha(ctx context.Context, scriptSha string, keys []string, args ...interface{}) *redis.Cmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "evalSha", m{"sha": scriptSha, "keys": keys, "args": args}
 	result := c.Cmdable.EvalSha(ctx, scriptSha, keys, args...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1452,14 +1455,14 @@ func (c *CmdableWrapper) EvalSha(ctx context.Context, scriptSha string, keys []s
 func (c *CmdableWrapper) ScriptExists(ctx context.Context, hashes ...string) *redis.BoolSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "scriptExists", m{"hashes": hashes}
 	result := c.Cmdable.ScriptExists(ctx, hashes...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1467,14 +1470,14 @@ func (c *CmdableWrapper) ScriptExists(ctx context.Context, hashes ...string) *re
 func (c *CmdableWrapper) ScriptFlush(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "scriptFlush", nil
 	result := c.Cmdable.ScriptFlush(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1482,14 +1485,14 @@ func (c *CmdableWrapper) ScriptFlush(ctx context.Context) *redis.StatusCmd {
 func (c *CmdableWrapper) ScriptKill(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "scriptKill", nil
 	result := c.Cmdable.ScriptKill(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1497,14 +1500,14 @@ func (c *CmdableWrapper) ScriptKill(ctx context.Context) *redis.StatusCmd {
 func (c *CmdableWrapper) ScriptLoad(ctx context.Context, script string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "scriptLoad", m{"script": script}
 	result := c.Cmdable.ScriptLoad(ctx, script)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1514,14 +1517,14 @@ func (c *CmdableWrapper) ScriptLoad(ctx context.Context, script string) *redis.S
 func (c *CmdableWrapper) DBSize(ctx context.Context) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "dbsize", nil
 	result := c.Cmdable.DBSize(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1529,14 +1532,14 @@ func (c *CmdableWrapper) DBSize(ctx context.Context) *redis.IntCmd {
 func (c *CmdableWrapper) FlushAll(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "flushAll", nil
 	result := c.Cmdable.FlushAll(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1544,14 +1547,14 @@ func (c *CmdableWrapper) FlushAll(ctx context.Context) *redis.StatusCmd {
 func (c *CmdableWrapper) FlushAllAsync(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "flushAllAsync", nil
 	result := c.Cmdable.FlushAllAsync(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1559,14 +1562,14 @@ func (c *CmdableWrapper) FlushAllAsync(ctx context.Context) *redis.StatusCmd {
 func (c *CmdableWrapper) FlushDB(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "flushDb", nil
 	result := c.Cmdable.FlushDB(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1574,14 +1577,14 @@ func (c *CmdableWrapper) FlushDB(ctx context.Context) *redis.StatusCmd {
 func (c *CmdableWrapper) FlushDBAsync(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "flushDbAsync", nil
 	result := c.Cmdable.FlushDBAsync(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1593,14 +1596,14 @@ func (c *CmdableWrapper) FlushDBAsync(ctx context.Context) *redis.StatusCmd {
 func (c *CmdableWrapper) SAdd(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "sadd", m{"key": key, "values": values}
 	result := c.Cmdable.SAdd(ctx, key, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1608,14 +1611,14 @@ func (c *CmdableWrapper) SAdd(ctx context.Context, key string, values ...interfa
 func (c *CmdableWrapper) SCard(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "scard", m{"key": key}
 	result := c.Cmdable.SCard(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1623,14 +1626,14 @@ func (c *CmdableWrapper) SCard(ctx context.Context, key string) *redis.IntCmd {
 func (c *CmdableWrapper) SDiff(ctx context.Context, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "sdiff", m{"keys": keys}
 	result := c.Cmdable.SDiff(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1638,14 +1641,14 @@ func (c *CmdableWrapper) SDiff(ctx context.Context, keys ...string) *redis.Strin
 func (c *CmdableWrapper) SDiffStore(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "sdiffStore", m{"dest": destKey, "keys": keys}
 	result := c.Cmdable.SDiffStore(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1653,14 +1656,14 @@ func (c *CmdableWrapper) SDiffStore(ctx context.Context, destKey string, keys ..
 func (c *CmdableWrapper) SInter(ctx context.Context, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "sinter", m{"keys": keys}
 	result := c.Cmdable.SInter(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1668,14 +1671,14 @@ func (c *CmdableWrapper) SInter(ctx context.Context, keys ...string) *redis.Stri
 func (c *CmdableWrapper) SInterStore(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "sinterStore", m{"dest": destKey, "keys": keys}
 	result := c.Cmdable.SInterStore(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1683,14 +1686,14 @@ func (c *CmdableWrapper) SInterStore(ctx context.Context, destKey string, keys .
 func (c *CmdableWrapper) SIsMember(ctx context.Context, key string, value interface{}) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "sisMember", m{"key": key, "value": value}
 	result := c.Cmdable.SIsMember(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1698,14 +1701,14 @@ func (c *CmdableWrapper) SIsMember(ctx context.Context, key string, value interf
 func (c *CmdableWrapper) SMembers(ctx context.Context, key string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "smembers", m{"key": key}
 	result := c.Cmdable.SMembers(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1713,14 +1716,14 @@ func (c *CmdableWrapper) SMembers(ctx context.Context, key string) *redis.String
 func (c *CmdableWrapper) SMIsMember(ctx context.Context, key string, values ...interface{}) *redis.BoolSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "smisMember", m{"key": key, "values": values}
 	result := c.Cmdable.SMIsMember(ctx, key, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1728,14 +1731,14 @@ func (c *CmdableWrapper) SMIsMember(ctx context.Context, key string, values ...i
 func (c *CmdableWrapper) SMove(ctx context.Context, srcKey, destKey string, value interface{}) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "smove", m{"src": srcKey, "dest": destKey, "value": value}
 	result := c.Cmdable.SMove(ctx, srcKey, destKey, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1743,14 +1746,14 @@ func (c *CmdableWrapper) SMove(ctx context.Context, srcKey, destKey string, valu
 func (c *CmdableWrapper) SPop(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "spop", m{"key": key}
 	result := c.Cmdable.SPop(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1758,14 +1761,14 @@ func (c *CmdableWrapper) SPop(ctx context.Context, key string) *redis.StringCmd 
 func (c *CmdableWrapper) SPopN(ctx context.Context, key string, count int64) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "spop", m{"key": key, "count": count}
 	result := c.Cmdable.SPopN(ctx, key, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1773,14 +1776,14 @@ func (c *CmdableWrapper) SPopN(ctx context.Context, key string, count int64) *re
 func (c *CmdableWrapper) SRandMember(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "srandMember", m{"key": key}
 	result := c.Cmdable.SRandMember(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1788,14 +1791,14 @@ func (c *CmdableWrapper) SRandMember(ctx context.Context, key string) *redis.Str
 func (c *CmdableWrapper) SRandMemberN(ctx context.Context, key string, count int64) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "srandMember", m{"key": key, "count": count}
 	result := c.Cmdable.SRandMemberN(ctx, key, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1803,14 +1806,14 @@ func (c *CmdableWrapper) SRandMemberN(ctx context.Context, key string, count int
 func (c *CmdableWrapper) SRem(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "srem", m{"key": key, "values": values}
 	result := c.Cmdable.SRem(ctx, key, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1818,14 +1821,14 @@ func (c *CmdableWrapper) SRem(ctx context.Context, key string, values ...interfa
 func (c *CmdableWrapper) SScan(ctx context.Context, key string, cursor uint64, pattern string, count int64) *redis.ScanCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "sscan", m{"key": key, "cursor": cursor, "pattern": pattern, "count": count}
 	result := c.Cmdable.SScan(ctx, key, cursor, pattern, count)
 	val, _, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1833,14 +1836,14 @@ func (c *CmdableWrapper) SScan(ctx context.Context, key string, cursor uint64, p
 func (c *CmdableWrapper) SUnion(ctx context.Context, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "sunion", m{"keys": keys}
 	result := c.Cmdable.SUnion(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1848,14 +1851,14 @@ func (c *CmdableWrapper) SUnion(ctx context.Context, keys ...string) *redis.Stri
 func (c *CmdableWrapper) SUnionStore(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "sunionStore", m{"dest": destKey, "keys": keys}
 	result := c.Cmdable.SUnionStore(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1865,14 +1868,14 @@ func (c *CmdableWrapper) SUnionStore(ctx context.Context, destKey string, keys .
 func (c *CmdableWrapper) BZPopMax(ctx context.Context, timeout time.Duration, keys ...string) *redis.ZWithKeyCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "bzpopMax", m{"keys": keys, "timeout": timeout}
 	result := c.Cmdable.BZPopMax(ctx, timeout, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1880,14 +1883,14 @@ func (c *CmdableWrapper) BZPopMax(ctx context.Context, timeout time.Duration, ke
 func (c *CmdableWrapper) BZPopMin(ctx context.Context, timeout time.Duration, keys ...string) *redis.ZWithKeyCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "bzpopMin", m{"keys": keys, "timeout": timeout}
 	result := c.Cmdable.BZPopMin(ctx, timeout, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1895,14 +1898,14 @@ func (c *CmdableWrapper) BZPopMin(ctx context.Context, timeout time.Duration, ke
 func (c *CmdableWrapper) ZAdd(ctx context.Context, key string, values ...*redis.Z) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zadd", m{"key": key, "values": values}
 	result := c.Cmdable.ZAdd(ctx, key, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1910,14 +1913,14 @@ func (c *CmdableWrapper) ZAdd(ctx context.Context, key string, values ...*redis.
 func (c *CmdableWrapper) ZCard(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zcard", m{"key": key}
 	result := c.Cmdable.ZCard(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1925,14 +1928,14 @@ func (c *CmdableWrapper) ZCard(ctx context.Context, key string) *redis.IntCmd {
 func (c *CmdableWrapper) ZCount(ctx context.Context, key, min, max string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zcount", m{"key": key, "min": min, "max": max}
 	result := c.Cmdable.ZCount(ctx, key, min, max)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1940,14 +1943,14 @@ func (c *CmdableWrapper) ZCount(ctx context.Context, key, min, max string) *redi
 func (c *CmdableWrapper) ZDiff(ctx context.Context, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zdiff", m{"keys": keys}
 	result := c.Cmdable.ZDiff(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1955,14 +1958,14 @@ func (c *CmdableWrapper) ZDiff(ctx context.Context, keys ...string) *redis.Strin
 func (c *CmdableWrapper) ZDiffWithScores(ctx context.Context, keys ...string) *redis.ZSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zdiff", m{"keys": keys, "withScores": true}
 	result := c.Cmdable.ZDiffWithScores(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1970,14 +1973,14 @@ func (c *CmdableWrapper) ZDiffWithScores(ctx context.Context, keys ...string) *r
 func (c *CmdableWrapper) ZDiffStore(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zdiffStore", m{"dest": destKey, "keys": keys}
 	result := c.Cmdable.ZDiffStore(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -1985,14 +1988,14 @@ func (c *CmdableWrapper) ZDiffStore(ctx context.Context, destKey string, keys ..
 func (c *CmdableWrapper) ZIncrBy(ctx context.Context, key string, increment float64, value string) *redis.FloatCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zincrBy", m{"key": key, "value": value, "increment": increment}
 	result := c.Cmdable.ZIncrBy(ctx, key, increment, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2000,14 +2003,14 @@ func (c *CmdableWrapper) ZIncrBy(ctx context.Context, key string, increment floa
 func (c *CmdableWrapper) ZInter(ctx context.Context, store *redis.ZStore) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zinter", m{"keys": store.Keys, "weights": store.Weights, "aggregate": store.Aggregate}
 	result := c.Cmdable.ZInter(ctx, store)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2015,14 +2018,14 @@ func (c *CmdableWrapper) ZInter(ctx context.Context, store *redis.ZStore) *redis
 func (c *CmdableWrapper) ZInterWithScores(ctx context.Context, store *redis.ZStore) *redis.ZSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zinter", m{"keys": store.Keys, "weights": store.Weights, "aggregate": store.Aggregate, "withScores": true}
 	result := c.Cmdable.ZInterWithScores(ctx, store)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2030,14 +2033,14 @@ func (c *CmdableWrapper) ZInterWithScores(ctx context.Context, store *redis.ZSto
 func (c *CmdableWrapper) ZInterStore(ctx context.Context, destKey string, store *redis.ZStore) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zinterStore", m{"dest": destKey, "store": store}
 	result := c.Cmdable.ZInterStore(ctx, destKey, store)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2045,14 +2048,14 @@ func (c *CmdableWrapper) ZInterStore(ctx context.Context, destKey string, store 
 func (c *CmdableWrapper) ZLexCount(ctx context.Context, key, min, max string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zlexCount", m{"key": key, "min": min, "max": max}
 	result := c.Cmdable.ZLexCount(ctx, key, min, max)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2060,14 +2063,14 @@ func (c *CmdableWrapper) ZLexCount(ctx context.Context, key, min, max string) *r
 func (c *CmdableWrapper) ZMScore(ctx context.Context, key string, values ...string) *redis.FloatSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zmscore", m{"key": key, "values": values}
 	result := c.Cmdable.ZMScore(ctx, key, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2075,14 +2078,14 @@ func (c *CmdableWrapper) ZMScore(ctx context.Context, key string, values ...stri
 func (c *CmdableWrapper) ZPopMax(ctx context.Context, key string, count ...int64) *redis.ZSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zpopMax", m{"key": key, "count": count}
 	result := c.Cmdable.ZPopMax(ctx, key, count...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2090,14 +2093,14 @@ func (c *CmdableWrapper) ZPopMax(ctx context.Context, key string, count ...int64
 func (c *CmdableWrapper) ZPopMin(ctx context.Context, key string, count ...int64) *redis.ZSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zpopMin", m{"key": key, "count": count}
 	result := c.Cmdable.ZPopMin(ctx, key, count...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2105,14 +2108,14 @@ func (c *CmdableWrapper) ZPopMin(ctx context.Context, key string, count ...int64
 func (c *CmdableWrapper) ZRandMember(ctx context.Context, key string, count int, withScores bool) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrandMember", m{"key": key, "count": count}
 	result := c.Cmdable.ZRandMember(ctx, key, count, withScores)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2120,8 +2123,8 @@ func (c *CmdableWrapper) ZRandMember(ctx context.Context, key string, count int,
 func (c *CmdableWrapper) ZRangeArgs(ctx context.Context, args redis.ZRangeArgs) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrange", m{
 		"key": args.Key, "rev": args.Rev, "byScore": args.ByScore, "byLex": args.ByLex,
@@ -2130,7 +2133,7 @@ func (c *CmdableWrapper) ZRangeArgs(ctx context.Context, args redis.ZRangeArgs) 
 	result := c.Cmdable.ZRangeArgs(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2138,8 +2141,8 @@ func (c *CmdableWrapper) ZRangeArgs(ctx context.Context, args redis.ZRangeArgs) 
 func (c *CmdableWrapper) ZRangeArgsWithScores(ctx context.Context, args redis.ZRangeArgs) *redis.ZSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrange", m{
 		"key": args.Key, "rev": args.Rev, "byScore": args.ByScore, "byLex": args.ByLex, "withScores": true,
@@ -2148,7 +2151,7 @@ func (c *CmdableWrapper) ZRangeArgsWithScores(ctx context.Context, args redis.ZR
 	result := c.Cmdable.ZRangeArgsWithScores(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2187,8 +2190,8 @@ func (c *CmdableWrapper) ZRangeByScoreWithScores(ctx context.Context, key string
 func (c *CmdableWrapper) ZRangeStore(ctx context.Context, destKey string, args redis.ZRangeArgs) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrangeStore", m{
 		"dest": destKey, "key": args.Key, "rev": args.Rev, "byScore": args.ByScore, "byLex": args.ByLex,
@@ -2197,7 +2200,7 @@ func (c *CmdableWrapper) ZRangeStore(ctx context.Context, destKey string, args r
 	result := c.Cmdable.ZRangeStore(ctx, destKey, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2205,14 +2208,14 @@ func (c *CmdableWrapper) ZRangeStore(ctx context.Context, destKey string, args r
 func (c *CmdableWrapper) ZRank(ctx context.Context, key, member string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrank", m{"key": key, "member": member}
 	result := c.Cmdable.ZRank(ctx, key, member)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2220,14 +2223,14 @@ func (c *CmdableWrapper) ZRank(ctx context.Context, key, member string) *redis.I
 func (c *CmdableWrapper) ZRem(ctx context.Context, key string, members ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrem", m{"key": key, "members": members}
 	result := c.Cmdable.ZRem(ctx, key, members)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2235,14 +2238,14 @@ func (c *CmdableWrapper) ZRem(ctx context.Context, key string, members ...interf
 func (c *CmdableWrapper) ZRemRangeByLex(ctx context.Context, key, min, max string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zremRangeByLex", m{"key": key, "min": min, "max": max}
 	result := c.Cmdable.ZRemRangeByLex(ctx, key, min, max)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2250,14 +2253,14 @@ func (c *CmdableWrapper) ZRemRangeByLex(ctx context.Context, key, min, max strin
 func (c *CmdableWrapper) ZRemRangeByRank(ctx context.Context, key string, start, stop int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zremRangeByRank", m{"key": key, "start": start, "stop": stop}
 	result := c.Cmdable.ZRemRangeByRank(ctx, key, start, stop)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2265,14 +2268,14 @@ func (c *CmdableWrapper) ZRemRangeByRank(ctx context.Context, key string, start,
 func (c *CmdableWrapper) ZRemRangeByScore(ctx context.Context, key, min, max string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zremRangeByScore", m{"key": key, "min": min, "max": max}
 	result := c.Cmdable.ZRemRangeByScore(ctx, key, min, max)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2282,14 +2285,14 @@ func (c *CmdableWrapper) ZRemRangeByScore(ctx context.Context, key, min, max str
 func (c *CmdableWrapper) ZRevRange(ctx context.Context, key string, start, stop int64) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrevRange", m{"key": key, "start": start, "stop": stop}
 	result := c.Cmdable.ZRevRange(ctx, key, start, stop)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2299,14 +2302,14 @@ func (c *CmdableWrapper) ZRevRange(ctx context.Context, key string, start, stop 
 func (c *CmdableWrapper) ZRevRangeWithScores(ctx context.Context, key string, start, stop int64) *redis.ZSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrevRange", m{"key": key, "start": start, "stop": stop, "withScores": true}
 	result := c.Cmdable.ZRevRangeWithScores(ctx, key, start, stop)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2316,14 +2319,14 @@ func (c *CmdableWrapper) ZRevRangeWithScores(ctx context.Context, key string, st
 func (c *CmdableWrapper) ZRevRangeByLex(ctx context.Context, key string, opts *redis.ZRangeBy) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrevRangeByLex", m{"key": key, "max": opts.Max, "min": opts.Min, "offset": opts.Offset, "count": opts.Count}
 	result := c.Cmdable.ZRevRangeByLex(ctx, key, opts)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2333,14 +2336,14 @@ func (c *CmdableWrapper) ZRevRangeByLex(ctx context.Context, key string, opts *r
 func (c *CmdableWrapper) ZRevRangeByScore(ctx context.Context, key string, opts *redis.ZRangeBy) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrevRangeByScore", m{"key": key, "max": opts.Max, "min": opts.Min, "offset": opts.Offset, "count": opts.Count}
 	result := c.Cmdable.ZRevRangeByScore(ctx, key, opts)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2350,14 +2353,14 @@ func (c *CmdableWrapper) ZRevRangeByScore(ctx context.Context, key string, opts 
 func (c *CmdableWrapper) ZRevRangeByScoreWithScores(ctx context.Context, key string, opts *redis.ZRangeBy) *redis.ZSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrevRangeByScore", m{"key": key, "max": opts.Max, "min": opts.Min, "offset": opts.Offset, "count": opts.Count, "withScores": true}
 	result := c.Cmdable.ZRevRangeByScoreWithScores(ctx, key, opts)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2365,14 +2368,14 @@ func (c *CmdableWrapper) ZRevRangeByScoreWithScores(ctx context.Context, key str
 func (c *CmdableWrapper) ZRevRank(ctx context.Context, key string, member string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrevRank", m{"key": key, "member": member}
 	result := c.Cmdable.ZRevRank(ctx, key, member)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2380,14 +2383,14 @@ func (c *CmdableWrapper) ZRevRank(ctx context.Context, key string, member string
 func (c *CmdableWrapper) ZScan(ctx context.Context, key string, cursor uint64, match string, count int64) *redis.ScanCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zscan", m{"key": key, "cursor": cursor, "match": match, "count": count}
 	result := c.Cmdable.ZScan(ctx, key, cursor, match, count)
 	val, _, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2395,14 +2398,14 @@ func (c *CmdableWrapper) ZScan(ctx context.Context, key string, cursor uint64, m
 func (c *CmdableWrapper) ZScore(ctx context.Context, key, member string) *redis.FloatCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zscore", m{"key": key, "member": member}
 	result := c.Cmdable.ZScore(ctx, key, member)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2410,14 +2413,14 @@ func (c *CmdableWrapper) ZScore(ctx context.Context, key, member string) *redis.
 func (c *CmdableWrapper) ZUnion(ctx context.Context, store redis.ZStore) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zunion", m{"keys": store.Keys, "aggregate": store.Aggregate, "weights": store.Weights}
 	result := c.Cmdable.ZUnion(ctx, store)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2425,14 +2428,14 @@ func (c *CmdableWrapper) ZUnion(ctx context.Context, store redis.ZStore) *redis.
 func (c *CmdableWrapper) ZUnionWithScores(ctx context.Context, store redis.ZStore) *redis.ZSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zunion", m{"keys": store.Keys, "aggregate": store.Aggregate, "weights": store.Weights, "withScores": true}
 	result := c.Cmdable.ZUnionWithScores(ctx, store)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2440,14 +2443,14 @@ func (c *CmdableWrapper) ZUnionWithScores(ctx context.Context, store redis.ZStor
 func (c *CmdableWrapper) ZUnionStore(ctx context.Context, destKey string, store *redis.ZStore) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zunionStore", m{"dest": destKey, "keys": store.Keys, "aggregate": store.Aggregate, "weights": store.Weights}
 	result := c.Cmdable.ZUnionStore(ctx, destKey, store)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2457,14 +2460,14 @@ func (c *CmdableWrapper) ZUnionStore(ctx context.Context, destKey string, store 
 func (c *CmdableWrapper) XAck(ctx context.Context, stream, group string, ids ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xack", m{"stream": stream, "group": stream, "ids": ids}
 	result := c.Cmdable.XAck(ctx, stream, group, ids...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2472,15 +2475,15 @@ func (c *CmdableWrapper) XAck(ctx context.Context, stream, group string, ids ...
 func (c *CmdableWrapper) XAdd(ctx context.Context, args *redis.XAddArgs) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xadd", m{"stream": args.Stream, "noMkStream": args.NoMkStream, "maxLen": args.MaxLen,
 		"minId": args.MinID, "approx": args.Approx, "limit": args.Limit, "id": args.ID, "values": args.Values}
 	result := c.Cmdable.XAdd(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2488,15 +2491,15 @@ func (c *CmdableWrapper) XAdd(ctx context.Context, args *redis.XAddArgs) *redis.
 func (c *CmdableWrapper) XAutoClaim(ctx context.Context, args *redis.XAutoClaimArgs) *redis.XAutoClaimCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xautoClaim", m{"stream": args.Stream, "group": args.Group, "minIdle": args.MinIdle,
 		"start": args.Start, "count": args.Count, "consumer": args.Consumer}
 	result := c.Cmdable.XAutoClaim(ctx, args)
 	val, _, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2504,15 +2507,15 @@ func (c *CmdableWrapper) XAutoClaim(ctx context.Context, args *redis.XAutoClaimA
 func (c *CmdableWrapper) XAutoClaimJustID(ctx context.Context, args *redis.XAutoClaimArgs) *redis.XAutoClaimJustIDCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xautoClaim", m{"stream": args.Stream, "group": args.Group, "minIdle": args.MinIdle,
 		"start": args.Start, "count": args.Count, "consumer": args.Consumer, "justId": true}
 	result := c.Cmdable.XAutoClaimJustID(ctx, args)
 	val, _, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2520,14 +2523,14 @@ func (c *CmdableWrapper) XAutoClaimJustID(ctx context.Context, args *redis.XAuto
 func (c *CmdableWrapper) XDel(ctx context.Context, stream string, ids ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xdel", m{"stream": stream, "ids": ids}
 	result := c.Cmdable.XDel(ctx, stream, ids...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2535,14 +2538,14 @@ func (c *CmdableWrapper) XDel(ctx context.Context, stream string, ids ...string)
 func (c *CmdableWrapper) XGroupCreate(ctx context.Context, stream, group, start string) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDDL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xgroupCreate", m{"stream": stream, "group": group, "start": start}
 	result := c.Cmdable.XGroupCreate(ctx, stream, group, start)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2550,14 +2553,14 @@ func (c *CmdableWrapper) XGroupCreate(ctx context.Context, stream, group, start 
 func (c *CmdableWrapper) XGroupCreateMkStream(ctx context.Context, stream, group, start string) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDDL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xgroupCreate", m{"stream": stream, "group": group, "start": start, "mkStream": true}
 	result := c.Cmdable.XGroupCreateMkStream(ctx, stream, group, start)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2565,14 +2568,14 @@ func (c *CmdableWrapper) XGroupCreateMkStream(ctx context.Context, stream, group
 func (c *CmdableWrapper) XGroupCreateConsumer(ctx context.Context, stream, group, consumer string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xgroupCreateConsumer", m{"stream": stream, "group": group, "consumer": consumer}
 	result := c.Cmdable.XGroupCreateConsumer(ctx, stream, group, consumer)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2580,14 +2583,14 @@ func (c *CmdableWrapper) XGroupCreateConsumer(ctx context.Context, stream, group
 func (c *CmdableWrapper) XGroupDelConsumer(ctx context.Context, stream, group, consumer string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatOther, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xgroupDelConsumer", m{"stream": stream, "group": group, "consumer": consumer}
 	result := c.Cmdable.XGroupDelConsumer(ctx, stream, group, consumer)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2595,14 +2598,14 @@ func (c *CmdableWrapper) XGroupDelConsumer(ctx context.Context, stream, group, c
 func (c *CmdableWrapper) XGroupDestroy(ctx context.Context, stream, group string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDDL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xgroupDestroy", m{"stream": stream, "group": group}
 	result := c.Cmdable.XGroupDestroy(ctx, stream, group)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2610,14 +2613,14 @@ func (c *CmdableWrapper) XGroupDestroy(ctx context.Context, stream, group string
 func (c *CmdableWrapper) XGroupSetID(ctx context.Context, stream, group, start string) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xgroupSetId", m{"stream": stream, "group": group, "start": start}
 	result := c.Cmdable.XGroupSetID(ctx, stream, group, start)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2625,14 +2628,14 @@ func (c *CmdableWrapper) XGroupSetID(ctx context.Context, stream, group, start s
 func (c *CmdableWrapper) XInfoConsumers(ctx context.Context, key, group string) *redis.XInfoConsumersCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xinfoConsumers", m{"key": key, "group": group}
 	result := c.Cmdable.XInfoConsumers(ctx, key, group)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2640,14 +2643,14 @@ func (c *CmdableWrapper) XInfoConsumers(ctx context.Context, key, group string) 
 func (c *CmdableWrapper) XInfoGroups(ctx context.Context, key string) *redis.XInfoGroupsCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xinfoGroups", m{"key": key}
 	result := c.Cmdable.XInfoGroups(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2655,14 +2658,14 @@ func (c *CmdableWrapper) XInfoGroups(ctx context.Context, key string) *redis.XIn
 func (c *CmdableWrapper) XInfoStream(ctx context.Context, key string) *redis.XInfoStreamCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xinfoStream", m{"key": key}
 	result := c.Cmdable.XInfoStream(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2670,14 +2673,14 @@ func (c *CmdableWrapper) XInfoStream(ctx context.Context, key string) *redis.XIn
 func (c *CmdableWrapper) XInfoStreamFull(ctx context.Context, key string, count int) *redis.XInfoStreamFullCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xinfoStream", m{"key": key, "full": true, "count": count}
 	result := c.Cmdable.XInfoStreamFull(ctx, key, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2685,14 +2688,14 @@ func (c *CmdableWrapper) XInfoStreamFull(ctx context.Context, key string, count 
 func (c *CmdableWrapper) XLen(ctx context.Context, stream string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xlen", m{"stream": stream}
 	result := c.Cmdable.XLen(ctx, stream)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2700,14 +2703,14 @@ func (c *CmdableWrapper) XLen(ctx context.Context, stream string) *redis.IntCmd 
 func (c *CmdableWrapper) XPending(ctx context.Context, stream, group string) *redis.XPendingCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xpending", m{"stream": stream, "group": group}
 	result := c.Cmdable.XPending(ctx, stream, group)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2715,15 +2718,15 @@ func (c *CmdableWrapper) XPending(ctx context.Context, stream, group string) *re
 func (c *CmdableWrapper) XPendingExt(ctx context.Context, args *redis.XPendingExtArgs) *redis.XPendingExtCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xpending", m{"stream": args.Stream, "group": args.Group, "consumer": args.Consumer,
 		"idle": args.Idle, "start": args.Start, "end": args.End, "count": args.Count}
 	result := c.Cmdable.XPendingExt(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2731,14 +2734,14 @@ func (c *CmdableWrapper) XPendingExt(ctx context.Context, args *redis.XPendingEx
 func (c *CmdableWrapper) XRange(ctx context.Context, stream, start, stop string) *redis.XMessageSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xrange", m{"stream": stream, "start": start, "stop": stop}
 	result := c.Cmdable.XRange(ctx, stream, start, stop)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2746,14 +2749,14 @@ func (c *CmdableWrapper) XRange(ctx context.Context, stream, start, stop string)
 func (c *CmdableWrapper) XRangeN(ctx context.Context, stream, start, stop string, count int64) *redis.XMessageSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xrange", m{"stream": stream, "start": start, "stop": stop, "count": count}
 	result := c.Cmdable.XRangeN(ctx, stream, start, stop, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2761,14 +2764,14 @@ func (c *CmdableWrapper) XRangeN(ctx context.Context, stream, start, stop string
 func (c *CmdableWrapper) XRead(ctx context.Context, args *redis.XReadArgs) *redis.XStreamSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xread", m{"streams": args.Streams, "block": args.Block, "count": args.Count}
 	result := c.Cmdable.XRead(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2776,15 +2779,15 @@ func (c *CmdableWrapper) XRead(ctx context.Context, args *redis.XReadArgs) *redi
 func (c *CmdableWrapper) XReadGroup(ctx context.Context, args *redis.XReadGroupArgs) *redis.XStreamSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xreadGroup", m{"group": args.Group, "consumer": args.Consumer, "streams": args.Streams,
 		"block": args.Block, "count": args.Count, "noAck": args.NoAck}
 	result := c.Cmdable.XReadGroup(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2792,14 +2795,14 @@ func (c *CmdableWrapper) XReadGroup(ctx context.Context, args *redis.XReadGroupA
 func (c *CmdableWrapper) XRevRange(ctx context.Context, stream, start, stop string) *redis.XMessageSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xrevRange", m{"stream": stream, "start": start, "stop": stop}
 	result := c.Cmdable.XRevRange(ctx, stream, start, stop)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2807,14 +2810,14 @@ func (c *CmdableWrapper) XRevRange(ctx context.Context, stream, start, stop stri
 func (c *CmdableWrapper) XRevRangeN(ctx context.Context, stream, start, stop string, count int64) *redis.XMessageSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xrevRange", m{"stream": stream, "start": start, "stop": stop, "count": count}
 	result := c.Cmdable.XRevRangeN(ctx, stream, start, stop, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2826,14 +2829,14 @@ func (c *CmdableWrapper) XRevRangeN(ctx context.Context, stream, start, stop str
 func (c *CmdableWrapper) XTrimMaxLen(ctx context.Context, key string, maxLen int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "maxLen": maxLen}
 	result := c.Cmdable.XTrimMaxLen(ctx, key, maxLen)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2841,14 +2844,14 @@ func (c *CmdableWrapper) XTrimMaxLen(ctx context.Context, key string, maxLen int
 func (c *CmdableWrapper) XTrimMaxLenApprox(ctx context.Context, key string, maxLen, limit int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "maxLen": maxLen, "approx": true, "limit": limit}
 	result := c.Cmdable.XTrimMaxLenApprox(ctx, key, maxLen, limit)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2856,14 +2859,14 @@ func (c *CmdableWrapper) XTrimMaxLenApprox(ctx context.Context, key string, maxL
 func (c *CmdableWrapper) XTrimMinID(ctx context.Context, key, minId string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "minId": minId}
 	result := c.Cmdable.XTrimMinID(ctx, key, minId)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2871,14 +2874,14 @@ func (c *CmdableWrapper) XTrimMinID(ctx context.Context, key, minId string) *red
 func (c *CmdableWrapper) XTrimMinIDApprox(ctx context.Context, key, minId string, limit int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "minId": minId, "limit": limit}
 	result := c.Cmdable.XTrimMinIDApprox(ctx, key, minId, limit)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2888,14 +2891,14 @@ func (c *CmdableWrapper) XTrimMinIDApprox(ctx context.Context, key, minId string
 func (c *CmdableWrapper) Append(ctx context.Context, key, value string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "append", m{"key": key, "value": value}
 	result := c.Cmdable.Append(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2903,14 +2906,14 @@ func (c *CmdableWrapper) Append(ctx context.Context, key, value string) *redis.I
 func (c *CmdableWrapper) Decr(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "decr", m{"key": key}
 	result := c.Cmdable.Decr(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2918,14 +2921,14 @@ func (c *CmdableWrapper) Decr(ctx context.Context, key string) *redis.IntCmd {
 func (c *CmdableWrapper) DecrBy(ctx context.Context, key string, value int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "decrBy", m{"key": key, "value": value}
 	result := c.Cmdable.DecrBy(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2933,14 +2936,14 @@ func (c *CmdableWrapper) DecrBy(ctx context.Context, key string, value int64) *r
 func (c *CmdableWrapper) Get(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "get", m{"key": key}
 	result := c.Cmdable.Get(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2948,14 +2951,14 @@ func (c *CmdableWrapper) Get(ctx context.Context, key string) *redis.StringCmd {
 func (c *CmdableWrapper) GetDel(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "getDel", m{"key": key}
 	result := c.Cmdable.GetDel(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2963,14 +2966,14 @@ func (c *CmdableWrapper) GetDel(ctx context.Context, key string) *redis.StringCm
 func (c *CmdableWrapper) GetEx(ctx context.Context, key string, expiration time.Duration) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "getEx", m{"key": key, "expiration": expiration}
 	result := c.Cmdable.GetEx(ctx, key, expiration)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2978,14 +2981,14 @@ func (c *CmdableWrapper) GetEx(ctx context.Context, key string, expiration time.
 func (c *CmdableWrapper) GetRange(ctx context.Context, key string, start, end int64) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "getRange", m{"key": key, "start": start, "end": end}
 	result := c.Cmdable.GetRange(ctx, key, start, end)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -2993,14 +2996,14 @@ func (c *CmdableWrapper) GetRange(ctx context.Context, key string, start, end in
 func (c *CmdableWrapper) GetSet(ctx context.Context, key string, value interface{}) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "getSet", m{"key": key, "value": value}
 	result := c.Cmdable.GetSet(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3008,14 +3011,14 @@ func (c *CmdableWrapper) GetSet(ctx context.Context, key string, value interface
 func (c *CmdableWrapper) Incr(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "incr", m{"key": key}
 	result := c.Cmdable.Incr(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3023,14 +3026,14 @@ func (c *CmdableWrapper) Incr(ctx context.Context, key string) *redis.IntCmd {
 func (c *CmdableWrapper) IncrBy(ctx context.Context, key string, value int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "incrBy", m{"key": key, "value": value}
 	result := c.Cmdable.IncrBy(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3038,14 +3041,14 @@ func (c *CmdableWrapper) IncrBy(ctx context.Context, key string, value int64) *r
 func (c *CmdableWrapper) IncrByFloat(ctx context.Context, key string, value float64) *redis.FloatCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "incrByFloat", m{"key": key, "value": value}
 	result := c.Cmdable.IncrByFloat(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3053,14 +3056,14 @@ func (c *CmdableWrapper) IncrByFloat(ctx context.Context, key string, value floa
 func (c *CmdableWrapper) MGet(ctx context.Context, keys ...string) *redis.SliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "mget", m{"keys": keys}
 	result := c.Cmdable.MGet(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3068,14 +3071,14 @@ func (c *CmdableWrapper) MGet(ctx context.Context, keys ...string) *redis.SliceC
 func (c *CmdableWrapper) MSet(ctx context.Context, values ...interface{}) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "mset", m{"values": values}
 	result := c.Cmdable.MSet(ctx, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3083,14 +3086,14 @@ func (c *CmdableWrapper) MSet(ctx context.Context, values ...interface{}) *redis
 func (c *CmdableWrapper) MSetNX(ctx context.Context, values ...interface{}) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "msetnx", m{"values": values}
 	result := c.Cmdable.MSetNX(ctx, values...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3100,14 +3103,14 @@ func (c *CmdableWrapper) MSetNX(ctx context.Context, values ...interface{}) *red
 func (c *CmdableWrapper) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "set", m{"key": key, "value": value, "expiration": expiration}
 	result := c.Cmdable.Set(ctx, key, value, expiration)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3115,14 +3118,14 @@ func (c *CmdableWrapper) Set(ctx context.Context, key string, value interface{},
 func (c *CmdableWrapper) SetEX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "setex", m{"key": key, "value": value, "expiration": expiration}
 	result := c.Cmdable.SetEX(ctx, key, value, expiration)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3130,14 +3133,14 @@ func (c *CmdableWrapper) SetEX(ctx context.Context, key string, value interface{
 func (c *CmdableWrapper) SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "setnx", m{"key": key, "value": value, "expiration": expiration}
 	result := c.Cmdable.SetNX(ctx, key, value, expiration)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3145,14 +3148,14 @@ func (c *CmdableWrapper) SetNX(ctx context.Context, key string, value interface{
 func (c *CmdableWrapper) SetRange(ctx context.Context, key string, offset int64, value string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "setRange", m{"key": key, "offset": offset, "value": value}
 	result := c.Cmdable.SetRange(ctx, key, offset, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
@@ -3160,14 +3163,14 @@ func (c *CmdableWrapper) SetRange(ctx context.Context, key string, offset int64,
 func (c *CmdableWrapper) StrLen(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
-		c.rc.LogMetrics(MetricsCatAll, cmd)
-		c.rc.LogMetrics(MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "strLen", m{"key": key}
 	result := c.Cmdable.StrLen(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(CmdResultOk, CmdResultError, err)
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 

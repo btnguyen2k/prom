@@ -1,10 +1,11 @@
-package prom
+package goredis
 
 import (
 	"regexp"
 	"sync"
 	"time"
 
+	"github.com/btnguyen2k/prom"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -16,7 +17,7 @@ type GoRedisConnect struct {
 
 	poolOpts      *RedisPoolOpts // Redis connection pool options
 	mutex         sync.Mutex
-	metricsLogger IMetricsLogger // (since v0.3.0) if non-nil, GoRedisConnect automatically logs executing commands.
+	metricsLogger prom.IMetricsLogger // (since v0.3.0) if non-nil, GoRedisConnect automatically logs executing commands.
 
 	/* other options */
 	sentinelMasterName string                // the sentinel master name, used by failover clients
@@ -87,7 +88,7 @@ func NewGoRedisConnectWithPoolOptions(hostsAndPorts, password string, maxRetries
 		clients:         make(map[int]*redis.Client),
 		failoverClients: make(map[int]*redis.Client),
 		poolOpts:        poolOpts,
-		metricsLogger:   NewMemoryStoreMetricsLogger(1028),
+		metricsLogger:   prom.NewMemoryStoreMetricsLogger(1028),
 	}
 	return r, r.Init()
 }
@@ -106,7 +107,7 @@ func (r *GoRedisConnect) Init() error {
 		r.poolOpts = defaultRedisPoolOpts
 	}
 	if r.metricsLogger == nil {
-		r.metricsLogger = NewMemoryStoreMetricsLogger(1028)
+		r.metricsLogger = prom.NewMemoryStoreMetricsLogger(1028)
 	}
 	if r.clients == nil {
 		r.clients = make(map[int]*redis.Client)
@@ -121,7 +122,7 @@ func (r *GoRedisConnect) Init() error {
 // If non-nil, GoRedisConnect automatically logs executing commands.
 //
 // Available since v0.3.0
-func (r *GoRedisConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *GoRedisConnect {
+func (r *GoRedisConnect) RegisterMetricsLogger(metricsLogger prom.IMetricsLogger) *GoRedisConnect {
 	r.metricsLogger = metricsLogger
 	return r
 }
@@ -129,7 +130,7 @@ func (r *GoRedisConnect) RegisterMetricsLogger(metricsLogger IMetricsLogger) *Go
 // MetricsLogger returns the associated IMetricsLogger instance.
 //
 // Available since v0.3.0
-func (r *GoRedisConnect) MetricsLogger() IMetricsLogger {
+func (r *GoRedisConnect) MetricsLogger() prom.IMetricsLogger {
 	return r.metricsLogger
 }
 
@@ -138,9 +139,9 @@ func (r *GoRedisConnect) MetricsLogger() IMetricsLogger {
 // The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
 //
 // Available since v0.3.0
-func (r *GoRedisConnect) NewCmdExecInfo() *CmdExecInfo {
-	return &CmdExecInfo{
-		Id:        NewId(),
+func (r *GoRedisConnect) NewCmdExecInfo() *prom.CmdExecInfo {
+	return &prom.CmdExecInfo{
+		Id:        prom.NewId(),
 		BeginTime: time.Now(),
 		Cost:      -1,
 	}
@@ -151,7 +152,7 @@ func (r *GoRedisConnect) NewCmdExecInfo() *CmdExecInfo {
 // This function is silently no-op of the input if nil or there is no associated metrics logger.
 //
 // Available since v0.3.0
-func (r *GoRedisConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
+func (r *GoRedisConnect) LogMetrics(category string, cmd *prom.CmdExecInfo) error {
 	if cmd != nil && r.metricsLogger != nil {
 		return r.metricsLogger.Put(category, cmd)
 	}
@@ -163,7 +164,7 @@ func (r *GoRedisConnect) LogMetrics(category string, cmd *CmdExecInfo) error {
 // This function is silently no-op of there is no associated metrics logger.
 //
 // Available since v0.3.0
-func (r *GoRedisConnect) Metrics(category string, opts ...MetricsOpts) (*Metrics, error) {
+func (r *GoRedisConnect) Metrics(category string, opts ...prom.MetricsOpts) (*prom.Metrics, error) {
 	if r.metricsLogger != nil {
 		return r.metricsLogger.Metrics(category, opts...)
 	}

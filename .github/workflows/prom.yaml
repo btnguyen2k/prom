@@ -111,11 +111,12 @@ jobs:
         run: docker run -d --name redis-all-in-one -e STANDALONE=true -e SENTINEL=true -e IP=0.0.0.0 -p 5000-5002:5000-5002 -p 7000-7007:7000-7007 -p 6379:7006 grokzen/redis-cluster:6.2.0
       - name: Test
         run: |
+          export REDIS_HOST_AND_PORT="127.0.0.1:6379"
           export REDIS_HOSTS_AND_PORTS="127.0.0.1:6379"
           export REDIS_FAILOVER_HOSTS_AND_PORTS="127.0.0.1:5000"
           export REDIS_FAILOVER_MASTER_NAME="sentinel7000"
           export REDIS_CLUSTER_HOSTS_AND_PORTS="127.0.0.1:7000,127.0.0.1:7001,127.0.0.1:7002,127.0.0.1:7003,127.0.0.1:7004,127.0.0.1:7005"
-          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_redis.txt -run "Redis" .
+          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_redis.txt ./goredis
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:

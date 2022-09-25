@@ -57,7 +57,7 @@ Support simple logging and metrics:
 
 ## 2020-10-25 - v0.2.8
 
-- ['Prom' for go-redis](go-redis.md):
+- ['Prom' for go-redis](goredis/go-redis.md):
   - Add `RedisPoolOpts` struct.
   - `GoRedisConnect.GetClient`, `GoRedisConnect.GetFailoverClient` and `GoRedisConnect.GetClusterClient` adhere to Redis connection pool settings.
 - ['Prom' for the official Go driver for MongoDB](mongo.md):
@@ -192,7 +192,7 @@ Support simple logging and metrics:
 - ['Prom' for the official Go driver for MongoDB](mongo.md):
   - Bug fixes, enhancements & refactoring
   - Add [usage examples](examples/example_mongo.go)
-- New ['Prom' for go-redis](go-redis.md):
+- New ['Prom' for go-redis](goredis/go-redis.md):
   - go-redis: https://github.com/go-redis/redis
   - Type: `GoRedisConnect`.
   - [Usage examples](examples/example_go-redis.go)
