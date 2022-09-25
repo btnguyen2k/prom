@@ -2,7 +2,7 @@
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom/dynamodb)
 
->>> Supported libraries/drivers+version: `github.com/aws/aws-sdk-go v1.44.44`.
+> Supported libraries/drivers+version: `github.com/aws/aws-sdk-go v1.44.44`.
 
 Usage:
 
