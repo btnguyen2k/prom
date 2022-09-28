@@ -1,5 +1,9 @@
 # prom release notes
 
+## 2022-10-28 - v0.4.1
+
+Bug fixed: `AwsDynamodbConnect.PutItemIfNotExistXXX` must return `(nil, nil)` if item already existed.
+
 ## 2022-10-25 - v0.4.0
 
 Move `AwsDynamodbConnect`, `GoRedisConnect`, `MongoConnect` and `SqlConnect` to sub-packages.

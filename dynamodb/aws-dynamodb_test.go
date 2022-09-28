@@ -831,9 +831,11 @@ func TestAwsDynamodbConnect_PutItemIfNotExist(t *testing.T) {
 	var fetchedItem AwsDynamodbItem
 	var err error
 	for i, data := range testData {
-		// PutItem: must be successful for new item
-		if _, err = adc.PutItemIfNotExist(nil, testDynamodbTableName, data.item, pkAttrs); err != nil {
-			t.Fatalf("%s failed: error [%s]", testName+"/PutItem/"+strconv.Itoa(i), err)
+		if result, err := adc.PutItemIfNotExist(nil, testDynamodbTableName, data.item, pkAttrs); err != nil {
+			t.Fatalf("%s failed: error [%s]", testName+"/PutItemIfNotExist/"+strconv.Itoa(i), err)
+		} else if !data.shouldWrite && result != nil {
+			// PutItemIfNotExist should return (nil,nil) if item already existed
+			t.Fatalf("%s failed: PutItemIfNotExist should return (nil, nil) but received (%#v, %#v)", testName+"/PutItemIfNotExist/"+strconv.Itoa(i), result, err)
 		}
 		_adcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName, adc, cmdDynamodbPutItem, []string{dynamodb.ErrCodeConditionalCheckFailedException}, prom.MetricsCatAll, prom.MetricsCatDML)
 
@@ -2073,7 +2075,6 @@ func TestAwsDynamodbConnect_TxPutIfNotExist(t *testing.T) {
 	pkAttrs := []string{"username"}
 	for i, data := range testData {
 		item := data.item
-		// PutItem: must be successful for new item
 		if txPut, err = adc.BuildTxPutIfNotExist(testDynamodbTableName, item, pkAttrs); txPut == nil || err != nil {
 			t.Fatalf("%s failed: nil result or error [%s]", testName+"/BuildTxPutIfNotExist/"+strconv.Itoa(i), err)
 		}
