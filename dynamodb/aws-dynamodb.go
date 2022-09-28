@@ -723,7 +723,10 @@ func (adc *AwsDynamodbConnect) PutItemRaw(ctx aws.Context, table string, item ma
 // Note: (since v0.2.7) if item already existed, this function return (nil, nil)
 func (adc *AwsDynamodbConnect) PutItemIfNotExistRaw(ctx aws.Context, table string, item map[string]*dynamodb.AttributeValue, pkAttrs []string) (*dynamodb.PutItemOutput, error) {
 	result, err := adc.PutItemRaw(ctx, table, item, AwsDynamodbNotExistsAllBuilder(pkAttrs))
-	return result, AwsIgnoreErrorIfMatched(err, dynamodb.ErrCodeConditionalCheckFailedException)
+	if IsAwsError(err, dynamodb.ErrCodeConditionalCheckFailedException) {
+		return nil, nil
+	}
+	return result, err
 }
 
 // PutItem inserts a new item to table or replace an existing one.
