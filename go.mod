@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/aws/aws-sdk-go v1.44.306
 	github.com/btnguyen2k/consu/olaf v0.1.3
-	github.com/btnguyen2k/consu/reddo v0.1.7
+	github.com/btnguyen2k/consu/reddo v0.1.8
 	github.com/btnguyen2k/consu/semita v0.1.5
 	github.com/btnguyen2k/gocosmos v0.1.6
 	github.com/denisenkom/go-mssqldb v0.12.2
