@@ -123,7 +123,7 @@ func TestSql_DataTypeString(t *testing.T) {
 			placeholder := _generatePlaceholders(1, sqlc)
 			sql = "SELECT * FROM %s WHERE id>=%s ORDER BY id"
 			if sqlc.flavor == FlavorCosmosDb {
-				sql = "SELECT * FROM %s t WHERE t.id>=%s WITH cross_partition=true"
+				sql = "SELECT * FROM %s t WHERE t.id>=%s ORDER BY t.id WITH cross_partition=true"
 			}
 			sql = fmt.Sprintf(sql, tblName, placeholder)
 			params := []interface{}{fmt.Sprintf("%03d", id)}
