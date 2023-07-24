@@ -10,7 +10,7 @@ require (
 	github.com/btnguyen2k/gocosmos v0.3.0
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/go-sql-driver/mysql v1.6.0
+	github.com/go-sql-driver/mysql v1.7.1
 	github.com/godror/godror v0.33.3
 	github.com/jackc/pgx/v4 v4.16.1
 	github.com/mattn/go-sqlite3 v1.14.17
