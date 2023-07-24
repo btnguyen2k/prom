@@ -13,7 +13,7 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/godror/godror v0.33.3
 	github.com/jackc/pgx/v4 v4.16.1
-	github.com/mattn/go-sqlite3 v1.14.14
+	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/onsi/gomega v1.19.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	go.mongodb.org/mongo-driver v1.12.0
