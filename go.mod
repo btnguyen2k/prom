@@ -7,7 +7,7 @@ require (
 	github.com/btnguyen2k/consu/olaf v0.1.3
 	github.com/btnguyen2k/consu/reddo v0.1.7
 	github.com/btnguyen2k/consu/semita v0.1.5
-	github.com/btnguyen2k/gocosmos v0.1.6
+	github.com/btnguyen2k/gocosmos v0.3.0
 	github.com/denisenkom/go-mssqldb v0.12.2
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.6.0
