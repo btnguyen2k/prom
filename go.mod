@@ -16,5 +16,5 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/onsi/gomega v1.19.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
-	go.mongodb.org/mongo-driver v1.12.0
+	go.mongodb.org/mongo-driver v1.12.1
 )
