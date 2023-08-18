@@ -29,9 +29,11 @@ jobs:
         flags: general
         name: general
 
-  testAwsDynamoDB:
+  TestAwsDynamoDB:
     name: Test against AWS DynamoDB
     runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dynamodb'
     steps:
     - name: Set up Go env
       uses: actions/setup-go@v4
@@ -54,9 +56,11 @@ jobs:
         flags: dynamodb
         name: dynamodb
 
-  testMongoStandalone:
+  TestMongoStandalone:
     name: Test against MongoDB (Standalone)
     runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/mongo'
     steps:
     - name: Set up Go env
       uses: actions/setup-go@v4
@@ -77,9 +81,11 @@ jobs:
         flags: mongo_singleserver
         name: mongo_singleserver
 
-  testMongoReplicaSet:
+  TestMongoReplicaSet:
     name: Test against MongoDB (ReplicaSet)
     runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/mongo'
     steps:
     - name: Set up Go env
       uses: actions/setup-go@v4
@@ -100,19 +106,24 @@ jobs:
         flags: mongo_replicaset
         name: mongo_replicaset
 
-  testRedis:
-    name: Test against Redis
+  TestRedis:
     runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/redis'
+    strategy:
+      matrix:
+        go: [ '1.13', '1.14', '1.15', '1.16', '1.17', '1.18', '1.19', '1.20', '1.21', 'stable' ]
+        redis: [ '6.0.0', '6.2.0', '7.0.0' ]
+    name: General tests with Go ${{ matrix.go }}
     steps:
+      - uses: actions/checkout@v3
       - name: Set up Go env
         uses: actions/setup-go@v4
         with:
-          go-version: ^1.13
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
-      - name: Start Redis server
-        run: docker run -d --name redis-all-in-one -e STANDALONE=true -e SENTINEL=true -e IP=0.0.0.0 -p 5000-5002:5000-5002 -p 7000-7007:7000-7007 -p 6379:7006 grokzen/redis-cluster:6.2.0
-      - name: Test
+          go-version: ${{ matrix.go }}
+      - name: Start Redis server ${{ matrix.redis }}
+        run: docker run -d --name redis-all-in-one -e STANDALONE=true -e SENTINEL=true -e IP=0.0.0.0 -p 5000-5002:5000-5002 -p 7000-7007:7000-7007 -p 6379:7006 grokzen/redis-cluster:${{ matrix.redis }}
+      - name: Run tests
         run: |
           export REDIS_HOST_AND_PORT="127.0.0.1:6379"
           export REDIS_HOSTS_AND_PORTS="127.0.0.1:6379"
@@ -126,9 +137,11 @@ jobs:
           flags: redis
           name: redis
 
-  testSqlite:
+  TestSqlite:
     name: Test against SQLite
     runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/sql'
     steps:
     - name: Set up Go env
       uses: actions/setup-go@v4
@@ -149,9 +162,11 @@ jobs:
         flags: sqlite
         name: sqlite
 
-  testMySQL:
+  TestMySQL:
     name: Test against MySQL
     runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/sql'
     steps:
     - name: Set up Go env
       uses: actions/setup-go@v4
@@ -184,9 +199,11 @@ jobs:
         flags: mysql
         name: mysql
 
-  testPostgreSQL:
+  TestPostgreSQL:
     name: Test against PostgreSQL
     runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/sql'
     steps:
     - name: Set up Go env
       uses: actions/setup-go@v4
@@ -208,9 +225,11 @@ jobs:
         flags: pgsql
         name: pgsql
 
-  testMSSQL:
+  TestMSSQL:
     name: Test against MSSQL
     runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/sql'
     steps:
     - name: Set up Go env
       uses: actions/setup-go@v4
@@ -232,9 +251,11 @@ jobs:
         flags: mssql
         name: mssql
 
-  testCosmosDb:
+  TestCosmosDb:
     name: Test against Azure Cosmos DB
     runs-on: windows-latest
+    if: |
+      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/gocosmos'
     steps:
     - name: Set up Go env
       uses: actions/setup-go@v4
