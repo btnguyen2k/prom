@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/btnguyen2k/prom"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 type _testFailedWithMsgFunc func(msg string)
@@ -168,6 +168,7 @@ var _teardownTestRedisProxy _testSetupOrTeardownFunc = func(t *testing.T, testNa
 
 /* Redis' bitmap-related commands */
 
+// since Redis v2.6.0
 func TestRedisProxy_BitCount(t *testing.T) {
 	testName := "TestRedisProxy_BitCount"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -183,6 +184,7 @@ func TestRedisProxy_BitCount(t *testing.T) {
 	}
 }
 
+// since Redis v3.2.0
 func TestRedisProxy_BitField(t *testing.T) {
 	testName := "TestRedisProxy_BitField"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -198,6 +200,7 @@ func TestRedisProxy_BitField(t *testing.T) {
 	}
 }
 
+// since Redis v2.6.0
 func TestRedisProxy_BitOpAnd(t *testing.T) {
 	testName := "TestRedisProxy_BitOpAnd"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -213,6 +216,7 @@ func TestRedisProxy_BitOpAnd(t *testing.T) {
 	}
 }
 
+// since Redis v2.6.0
 func TestRedisProxy_BitOpNot(t *testing.T) {
 	testName := "TestRedisProxy_BitOpNot"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -228,6 +232,7 @@ func TestRedisProxy_BitOpNot(t *testing.T) {
 	}
 }
 
+// since Redis v2.6.0
 func TestRedisProxy_BitOpOr(t *testing.T) {
 	testName := "TestRedisProxy_BitOpOr"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -243,6 +248,7 @@ func TestRedisProxy_BitOpOr(t *testing.T) {
 	}
 }
 
+// since Redis v2.6.0
 func TestRedisProxy_BitOpXor(t *testing.T) {
 	testName := "TestRedisProxy_BitOpXor"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -258,6 +264,7 @@ func TestRedisProxy_BitOpXor(t *testing.T) {
 	}
 }
 
+// since Redis v2.8.7
 func TestRedisProxy_BitPos(t *testing.T) {
 	testName := "TestRedisProxy_BitPos"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -273,6 +280,7 @@ func TestRedisProxy_BitPos(t *testing.T) {
 	}
 }
 
+// since Redis v2.2.0
 func TestRedisProxy_GetBit(t *testing.T) {
 	testName := "TestRedisProxy_GetBit"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -288,6 +296,7 @@ func TestRedisProxy_GetBit(t *testing.T) {
 	}
 }
 
+// since Redis v2.2.0
 func TestRedisProxy_SetBit(t *testing.T) {
 	testName := "TestRedisProxy_SetBit"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -337,6 +346,7 @@ func TestRedisProxy_ReadWrite(t *testing.T) {
 
 /* Redis' generic commands */
 
+// since Redis v6.2.0
 func TestRedisProxy_Copy(t *testing.T) {
 	testName := "TestRedisProxy_Copy"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -352,6 +362,7 @@ func TestRedisProxy_Copy(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_Del(t *testing.T) {
 	testName := "TestRedisProxy_Del"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -367,6 +378,7 @@ func TestRedisProxy_Del(t *testing.T) {
 	}
 }
 
+// since Redis v2.6.0
 func TestRedisProxy_Dump(t *testing.T) {
 	testName := "TestRedisProxy_Dump"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -382,6 +394,7 @@ func TestRedisProxy_Dump(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_Exists(t *testing.T) {
 	testName := "TestRedisProxy_Exists"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -397,6 +410,7 @@ func TestRedisProxy_Exists(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_Expire(t *testing.T) {
 	testName := "TestRedisProxy_Expire"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -412,6 +426,23 @@ func TestRedisProxy_Expire(t *testing.T) {
 	}
 }
 
+// since Redis v7.0.0
+func TestRedisProxy_ExpireTime(t *testing.T) {
+	testName := "TestRedisProxy_ExpireTime"
+	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+	defer teardownTest(t)
+	for i, c := range _testCmdableList {
+		t.Run(_testList[i], func(t *testing.T) {
+			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
+			// 	t.SkipNow()
+			// }
+			c.ExpireTime(context.TODO(), "key")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "expireTime", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+		})
+	}
+}
+
+// since Redis v1.2.0
 func TestRedisProxy_ExpireAt(t *testing.T) {
 	testName := "TestRedisProxy_ExpireAt"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -427,6 +458,7 @@ func TestRedisProxy_ExpireAt(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_Keys(t *testing.T) {
 	testName := "TestRedisProxy_Keys"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -442,6 +474,7 @@ func TestRedisProxy_Keys(t *testing.T) {
 	}
 }
 
+// since Redis v2.6.0
 func TestRedisProxy_Migrate(t *testing.T) {
 	testName := "TestRedisProxy_Migrate"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -457,6 +490,7 @@ func TestRedisProxy_Migrate(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_Move(t *testing.T) {
 	testName := "TestRedisProxy_Move"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -474,6 +508,7 @@ func TestRedisProxy_Move(t *testing.T) {
 	}
 }
 
+// since Redis v2.2.3
 func TestRedisProxy_ObjectEncoding(t *testing.T) {
 	testName := "TestRedisProxy_ObjectEncoding"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -489,6 +524,7 @@ func TestRedisProxy_ObjectEncoding(t *testing.T) {
 	}
 }
 
+// since Redis v2.2.3
 func TestRedisProxy_ObjectIdleTime(t *testing.T) {
 	testName := "TestRedisProxy_ObjectIdleTime"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -504,6 +540,7 @@ func TestRedisProxy_ObjectIdleTime(t *testing.T) {
 	}
 }
 
+// since Redis v2.2.3
 func TestRedisProxy_ObjectRefCount(t *testing.T) {
 	testName := "TestRedisProxy_ObjectRefCount"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -519,6 +556,7 @@ func TestRedisProxy_ObjectRefCount(t *testing.T) {
 	}
 }
 
+// since Redis v2.2.0
 func TestRedisProxy_Persist(t *testing.T) {
 	testName := "TestRedisProxy_Persist"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -534,6 +572,7 @@ func TestRedisProxy_Persist(t *testing.T) {
 	}
 }
 
+// since Redis v2.6.0
 func TestRedisProxy_PExpire(t *testing.T) {
 	testName := "TestRedisProxy_PExpire"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -549,6 +588,7 @@ func TestRedisProxy_PExpire(t *testing.T) {
 	}
 }
 
+// since Redis v2.6.0
 func TestRedisProxy_PExpireAt(t *testing.T) {
 	testName := "TestRedisProxy_PExpireAt"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -564,6 +604,23 @@ func TestRedisProxy_PExpireAt(t *testing.T) {
 	}
 }
 
+// since Redis v7.0.0
+func TestRedisProxy_PExpireTime(t *testing.T) {
+	testName := "TestRedisProxy_PExpireTime"
+	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+	defer teardownTest(t)
+	for i, c := range _testCmdableList {
+		t.Run(_testList[i], func(t *testing.T) {
+			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
+				t.SkipNow()
+			}
+			c.PExpireTime(context.TODO(), "key")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "pexpireTime", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+		})
+	}
+}
+
+// since Redis v1.0.0
 func TestRedisProxy_Ping(t *testing.T) {
 	testName := "TestRedisProxy_Ping"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -579,6 +636,7 @@ func TestRedisProxy_Ping(t *testing.T) {
 	}
 }
 
+// since Redis v2.6.0
 func TestRedisProxy_PTTL(t *testing.T) {
 	testName := "TestRedisProxy_PTTL"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -594,6 +652,7 @@ func TestRedisProxy_PTTL(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_RandomKey(t *testing.T) {
 	testName := "TestRedisProxy_RandomKey"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -609,6 +668,7 @@ func TestRedisProxy_RandomKey(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_Rename(t *testing.T) {
 	testName := "TestRedisProxy_Rename"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -625,6 +685,7 @@ func TestRedisProxy_Rename(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_RenameNX(t *testing.T) {
 	testName := "TestRedisProxy_RenameNX"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -641,6 +702,7 @@ func TestRedisProxy_RenameNX(t *testing.T) {
 	}
 }
 
+// since Redis v2.6.0
 func TestRedisProxy_Restore(t *testing.T) {
 	testName := "TestRedisProxy_Restore"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -658,6 +720,7 @@ func TestRedisProxy_Restore(t *testing.T) {
 	}
 }
 
+// since Redis v2.8.0
 func TestRedisProxy_Scan(t *testing.T) {
 	testName := "TestRedisProxy_Scan"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -673,6 +736,7 @@ func TestRedisProxy_Scan(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_Sort(t *testing.T) {
 	testName := "TestRedisProxy_Sort"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -688,6 +752,7 @@ func TestRedisProxy_Sort(t *testing.T) {
 	}
 }
 
+// since Redis v3.2.1
 func TestRedisProxy_Touch(t *testing.T) {
 	testName := "TestRedisProxy_Touch"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -703,6 +768,7 @@ func TestRedisProxy_Touch(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_TTL(t *testing.T) {
 	testName := "TestRedisProxy_TTL"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -718,6 +784,7 @@ func TestRedisProxy_TTL(t *testing.T) {
 	}
 }
 
+// since Redis v1.0.0
 func TestRedisProxy_Type(t *testing.T) {
 	testName := "TestRedisProxy_Type"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -733,6 +800,7 @@ func TestRedisProxy_Type(t *testing.T) {
 	}
 }
 
+// since Redis v4.0.0
 func TestRedisProxy_Unlink(t *testing.T) {
 	testName := "TestRedisProxy_Unlink"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -748,6 +816,7 @@ func TestRedisProxy_Unlink(t *testing.T) {
 	}
 }
 
+// since Redis v3.0.0
 func TestRedisProxy_Wait(t *testing.T) {
 	testName := "TestRedisProxy_Wait"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -776,6 +845,7 @@ func TestRedisProxy_Wait(t *testing.T) {
 
 /* Redis' geospatial-related commands */
 
+// since Redis v3.2.0
 func TestRedisProxy_GeoAdd(t *testing.T) {
 	testName := "TestRedisProxy_GeoAdd"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -791,6 +861,7 @@ func TestRedisProxy_GeoAdd(t *testing.T) {
 	}
 }
 
+// since Redis v3.2.0
 func TestRedisProxy_GeoDist(t *testing.T) {
 	testName := "TestRedisProxy_GeoDist"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -810,6 +881,7 @@ func TestRedisProxy_GeoDist(t *testing.T) {
 	}
 }
 
+// since Redis v3.2.0
 func TestRedisProxy_GeoHash(t *testing.T) {
 	testName := "TestRedisProxy_GeoHash"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -829,6 +901,7 @@ func TestRedisProxy_GeoHash(t *testing.T) {
 	}
 }
 
+// since Redis v3.2.0
 func TestRedisProxy_GeoPos(t *testing.T) {
 	testName := "TestRedisProxy_GeoPos"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -844,6 +917,46 @@ func TestRedisProxy_GeoPos(t *testing.T) {
 			)
 			c.GeoPos(context.TODO(), "key", "member1", "member2", "member3")
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoPos", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+		})
+	}
+}
+
+// since Redis v3.2.0 / deprecated since v6.2.0
+func TestRedisProxy_GeoRadius(t *testing.T) {
+	testName := "TestRedisProxy_GeoRadius"
+	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+	defer teardownTest(t)
+	for i, c := range _testCmdableList {
+		t.Run(_testList[i], func(t *testing.T) {
+			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
+			// 	t.SkipNow()
+			// }
+			c.GeoAdd(context.TODO(), "key",
+				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "member1"},
+				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "member2"},
+			)
+			c.GeoRadius(context.TODO(), "key", 13.361389, 38.115556, nil)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoRadius", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+		})
+	}
+}
+
+// since Redis v3.2.0 / deprecated since v6.2.0
+func TestRedisProxy_GeoRadiusByMember(t *testing.T) {
+	testName := "TestRedisProxy_GeoRadiusByMember"
+	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+	defer teardownTest(t)
+	for i, c := range _testCmdableList {
+		t.Run(_testList[i], func(t *testing.T) {
+			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
+			// 	t.SkipNow()
+			// }
+			c.GeoAdd(context.TODO(), "key",
+				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "member1"},
+				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "member2"},
+			)
+			c.GeoRadiusByMember(context.TODO(), "key", "member1", nil)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoRadiusByMember", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }

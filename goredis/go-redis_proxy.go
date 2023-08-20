@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/btnguyen2k/prom"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 type m map[string]interface{}
@@ -19,7 +19,7 @@ type RedisClientProxy struct {
 	CmdableWrapper
 }
 
-// Wait overrides redis.Client.Wait to log execution metrics.
+// Wait overrides redis.Client/Wait to log execution metrics.
 func (cp *RedisClientProxy) Wait(ctx context.Context, numSlaves int, timeout time.Duration) *redis.IntCmd {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
@@ -34,7 +34,7 @@ func (cp *RedisClientProxy) Wait(ctx context.Context, numSlaves int, timeout tim
 	return result
 }
 
-// PSubscribe overrides redis.Client.PSubscribe to log execution metrics.
+// PSubscribe overrides redis.Client/PSubscribe to log execution metrics.
 func (cp *RedisClientProxy) PSubscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
@@ -47,7 +47,7 @@ func (cp *RedisClientProxy) PSubscribe(ctx context.Context, channels ...string) 
 	return result
 }
 
-// Subscribe overrides redis.Client.Subscribe to log execution metrics.
+// Subscribe overrides redis.Client/Subscribe to log execution metrics.
 func (cp *RedisClientProxy) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
@@ -62,9 +62,9 @@ func (cp *RedisClientProxy) Subscribe(ctx context.Context, channels ...string) *
 
 /*----------------------------------------------------------------------*/
 
-// RedisFailoverClientProxy is a proxy that can be used as replacement for failover redis.Client.
+// RedisFailoverClientProxy is a proxy that can be used as replacement for fail-over redis.Client.
 //
-// This proxy overrides some functions from failover redis.Client and automatically logs the execution metrics.
+// This proxy overrides some functions from fail-over redis.Client and automatically logs the execution metrics.
 //
 // Available since v0.3.0
 type RedisFailoverClientProxy struct {
@@ -73,16 +73,16 @@ type RedisFailoverClientProxy struct {
 
 /*----------------------------------------------------------------------*/
 
-// RedisClusterClientProxy is a proxy that can be used as replacement for failover redis.ClusterClient.
+// RedisClusterClientProxy is a proxy that can be used as replacement for redis.ClusterClient.
 //
-// This proxy overrides some functions from failover redis.ClusterClient and automatically logs the execution metrics.
+// This proxy overrides some functions from redis.ClusterClient and automatically logs the execution metrics.
 //
 // Available since v0.3.0
 type RedisClusterClientProxy struct {
 	CmdableWrapper
 }
 
-// Wait overrides redis.ClusterClient.Wait to log execution metrics.
+// Wait overrides redis.ClusterClient/Wait to log execution metrics.
 func (cp *RedisClusterClientProxy) Wait(ctx context.Context, numSlaves int, timeout time.Duration) *redis.IntCmd {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
@@ -97,7 +97,7 @@ func (cp *RedisClusterClientProxy) Wait(ctx context.Context, numSlaves int, time
 	return result
 }
 
-// PSubscribe overrides redis.ClusterClient.PSubscribe to log execution metrics.
+// PSubscribe overrides redis.ClusterClient/PSubscribe to log execution metrics.
 func (cp *RedisClusterClientProxy) PSubscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
@@ -110,7 +110,7 @@ func (cp *RedisClusterClientProxy) PSubscribe(ctx context.Context, channels ...s
 	return result
 }
 
-// Subscribe overrides redis.ClusterClient.Subscribe to log execution metrics.
+// Subscribe overrides redis.ClusterClient/Subscribe to log execution metrics.
 func (cp *RedisClusterClientProxy) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
@@ -125,6 +125,7 @@ func (cp *RedisClusterClientProxy) Subscribe(ctx context.Context, channels ...st
 
 /*----------------------------------------------------------------------*/
 
+// CmdableWrapper is a wrapper for redis.Cmdable; overrides redis.Cmdable's function to log execution metrics.
 type CmdableWrapper struct {
 	redis.Cmdable
 	rc *GoRedisConnect
@@ -132,7 +133,9 @@ type CmdableWrapper struct {
 
 /*----- Bitmap-related commands -----*/
 
-// BitCount overrides redis.Cmdable.BitCount to log execution metrics.
+// BitCount overrides redis.Cmdable/BitCount to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) BitCount(ctx context.Context, key string, bitCount *redis.BitCount) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -147,7 +150,9 @@ func (c *CmdableWrapper) BitCount(ctx context.Context, key string, bitCount *red
 	return result
 }
 
-// BitField overrides redis.Cmdable.BitField to log execution metrics.
+// BitField overrides redis.Cmdable/BitField to log execution metrics.
+//
+// @Redis: available since v3.2.0
 func (c *CmdableWrapper) BitField(ctx context.Context, key string, args ...interface{}) *redis.IntSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -162,7 +167,9 @@ func (c *CmdableWrapper) BitField(ctx context.Context, key string, args ...inter
 	return result
 }
 
-// BitOpAnd overrides redis.Cmdable.BitOpAnd to log execution metrics.
+// BitOpAnd overrides redis.Cmdable/BitOpAnd to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) BitOpAnd(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -177,7 +184,9 @@ func (c *CmdableWrapper) BitOpAnd(ctx context.Context, destKey string, keys ...s
 	return result
 }
 
-// BitOpOr overrides redis.Cmdable.BitOpOr to log execution metrics.
+// BitOpOr overrides redis.Cmdable/BitOpOr to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) BitOpOr(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -192,7 +201,9 @@ func (c *CmdableWrapper) BitOpOr(ctx context.Context, destKey string, keys ...st
 	return result
 }
 
-// BitOpXor overrides redis.Cmdable.BitOpXor to log execution metrics.
+// BitOpXor overrides redis.Cmdable/BitOpXor to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) BitOpXor(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -207,7 +218,9 @@ func (c *CmdableWrapper) BitOpXor(ctx context.Context, destKey string, keys ...s
 	return result
 }
 
-// BitOpNot overrides redis.Cmdable.BitOpNot to log execution metrics.
+// BitOpNot overrides redis.Cmdable/BitOpNot to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) BitOpNot(ctx context.Context, destKey, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -222,7 +235,9 @@ func (c *CmdableWrapper) BitOpNot(ctx context.Context, destKey, key string) *red
 	return result
 }
 
-// BitPos overrides redis.Cmdable.BitPos to log execution metrics.
+// BitPos overrides redis.Cmdable/BitPos to log execution metrics.
+//
+// @Redis: available since v2.8.7
 func (c *CmdableWrapper) BitPos(ctx context.Context, key string, bit int64, pos ...int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -237,7 +252,9 @@ func (c *CmdableWrapper) BitPos(ctx context.Context, key string, bit int64, pos 
 	return result
 }
 
-// GetBit overrides redis.Cmdable.GetBit to log execution metrics.
+// GetBit overrides redis.Cmdable/GetBit to log execution metrics.
+//
+// @Redis: available since v2.2.0
 func (c *CmdableWrapper) GetBit(ctx context.Context, key string, offset int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -252,7 +269,9 @@ func (c *CmdableWrapper) GetBit(ctx context.Context, key string, offset int64) *
 	return result
 }
 
-// SetBit overrides redis.Cmdable.SetBit to log execution metrics.
+// SetBit overrides redis.Cmdable/SetBit to log execution metrics.
+//
+// @Redis: available since v2.2.0
 func (c *CmdableWrapper) SetBit(ctx context.Context, key string, offset int64, value int) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -269,7 +288,9 @@ func (c *CmdableWrapper) SetBit(ctx context.Context, key string, offset int64, v
 
 /*----- Cluster-related commands -----*/
 
-// ReadOnly overrides redis.Cmdable.ReadOnly to log execution metrics.
+// ReadOnly overrides redis.Cmdable/ReadOnly to log execution metrics.
+//
+// @Redis: available since v3.0.0
 func (c *CmdableWrapper) ReadOnly(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -284,7 +305,9 @@ func (c *CmdableWrapper) ReadOnly(ctx context.Context) *redis.StatusCmd {
 	return result
 }
 
-// ReadWrite overrides redis.Cmdable.ReadWrite to log execution metrics.
+// ReadWrite overrides redis.Cmdable/ReadWrite to log execution metrics.
+//
+// @Redis: available since v3.0.0
 func (c *CmdableWrapper) ReadWrite(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -301,7 +324,9 @@ func (c *CmdableWrapper) ReadWrite(ctx context.Context) *redis.StatusCmd {
 
 /* Generic commands */
 
-// Copy overrides redis.Cmdable.Copy to log execution metrics.
+// Copy overrides redis.Cmdable/Copy to log execution metrics.
+//
+// @Redis: available since v6.2.0
 func (c *CmdableWrapper) Copy(ctx context.Context, srcKey, destKey string, destDb int, replace bool) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -316,7 +341,9 @@ func (c *CmdableWrapper) Copy(ctx context.Context, srcKey, destKey string, destD
 	return result
 }
 
-// Del overrides redis.Cmdable.Del to log execution metrics.
+// Del overrides redis.Cmdable/Del to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) Del(ctx context.Context, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -331,7 +358,9 @@ func (c *CmdableWrapper) Del(ctx context.Context, keys ...string) *redis.IntCmd 
 	return result
 }
 
-// Dump overrides redis.Cmdable.Dump to log execution metrics.
+// Dump overrides redis.Cmdable/Dump to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) Dump(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -346,7 +375,9 @@ func (c *CmdableWrapper) Dump(ctx context.Context, key string) *redis.StringCmd 
 	return result
 }
 
-// Exists overrides redis.Cmdable.Exists to log execution metrics.
+// Exists overrides redis.Cmdable/Exists to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) Exists(ctx context.Context, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -361,7 +392,9 @@ func (c *CmdableWrapper) Exists(ctx context.Context, keys ...string) *redis.IntC
 	return result
 }
 
-// Expire overrides redis.Cmdable.Expire to log execution metrics.
+// Expire overrides redis.Cmdable/Expire to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) Expire(ctx context.Context, key string, value time.Duration) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -370,6 +403,74 @@ func (c *CmdableWrapper) Expire(ctx context.Context, key string, value time.Dura
 	}()
 	cmd.CmdName, cmd.CmdRequest = "expire", m{"key": key, "value": value}
 	result := c.Cmdable.Expire(ctx, key, value)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// ExpireGT overrides redis.Cmdable/ExpireGT to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) ExpireGT(ctx context.Context, key string, value time.Duration) *redis.BoolCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "expire_gt", m{"key": key, "value": value}
+	result := c.Cmdable.ExpireGT(ctx, key, value)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// ExpireLT overrides redis.Cmdable/ExpireLT to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) ExpireLT(ctx context.Context, key string, value time.Duration) *redis.BoolCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "expire_lt", m{"key": key, "value": value}
+	result := c.Cmdable.ExpireLT(ctx, key, value)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// ExpireNX overrides redis.Cmdable/ExpireNX to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) ExpireNX(ctx context.Context, key string, value time.Duration) *redis.BoolCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "expire_nx", m{"key": key, "value": value}
+	result := c.Cmdable.ExpireNX(ctx, key, value)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// ExpireXX overrides redis.Cmdable/ExpireXX to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) ExpireXX(ctx context.Context, key string, value time.Duration) *redis.BoolCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "expire_xx", m{"key": key, "value": value}
+	result := c.Cmdable.ExpireXX(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
