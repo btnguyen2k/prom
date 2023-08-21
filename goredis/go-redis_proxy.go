@@ -1462,7 +1462,7 @@ func (c *CmdableWrapper) HSetNX(ctx context.Context, key, field string, value in
 
 // No function HStrLen for now!
 
-// HVals overrides redis.Cmdable.HVals to log execution metrics.
+// HVals overrides redis.Cmdable/HVals to log execution metrics.
 //
 // @Redis: available since v2.0.0
 func (c *CmdableWrapper) HVals(ctx context.Context, key string) *redis.StringSliceCmd {
@@ -1481,7 +1481,9 @@ func (c *CmdableWrapper) HVals(ctx context.Context, key string) *redis.StringSli
 
 /*----- HyperLogLog-related commands -----*/
 
-// PFAdd overrides redis.Cmdable.PFAdd to log execution metrics.
+// PFAdd overrides redis.Cmdable/PFAdd to log execution metrics.
+//
+// @Redis: available since v2.8.9
 func (c *CmdableWrapper) PFAdd(ctx context.Context, key string, elements ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1496,7 +1498,9 @@ func (c *CmdableWrapper) PFAdd(ctx context.Context, key string, elements ...inte
 	return result
 }
 
-// PFCount overrides redis.Cmdable.PFCount to log execution metrics.
+// PFCount overrides redis.Cmdable/PFCount to log execution metrics.
+//
+// @Redis: available since v2.8.9
 func (c *CmdableWrapper) PFCount(ctx context.Context, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1511,14 +1515,16 @@ func (c *CmdableWrapper) PFCount(ctx context.Context, keys ...string) *redis.Int
 	return result
 }
 
-// PFMerge overrides redis.Cmdable.PFMerge to log execution metrics.
+// PFMerge overrides redis.Cmdable/PFMerge to log execution metrics.
+//
+// @Redis: available since v2.8.9
 func (c *CmdableWrapper) PFMerge(ctx context.Context, destKey string, keys ...string) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "pfmerge", m{"destKey": destKey, "keys": keys}
+	cmd.CmdName, cmd.CmdRequest = "pfmerge", m{"dest_key": destKey, "source_keys": keys}
 	result := c.Cmdable.PFMerge(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
