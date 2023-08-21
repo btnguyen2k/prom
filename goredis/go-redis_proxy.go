@@ -1004,13 +1004,16 @@ func (c *CmdableWrapper) Unlink(ctx context.Context, keys ...string) *redis.IntC
 
 /*----- Geospatial-related commands -----*/
 
+// GeoAdd overrides redis.Cmdable/GeoAdd to log execution metrics.
+//
+// @Redis: available since v3.2.0
 func (c *CmdableWrapper) GeoAdd(ctx context.Context, key string, geoLocations ...*redis.GeoLocation) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "geoAdd", m{"key": key, "locations": geoLocations}
+	cmd.CmdName, cmd.CmdRequest = "geo_add", m{"key": key, "locations": geoLocations}
 	result := c.Cmdable.GeoAdd(ctx, key, geoLocations...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1018,13 +1021,16 @@ func (c *CmdableWrapper) GeoAdd(ctx context.Context, key string, geoLocations ..
 	return result
 }
 
+// GeoDist overrides redis.Cmdable/GeoDist to log execution metrics.
+//
+// @Redis: available since v3.2.0
 func (c *CmdableWrapper) GeoDist(ctx context.Context, key, member1, member2, unit string) *redis.FloatCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "geoDist", m{"key": key, "member1": member1, "member2": member2, "unit": unit}
+	cmd.CmdName, cmd.CmdRequest = "geo_dist", m{"key": key, "member1": member1, "member2": member2, "unit": unit}
 	result := c.Cmdable.GeoDist(ctx, key, member1, member2, unit)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1032,13 +1038,16 @@ func (c *CmdableWrapper) GeoDist(ctx context.Context, key, member1, member2, uni
 	return result
 }
 
+// GeoHash overrides redis.Cmdable/GeoHash to log execution metrics.
+//
+// @Redis: available since v3.2.0
 func (c *CmdableWrapper) GeoHash(ctx context.Context, key string, members ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "geoHash", m{"key": key, "members": members}
+	cmd.CmdName, cmd.CmdRequest = "geo_hash", m{"key": key, "members": members}
 	result := c.Cmdable.GeoHash(ctx, key, members...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1046,13 +1055,16 @@ func (c *CmdableWrapper) GeoHash(ctx context.Context, key string, members ...str
 	return result
 }
 
+// GeoPos overrides redis.Cmdable/GeoPos to log execution metrics.
+//
+// @Redis: available since v3.2.0
 func (c *CmdableWrapper) GeoPos(ctx context.Context, key string, members ...string) *redis.GeoPosCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "geoPos", m{"key": key, "members": members}
+	cmd.CmdName, cmd.CmdRequest = "geo_pos", m{"key": key, "members": members}
 	result := c.Cmdable.GeoPos(ctx, key, members...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1060,15 +1072,92 @@ func (c *CmdableWrapper) GeoPos(ctx context.Context, key string, members ...stri
 	return result
 }
 
-// Functions GeoRadius, GeoRadius_RO, GeoRadiusByMember and GeoRadiusByMember_RO are deprecated!
+// GeoRadius overrides redis.Cmdable/GeoRadius to log execution metrics.
+//
+// @Redis: available since v3.2.0 / deprecated since v6.2.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) GeoRadius(ctx context.Context, key string, longitude, latitude float64, query *redis.GeoRadiusQuery) *redis.GeoLocationCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "geo_radius", m{"key": key, "longitude": longitude, "latitude": latitude, "query": query}
+	result := c.Cmdable.GeoRadius(ctx, key, longitude, latitude, query)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
 
+// GeoRadiusByMember overrides redis.Cmdable/GeoRadiusByMember to log execution metrics.
+//
+// @Redis: available since v3.2.0 / deprecated since v6.2.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) GeoRadiusByMember(ctx context.Context, key, member string, query *redis.GeoRadiusQuery) *redis.GeoLocationCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "geo_radius", m{"key": key, "member": member, "query": query}
+	result := c.Cmdable.GeoRadiusByMember(ctx, key, member, query)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// GeoRadiusStore overrides redis.Cmdable/GeoRadiusStore to log execution metrics.
+//
+// @Redis: available since v3.2.0 / deprecated since v6.2.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) GeoRadiusStore(ctx context.Context, key string, longitude, latitude float64, query *redis.GeoRadiusQuery) *redis.IntCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "geo_radius", m{"key": key, "longitude": longitude, "latitude": latitude, "query": query}
+	result := c.Cmdable.GeoRadiusStore(ctx, key, longitude, latitude, query)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// GeoRadiusByMemberStore overrides redis.Cmdable/GeoRadiusByMemberStore to log execution metrics.
+//
+// @Redis: available since v3.2.0 / deprecated since v6.2.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) GeoRadiusByMemberStore(ctx context.Context, key, member string, query *redis.GeoRadiusQuery) *redis.IntCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "geo_radius", m{"key": key, "member": member, "query": query}
+	result := c.Cmdable.GeoRadiusByMemberStore(ctx, key, member, query)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// GeoSearch overrides redis.Cmdable/GeoSearch to log execution metrics.
+//
+// @Redis: available since v6.2.0
 func (c *CmdableWrapper) GeoSearch(ctx context.Context, key string, query *redis.GeoSearchQuery) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "geoSearch", m{"key": key, "query": query}
+	cmd.CmdName, cmd.CmdRequest = "geo_search", m{"key": key, "query": query}
 	result := c.Cmdable.GeoSearch(ctx, key, query)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1076,13 +1165,16 @@ func (c *CmdableWrapper) GeoSearch(ctx context.Context, key string, query *redis
 	return result
 }
 
+// GeoSearchLocation overrides redis.Cmdable/GeoSearchLocation to log execution metrics.
+//
+// @Redis: available since v6.2.0
 func (c *CmdableWrapper) GeoSearchLocation(ctx context.Context, key string, query *redis.GeoSearchLocationQuery) *redis.GeoSearchLocationCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "geoSearchLocation", m{"key": key, "query": query}
+	cmd.CmdName, cmd.CmdRequest = "geo_search", m{"key": key, "query": query}
 	result := c.Cmdable.GeoSearchLocation(ctx, key, query)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1090,14 +1182,17 @@ func (c *CmdableWrapper) GeoSearchLocation(ctx context.Context, key string, quer
 	return result
 }
 
-func (c *CmdableWrapper) GeoSearchStore(ctx context.Context, key, store string, query *redis.GeoSearchStoreQuery) *redis.IntCmd {
+// GeoSearchStore overrides redis.Cmdable/GeoSearchStore to log execution metrics.
+//
+// @Redis: available since v6.2.0
+func (c *CmdableWrapper) GeoSearchStore(ctx context.Context, key, destination string, query *redis.GeoSearchStoreQuery) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "geoSearchStore", m{"key": key, "store": store, "query": query}
-	result := c.Cmdable.GeoSearchStore(ctx, key, store, query)
+	cmd.CmdName, cmd.CmdRequest = "geo_search_store", m{"source": key, "destination": destination, "query": query}
+	result := c.Cmdable.GeoSearchStore(ctx, key, destination, query)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)

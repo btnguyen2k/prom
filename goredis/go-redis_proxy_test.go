@@ -806,7 +806,6 @@ func TestRedisProxy_Wait(t *testing.T) {
 
 /* Redis' geospatial-related commands */
 
-// since Redis v3.2.0
 func TestRedisProxy_GeoAdd(t *testing.T) {
 	testName := "TestRedisProxy_GeoAdd"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -822,7 +821,6 @@ func TestRedisProxy_GeoAdd(t *testing.T) {
 	}
 }
 
-// since Redis v3.2.0
 func TestRedisProxy_GeoDist(t *testing.T) {
 	testName := "TestRedisProxy_GeoDist"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -842,7 +840,6 @@ func TestRedisProxy_GeoDist(t *testing.T) {
 	}
 }
 
-// since Redis v3.2.0
 func TestRedisProxy_GeoHash(t *testing.T) {
 	testName := "TestRedisProxy_GeoHash"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -862,7 +859,6 @@ func TestRedisProxy_GeoHash(t *testing.T) {
 	}
 }
 
-// since Redis v3.2.0
 func TestRedisProxy_GeoPos(t *testing.T) {
 	testName := "TestRedisProxy_GeoPos"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -882,7 +878,6 @@ func TestRedisProxy_GeoPos(t *testing.T) {
 	}
 }
 
-// since Redis v3.2.0 / deprecated since v6.2.0
 func TestRedisProxy_GeoRadius(t *testing.T) {
 	testName := "TestRedisProxy_GeoRadius"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -902,7 +897,6 @@ func TestRedisProxy_GeoRadius(t *testing.T) {
 	}
 }
 
-// since Redis v3.2.0 / deprecated since v6.2.0
 func TestRedisProxy_GeoRadiusByMember(t *testing.T) {
 	testName := "TestRedisProxy_GeoRadiusByMember"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
