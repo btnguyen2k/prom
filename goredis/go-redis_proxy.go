@@ -20,14 +20,16 @@ type RedisClientProxy struct {
 }
 
 // Wait overrides redis.Client/Wait to log execution metrics.
-func (cp *RedisClientProxy) Wait(ctx context.Context, numSlaves int, timeout time.Duration) *redis.IntCmd {
+//
+// @Redis: available since v3.0.0
+func (cp *RedisClientProxy) Wait(ctx context.Context, numReplicas int, timeout time.Duration) *redis.IntCmd {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
 		cp.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		cp.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "wait", m{"numSlaves": numSlaves, "timeout": timeout}
-	result := cp.Cmdable.(*redis.Client).Wait(ctx, numSlaves, timeout)
+	cmd.CmdName, cmd.CmdRequest = "wait", m{"num_replicas": numReplicas, "timeout": timeout}
+	result := cp.Cmdable.(*redis.Client).Wait(ctx, numReplicas, timeout)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
@@ -35,19 +37,23 @@ func (cp *RedisClientProxy) Wait(ctx context.Context, numSlaves int, timeout tim
 }
 
 // PSubscribe overrides redis.Client/PSubscribe to log execution metrics.
-func (cp *RedisClientProxy) PSubscribe(ctx context.Context, channels ...string) *redis.PubSub {
+//
+// @Redis: available since v2.0.0
+func (cp *RedisClientProxy) PSubscribe(ctx context.Context, patterns ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
 		cp.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		cp.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "psubscribe", m{"channels": channels}
-	result := cp.Cmdable.(*redis.Client).PSubscribe(ctx, channels...)
+	cmd.CmdName, cmd.CmdRequest = "psubscribe", m{"patterns": patterns}
+	result := cp.Cmdable.(*redis.Client).PSubscribe(ctx, patterns...)
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, nil)
 	return result
 }
 
 // Subscribe overrides redis.Client/Subscribe to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (cp *RedisClientProxy) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
@@ -83,14 +89,16 @@ type RedisClusterClientProxy struct {
 }
 
 // Wait overrides redis.ClusterClient/Wait to log execution metrics.
-func (cp *RedisClusterClientProxy) Wait(ctx context.Context, numSlaves int, timeout time.Duration) *redis.IntCmd {
+//
+// @Redis: available since v3.0.0
+func (cp *RedisClusterClientProxy) Wait(ctx context.Context, numReplicas int, timeout time.Duration) *redis.IntCmd {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
 		cp.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		cp.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "wait", m{"numSlaves": numSlaves, "timeout": timeout}
-	result := cp.Cmdable.(*redis.ClusterClient).Wait(ctx, numSlaves, timeout)
+	cmd.CmdName, cmd.CmdRequest = "wait", m{"num_replicas": numReplicas, "timeout": timeout}
+	result := cp.Cmdable.(*redis.ClusterClient).Wait(ctx, numReplicas, timeout)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
@@ -98,19 +106,23 @@ func (cp *RedisClusterClientProxy) Wait(ctx context.Context, numSlaves int, time
 }
 
 // PSubscribe overrides redis.ClusterClient/PSubscribe to log execution metrics.
-func (cp *RedisClusterClientProxy) PSubscribe(ctx context.Context, channels ...string) *redis.PubSub {
+//
+// @Redis: available since v2.0.0
+func (cp *RedisClusterClientProxy) PSubscribe(ctx context.Context, patterns ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
 		cp.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		cp.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "psubscribe", m{"channels": channels}
-	result := cp.Cmdable.(*redis.ClusterClient).PSubscribe(ctx, channels...)
+	cmd.CmdName, cmd.CmdRequest = "psubscribe", m{"patterns": patterns}
+	result := cp.Cmdable.(*redis.ClusterClient).PSubscribe(ctx, patterns...)
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, nil)
 	return result
 }
 
 // Subscribe overrides redis.ClusterClient/Subscribe to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (cp *RedisClusterClientProxy) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
 	defer func() {
@@ -142,7 +154,7 @@ func (c *CmdableWrapper) BitCount(ctx context.Context, key string, bitCount *red
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "bitCount", m{"key": key, "args": bitCount}
+	cmd.CmdName, cmd.CmdRequest = "bit_count", m{"key": key, "args": bitCount}
 	result := c.Cmdable.BitCount(ctx, key, bitCount)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -159,7 +171,7 @@ func (c *CmdableWrapper) BitField(ctx context.Context, key string, args ...inter
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "bitField", m{"key": key, "args": args}
+	cmd.CmdName, cmd.CmdRequest = "bit_field", m{"key": key, "args": args}
 	result := c.Cmdable.BitField(ctx, key, args...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -176,7 +188,7 @@ func (c *CmdableWrapper) BitOpAnd(ctx context.Context, destKey string, keys ...s
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "bitOp", m{"op": "and", "destKey": destKey, "keys": keys}
+	cmd.CmdName, cmd.CmdRequest = "bit_op", m{"op": "and", "dest_key": destKey, "keys": keys}
 	result := c.Cmdable.BitOpAnd(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -193,7 +205,7 @@ func (c *CmdableWrapper) BitOpOr(ctx context.Context, destKey string, keys ...st
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "bitOp", m{"op": "or", "destKey": destKey, "keys": keys}
+	cmd.CmdName, cmd.CmdRequest = "bit_op", m{"op": "or", "dest_key": destKey, "keys": keys}
 	result := c.Cmdable.BitOpOr(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -210,7 +222,7 @@ func (c *CmdableWrapper) BitOpXor(ctx context.Context, destKey string, keys ...s
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "bitOp", m{"op": "xor", "destKey": destKey, "keys": keys}
+	cmd.CmdName, cmd.CmdRequest = "bit_op", m{"op": "xor", "dest_key": destKey, "keys": keys}
 	result := c.Cmdable.BitOpXor(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -227,7 +239,7 @@ func (c *CmdableWrapper) BitOpNot(ctx context.Context, destKey, key string) *red
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "bitOp", m{"op": "not", "destKey": destKey, "key": key}
+	cmd.CmdName, cmd.CmdRequest = "bit_op", m{"op": "not", "dest_key": destKey, "key": key}
 	result := c.Cmdable.BitOpNot(ctx, destKey, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -238,14 +250,14 @@ func (c *CmdableWrapper) BitOpNot(ctx context.Context, destKey, key string) *red
 // BitPos overrides redis.Cmdable/BitPos to log execution metrics.
 //
 // @Redis: available since v2.8.7
-func (c *CmdableWrapper) BitPos(ctx context.Context, key string, bit int64, pos ...int64) *redis.IntCmd {
+func (c *CmdableWrapper) BitPos(ctx context.Context, key string, bit int64, positions ...int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "bitPos", m{"key": key, "bit": bit, "pos": pos}
-	result := c.Cmdable.BitPos(ctx, key, bit, pos...)
+	cmd.CmdName, cmd.CmdRequest = "bit_pos", m{"key": key, "bit": bit, "positions": positions}
+	result := c.Cmdable.BitPos(ctx, key, bit, positions...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
@@ -261,7 +273,7 @@ func (c *CmdableWrapper) GetBit(ctx context.Context, key string, offset int64) *
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "getBit", m{"key": key, "offset": offset}
+	cmd.CmdName, cmd.CmdRequest = "get_bit", m{"key": key, "offset": offset}
 	result := c.Cmdable.GetBit(ctx, key, offset)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -278,7 +290,7 @@ func (c *CmdableWrapper) SetBit(ctx context.Context, key string, offset int64, v
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "setBit", m{"key": key, "offset": offset, "value": value}
+	cmd.CmdName, cmd.CmdRequest = "set_bit", m{"key": key, "offset": offset, "value": value}
 	result := c.Cmdable.SetBit(ctx, key, offset, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val

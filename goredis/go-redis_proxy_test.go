@@ -168,87 +168,81 @@ var _teardownTestRedisProxy _testSetupOrTeardownFunc = func(t *testing.T, testNa
 
 /* Redis' bitmap-related commands */
 
-// since Redis v2.6.0
 func TestRedisProxy_BitCount(t *testing.T) {
 	testName := "TestRedisProxy_BitCount"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
 	for i, c := range _testCmdableList {
 		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
+			// 	t.SkipNow()
+			// }
 			c.BitCount(context.TODO(), "key", &redis.BitCount{})
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bitCount", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_count", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
-// since Redis v3.2.0
 func TestRedisProxy_BitField(t *testing.T) {
 	testName := "TestRedisProxy_BitField"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
 	for i, c := range _testCmdableList {
 		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
+			// 	t.SkipNow()
+			// }
 			c.BitField(context.TODO(), "key")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bitField", nil, prom.MetricsCatAll, prom.MetricsCatOther)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_field", nil, prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
 
-// since Redis v2.6.0
 func TestRedisProxy_BitOpAnd(t *testing.T) {
 	testName := "TestRedisProxy_BitOpAnd"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
 	for i, c := range _testCmdableList {
 		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
+			// 	t.SkipNow()
+			// }
 			c.BitOpAnd(context.TODO(), "dest{key}", "{key}1", "{key}2")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bitOp", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
 
-// since Redis v2.6.0
 func TestRedisProxy_BitOpNot(t *testing.T) {
 	testName := "TestRedisProxy_BitOpNot"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
 	for i, c := range _testCmdableList {
 		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
+			// 	t.SkipNow()
+			// }
 			c.BitOpNot(context.TODO(), "dest{key}", "{key}")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bitOp", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
 
-// since Redis v2.6.0
 func TestRedisProxy_BitOpOr(t *testing.T) {
 	testName := "TestRedisProxy_BitOpOr"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
 	for i, c := range _testCmdableList {
 		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
+			// 	t.SkipNow()
+			// }
 			c.BitOpOr(context.TODO(), "dest{key}", "{key}1", "{key}2")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bitOp", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
 
-// since Redis v2.6.0
 func TestRedisProxy_BitOpXor(t *testing.T) {
 	testName := "TestRedisProxy_BitOpXor"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -259,12 +253,11 @@ func TestRedisProxy_BitOpXor(t *testing.T) {
 				t.SkipNow()
 			}
 			c.BitOpXor(context.TODO(), "dest{key}", "{key}1", "{key}2")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bitOp", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
 
-// since Redis v2.8.7
 func TestRedisProxy_BitPos(t *testing.T) {
 	testName := "TestRedisProxy_BitPos"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -275,12 +268,11 @@ func TestRedisProxy_BitPos(t *testing.T) {
 				t.SkipNow()
 			}
 			c.BitPos(context.TODO(), "dest", 1, 2, 4)
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bitPos", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_pos", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
-// since Redis v2.2.0
 func TestRedisProxy_GetBit(t *testing.T) {
 	testName := "TestRedisProxy_GetBit"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -291,12 +283,11 @@ func TestRedisProxy_GetBit(t *testing.T) {
 				t.SkipNow()
 			}
 			c.GetBit(context.TODO(), "key", 10)
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "getBit", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "get_bit", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
-// since Redis v2.2.0
 func TestRedisProxy_SetBit(t *testing.T) {
 	testName := "TestRedisProxy_SetBit"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
@@ -307,7 +298,7 @@ func TestRedisProxy_SetBit(t *testing.T) {
 				t.SkipNow()
 			}
 			c.SetBit(context.TODO(), "key", 10, 1)
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "setBit", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "set_bit", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
