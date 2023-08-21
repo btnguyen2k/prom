@@ -315,7 +315,7 @@ func TestRedisProxy_ReadOnly(t *testing.T) {
 				t.SkipNow()
 			}
 			c.ReadOnly(context.TODO())
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "readOnly", nil, prom.MetricsCatAll, prom.MetricsCatOther)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "read_only", nil, prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
@@ -330,7 +330,7 @@ func TestRedisProxy_ReadWrite(t *testing.T) {
 				t.SkipNow()
 			}
 			c.ReadWrite(context.TODO())
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "readWrite", nil, prom.MetricsCatAll, prom.MetricsCatOther)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "read_write", nil, prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }

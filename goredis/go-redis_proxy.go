@@ -309,7 +309,7 @@ func (c *CmdableWrapper) ReadOnly(ctx context.Context) *redis.StatusCmd {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "readOnly", nil
+	cmd.CmdName, cmd.CmdRequest = "read_only", nil
 	result := c.Cmdable.ReadOnly(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -326,7 +326,7 @@ func (c *CmdableWrapper) ReadWrite(ctx context.Context) *redis.StatusCmd {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "readWrite", nil
+	cmd.CmdName, cmd.CmdRequest = "read_write", nil
 	result := c.Cmdable.ReadWrite(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
