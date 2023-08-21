@@ -1201,7 +1201,9 @@ func (c *CmdableWrapper) GeoSearchStore(ctx context.Context, key, destination st
 
 /*----- Hash-related commands -----*/
 
-// HDel overrides redis.Cmdable.HDel to log execution metrics.
+// HDel overrides redis.Cmdable/HDel to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) HDel(ctx context.Context, key string, fields ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1216,7 +1218,9 @@ func (c *CmdableWrapper) HDel(ctx context.Context, key string, fields ...string)
 	return result
 }
 
-// HExists overrides redis.Cmdable.HExists to log execution metrics.
+// HExists overrides redis.Cmdable/HExists to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) HExists(ctx context.Context, key, field string) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1231,7 +1235,9 @@ func (c *CmdableWrapper) HExists(ctx context.Context, key, field string) *redis.
 	return result
 }
 
-// HGet overrides redis.Cmdable.HGet to log execution metrics.
+// HGet overrides redis.Cmdable/HGet to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) HGet(ctx context.Context, key, field string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1246,14 +1252,16 @@ func (c *CmdableWrapper) HGet(ctx context.Context, key, field string) *redis.Str
 	return result
 }
 
-// HGetAll overrides redis.Cmdable.HGetAll to log execution metrics.
-func (c *CmdableWrapper) HGetAll(ctx context.Context, key string) *redis.StringStringMapCmd {
+// HGetAll overrides redis.Cmdable/HGetAll to log execution metrics.
+//
+// @Redis: available since v2.0.0
+func (c *CmdableWrapper) HGetAll(ctx context.Context, key string) *redis.MapStringStringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "hgetAll", m{"key": key}
+	cmd.CmdName, cmd.CmdRequest = "hget_all", m{"key": key}
 	result := c.Cmdable.HGetAll(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1261,37 +1269,43 @@ func (c *CmdableWrapper) HGetAll(ctx context.Context, key string) *redis.StringS
 	return result
 }
 
-// HIncrBy overrides redis.Cmdable.HIncrBy to log execution metrics.
-func (c *CmdableWrapper) HIncrBy(ctx context.Context, key, field string, value int64) *redis.IntCmd {
+// HIncrBy overrides redis.Cmdable/HIncrBy to log execution metrics.
+//
+// @Redis: available since v2.0.0
+func (c *CmdableWrapper) HIncrBy(ctx context.Context, key, field string, increment int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "hincrBy", m{"key": key, "field": field, "value": value}
-	result := c.Cmdable.HIncrBy(ctx, key, field, value)
+	cmd.CmdName, cmd.CmdRequest = "hincr_by", m{"key": key, "field": field, "increment": increment}
+	result := c.Cmdable.HIncrBy(ctx, key, field, increment)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// HIncrByFloat overrides redis.Cmdable.HIncrByFloat to log execution metrics.
-func (c *CmdableWrapper) HIncrByFloat(ctx context.Context, key, field string, value float64) *redis.FloatCmd {
+// HIncrByFloat overrides redis.Cmdable/HIncrByFloat to log execution metrics.
+//
+// @Redis: available since v2.6.0
+func (c *CmdableWrapper) HIncrByFloat(ctx context.Context, key, field string, increment float64) *redis.FloatCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "hincrByFloat", m{"key": key, "field": field, "value": value}
-	result := c.Cmdable.HIncrByFloat(ctx, key, field, value)
+	cmd.CmdName, cmd.CmdRequest = "hincr_by_float", m{"key": key, "field": field, "increment": increment}
+	result := c.Cmdable.HIncrByFloat(ctx, key, field, increment)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// HKeys overrides redis.Cmdable.HKeys to log execution metrics.
+// HKeys overrides redis.Cmdable/HKeys to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) HKeys(ctx context.Context, key string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1306,7 +1320,9 @@ func (c *CmdableWrapper) HKeys(ctx context.Context, key string) *redis.StringSli
 	return result
 }
 
-// HLen overrides redis.Cmdable.HLen to log execution metrics.
+// HLen overrides redis.Cmdable/HLen to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) HLen(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1321,7 +1337,9 @@ func (c *CmdableWrapper) HLen(ctx context.Context, key string) *redis.IntCmd {
 	return result
 }
 
-// HMGet overrides redis.Cmdable.HMGet to log execution metrics.
+// HMGet overrides redis.Cmdable/HMGet to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) HMGet(ctx context.Context, key string, fields ...string) *redis.SliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1336,61 +1354,105 @@ func (c *CmdableWrapper) HMGet(ctx context.Context, key string, fields ...string
 	return result
 }
 
-// Function HMSet is deprecated!
-
-// HRandField overrides redis.Cmdable.HRandField to log execution metrics.
-func (c *CmdableWrapper) HRandField(ctx context.Context, key string, count int, withValues bool) *redis.StringSliceCmd {
+// HMSet overrides redis.Cmdable/HMSet to log execution metrics.
+//
+// @Redis: available since v2.0.0 / deprecated since v4.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) HMSet(ctx context.Context, key string, fieldsAndValues ...interface{}) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "hrandField", m{"key": key, "count": count, "withValues": withValues}
-	result := c.Cmdable.HRandField(ctx, key, count, withValues)
+	cmd.CmdName, cmd.CmdRequest = "hmset", m{"key": key, "fields_values": fieldsAndValues}
+	result := c.Cmdable.HMSet(ctx, key, fieldsAndValues...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// HScan overrides redis.Cmdable.HScan to log execution metrics.
-func (c *CmdableWrapper) HScan(ctx context.Context, key string, cursor uint64, match string, count int64) *redis.ScanCmd {
+// HRandField overrides redis.Cmdable/HRandField to log execution metrics.
+//
+// @Redis: available since v2.0.0
+func (c *CmdableWrapper) HRandField(ctx context.Context, key string, count int) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "hscan", m{"key": key, "cursor": cursor, "match": match, "count": count}
-	result := c.Cmdable.HScan(ctx, key, cursor, match, count)
+	cmd.CmdName, cmd.CmdRequest = "hrand_field", m{"key": key, "count": count}
+	result := c.Cmdable.HRandField(ctx, key, count)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// HRandFieldWithValues overrides redis.Cmdable/HRandFieldWithValues to log execution metrics.
+//
+// @Redis: available since v2.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) HRandFieldWithValues(ctx context.Context, key string, count int) *redis.KeyValueSliceCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "hrand_field", m{"key": key, "count": count, "with_values": true}
+	result := c.Cmdable.HRandFieldWithValues(ctx, key, count)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// HScan overrides redis.Cmdable/HScan to log execution metrics.
+//
+// @Redis: available since v2.8.0
+func (c *CmdableWrapper) HScan(ctx context.Context, key string, cursor uint64, pattern string, count int64) *redis.ScanCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "hscan", m{"key": key, "cursor": cursor, "pattern": pattern, "count": count}
+	result := c.Cmdable.HScan(ctx, key, cursor, pattern, count)
 	val, _, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// HSet overrides redis.Cmdable.HSet to log execution metrics.
-func (c *CmdableWrapper) HSet(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
+// HSet overrides redis.Cmdable/HSet to log execution metrics.
+//
+// @Redis: available since v2.0.0
+func (c *CmdableWrapper) HSet(ctx context.Context, key string, fieldAndValues ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "hset", m{"key": key, "values": values}
-	result := c.Cmdable.HSet(ctx, key, values...)
+	cmd.CmdName, cmd.CmdRequest = "hset", m{"key": key, "fields_values": fieldAndValues}
+	result := c.Cmdable.HSet(ctx, key, fieldAndValues...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// HSetNX overrides redis.Cmdable.HSetNX to log execution metrics.
+// HSetNX overrides redis.Cmdable/HSetNX to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) HSetNX(ctx context.Context, key, field string, value interface{}) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "hsetnx", m{"key": key, "field": field, "value": value}
+	cmd.CmdName, cmd.CmdRequest = "hset_nx", m{"key": key, "field": field, "value": value}
 	result := c.Cmdable.HSetNX(ctx, key, field, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1401,6 +1463,8 @@ func (c *CmdableWrapper) HSetNX(ctx context.Context, key, field string, value in
 // No function HStrLen for now!
 
 // HVals overrides redis.Cmdable.HVals to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) HVals(ctx context.Context, key string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
