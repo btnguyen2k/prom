@@ -1534,14 +1534,16 @@ func (c *CmdableWrapper) PFMerge(ctx context.Context, destKey string, keys ...st
 
 /*----- List-related commands -----*/
 
-// BLMove overrides redis.Cmdable.BLMove to log execution metrics.
+// BLMove overrides redis.Cmdable/BLMove to log execution metrics.
+//
+// @Redis: available since v6.2.0
 func (c *CmdableWrapper) BLMove(ctx context.Context, srcKey, destKey, srcPos, destPos string, timeout time.Duration) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "blmove", m{"srcKey": srcKey, "destKey": destKey, "srcPos": srcPos, "destPos": destPos, "timeout": timeout}
+	cmd.CmdName, cmd.CmdRequest = "blmove", m{"source": srcKey, "destination": destKey, "source_position": srcPos, "destination_position": destPos, "timeout": timeout}
 	result := c.Cmdable.BLMove(ctx, srcKey, destKey, srcPos, destPos, timeout)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1549,7 +1551,28 @@ func (c *CmdableWrapper) BLMove(ctx context.Context, srcKey, destKey, srcPos, de
 	return result
 }
 
-// BLPop overrides redis.Cmdable.BLPop to log execution metrics.
+// BLMPop overrides redis.Cmdable/BLMPop to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) BLMPop(ctx context.Context, timeout time.Duration, direction string, count int64, keys ...string) *redis.KeyValuesCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "blmpop", m{"timeout": timeout, "direction": direction, "count": count, "keys": keys}
+	result := c.Cmdable.BLMPop(ctx, timeout, direction, count, keys...)
+	key, val, err := result.Result()
+	cmd.CmdResponse = m{key: val}
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// BLPop overrides redis.Cmdable/BLPop to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) BLPop(ctx context.Context, timeout time.Duration, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1564,7 +1587,9 @@ func (c *CmdableWrapper) BLPop(ctx context.Context, timeout time.Duration, keys 
 	return result
 }
 
-// BRPop overrides redis.Cmdable.BRPop to log execution metrics.
+// BRPop overrides redis.Cmdable/BRPop to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) BRPop(ctx context.Context, timeout time.Duration, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1579,9 +1604,28 @@ func (c *CmdableWrapper) BRPop(ctx context.Context, timeout time.Duration, keys 
 	return result
 }
 
-// Function BRPopLPush is deprecated!
+// BRPopLPush overrides redis.Cmdable/BRPopLPush to log execution metrics.
+//
+// @Redis: available since v2.2.0 / deprecated since v6.2.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) BRPopLPush(ctx context.Context, source, destination string, timeout time.Duration) *redis.StringCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "brpop_lpush", m{"source": source, "destination": destination, "timeout": timeout}
+	result := c.Cmdable.BRPopLPush(ctx, source, destination, timeout)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
 
-// LIndex overrides redis.Cmdable.LIndex to log execution metrics.
+// LIndex overrides redis.Cmdable/LIndex to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) LIndex(ctx context.Context, key string, index int64) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1596,22 +1640,26 @@ func (c *CmdableWrapper) LIndex(ctx context.Context, key string, index int64) *r
 	return result
 }
 
-// LInsert overrides redis.Cmdable.LInsert to log execution metrics.
-func (c *CmdableWrapper) LInsert(ctx context.Context, key, op string, pivot, value interface{}) *redis.IntCmd {
+// LInsert overrides redis.Cmdable/LInsert to log execution metrics.
+//
+// @Redis: available since v2.2.0
+func (c *CmdableWrapper) LInsert(ctx context.Context, key, position string, pivot, element interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "linsert", m{"key": key, "op": op, "pivot": pivot, "value": value}
-	result := c.Cmdable.LInsert(ctx, key, op, pivot, value)
+	cmd.CmdName, cmd.CmdRequest = "linsert", m{"key": key, "position": position, "pivot": pivot, "element": element}
+	result := c.Cmdable.LInsert(ctx, key, position, pivot, element)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// LLen overrides redis.Cmdable.LLen to log execution metrics.
+// LLen overrides redis.Cmdable/LLen to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) LLen(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1626,14 +1674,16 @@ func (c *CmdableWrapper) LLen(ctx context.Context, key string) *redis.IntCmd {
 	return result
 }
 
-// LMove overrides redis.Cmdable.LMove to log execution metrics.
+// LMove overrides redis.Cmdable/LMove to log execution metrics.
+//
+// @Redis: available since v6.2.0
 func (c *CmdableWrapper) LMove(ctx context.Context, srcKey, destKey, srcPos, destPos string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "lmove", m{"srcKey": srcKey, "destKey": destKey, "srcPos": srcPos, "destPos": destPos}
+	cmd.CmdName, cmd.CmdRequest = "lmove", m{"source": srcKey, "destination": destKey, "source_position": srcPos, "destination_position": destPos}
 	result := c.Cmdable.LMove(ctx, srcKey, destKey, srcPos, destPos)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1641,7 +1691,28 @@ func (c *CmdableWrapper) LMove(ctx context.Context, srcKey, destKey, srcPos, des
 	return result
 }
 
-// LPop overrides redis.Cmdable.LPop to log execution metrics.
+// LMPop overrides redis.Cmdable/LMPop to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) LMPop(ctx context.Context, direction string, count int64, keys ...string) *redis.KeyValuesCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "lmpop", m{"direction": direction, "count": count, "keys": keys}
+	result := c.Cmdable.LMPop(ctx, direction, count, keys...)
+	key, val, err := result.Result()
+	cmd.CmdResponse = m{key: val}
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// LPop overrides redis.Cmdable/LPop to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) LPop(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1656,52 +1727,60 @@ func (c *CmdableWrapper) LPop(ctx context.Context, key string) *redis.StringCmd 
 	return result
 }
 
-// LPos overrides redis.Cmdable.LPos to log execution metrics.
-func (c *CmdableWrapper) LPos(ctx context.Context, key, value string, args redis.LPosArgs) *redis.IntCmd {
+// LPos overrides redis.Cmdable/LPos to log execution metrics.
+//
+// @Redis: available since v6.0.6
+func (c *CmdableWrapper) LPos(ctx context.Context, key, element string, args redis.LPosArgs) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "lpos", m{"key": key, "value": value, "args": args}
-	result := c.Cmdable.LPos(ctx, key, value, args)
+	cmd.CmdName, cmd.CmdRequest = "lpos", m{"key": key, "element": element, "args": args}
+	result := c.Cmdable.LPos(ctx, key, element, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// LPush overrides redis.Cmdable.LPush to log execution metrics.
-func (c *CmdableWrapper) LPush(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
+// LPush overrides redis.Cmdable/LPush to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) LPush(ctx context.Context, key string, elements ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "lpush", m{"key": key, "values": values}
-	result := c.Cmdable.LPush(ctx, key, values...)
+	cmd.CmdName, cmd.CmdRequest = "lpush", m{"key": key, "elements": elements}
+	result := c.Cmdable.LPush(ctx, key, elements...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// LPushX overrides redis.Cmdable.LPushX to log execution metrics.
-func (c *CmdableWrapper) LPushX(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
+// LPushX overrides redis.Cmdable/LPushX to log execution metrics.
+//
+// @Redis: available since v2.2.0
+func (c *CmdableWrapper) LPushX(ctx context.Context, key string, elements ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "lpushx", m{"key": key, "values": values}
-	result := c.Cmdable.LPushX(ctx, key, values...)
+	cmd.CmdName, cmd.CmdRequest = "lpushx", m{"key": key, "elements": elements}
+	result := c.Cmdable.LPushX(ctx, key, elements...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// LRange overrides redis.Cmdable.LRange to log execution metrics.
+// LRange overrides redis.Cmdable/LRange to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) LRange(ctx context.Context, key string, start, stop int64) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1716,37 +1795,43 @@ func (c *CmdableWrapper) LRange(ctx context.Context, key string, start, stop int
 	return result
 }
 
-// LRem overrides redis.Cmdable.LRem to log execution metrics.
-func (c *CmdableWrapper) LRem(ctx context.Context, key string, count int64, value interface{}) *redis.IntCmd {
+// LRem overrides redis.Cmdable/LRem to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) LRem(ctx context.Context, key string, count int64, element interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "lrem", m{"key": key, "count": count, "value": value}
-	result := c.Cmdable.LRem(ctx, key, count, value)
+	cmd.CmdName, cmd.CmdRequest = "lrem", m{"key": key, "count": count, "element": element}
+	result := c.Cmdable.LRem(ctx, key, count, element)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// LSet overrides redis.Cmdable.LSet to log execution metrics.
-func (c *CmdableWrapper) LSet(ctx context.Context, key string, index int64, value interface{}) *redis.StatusCmd {
+// LSet overrides redis.Cmdable/LSet to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) LSet(ctx context.Context, key string, index int64, element interface{}) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "lset", m{"key": key, "index": index, "value": value}
-	result := c.Cmdable.LSet(ctx, key, index, value)
+	cmd.CmdName, cmd.CmdRequest = "lset", m{"key": key, "index": index, "element": element}
+	result := c.Cmdable.LSet(ctx, key, index, element)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// LTrim overrides redis.Cmdable.LTrim to log execution metrics.
+// LTrim overrides redis.Cmdable/LTrim to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) LTrim(ctx context.Context, key string, start, stop int64) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1761,7 +1846,9 @@ func (c *CmdableWrapper) LTrim(ctx context.Context, key string, start, stop int6
 	return result
 }
 
-// RPop overrides redis.Cmdable.RPop to log execution metrics.
+// RPop overrides redis.Cmdable/RPop to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) RPop(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1776,32 +1863,72 @@ func (c *CmdableWrapper) RPop(ctx context.Context, key string) *redis.StringCmd 
 	return result
 }
 
-// Function RPopLPush is deprecated!
-
-// RPush overrides redis.Cmdable.RPush to log execution metrics.
-func (c *CmdableWrapper) RPush(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
+// RPopCount overrides redis.Cmdable/RPopCount to log execution metrics.
+//
+// @Redis: available since v1.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) RPopCount(ctx context.Context, key string, count int) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "rpush", m{"key": key, "values": values}
-	result := c.Cmdable.RPush(ctx, key, values...)
+	cmd.CmdName, cmd.CmdRequest = "rpop", m{"key": key, "count": count}
+	result := c.Cmdable.RPopCount(ctx, key, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// RPushX overrides redis.Cmdable.RPushX to log execution metrics.
-func (c *CmdableWrapper) RPushX(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
+// RPopLPush overrides redis.Cmdable/RPopLPush to log execution metrics.
+//
+// @Redis: available since v1.2.0 / deprecated since v6.2.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) RPopLPush(ctx context.Context, source, destination string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "rpushx", m{"key": key, "values": values}
-	result := c.Cmdable.RPushX(ctx, key, values...)
+	cmd.CmdName, cmd.CmdRequest = "rpop_lpush", m{"source": source, "destination": destination}
+	result := c.Cmdable.RPopLPush(ctx, source, destination)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// RPush overrides redis.Cmdable/RPush to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) RPush(ctx context.Context, key string, elements ...interface{}) *redis.IntCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "rpush", m{"key": key, "elements": elements}
+	result := c.Cmdable.RPush(ctx, key, elements...)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// RPushX overrides redis.Cmdable/RPushX to log execution metrics.
+//
+// @Redis: available since v2.2.0
+func (c *CmdableWrapper) RPushX(ctx context.Context, key string, elements ...interface{}) *redis.IntCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "rpushx", m{"key": key, "elements": elements}
+	result := c.Cmdable.RPushX(ctx, key, elements...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
