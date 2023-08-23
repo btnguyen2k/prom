@@ -38,6 +38,8 @@ func (cp *RedisClientProxy) Wait(ctx context.Context, numReplicas int, timeout t
 
 // PSubscribe overrides redis.Client/PSubscribe to log execution metrics.
 //
+// To unsubscribe from channels, call redis.PubSub/Close or redis.PubSub/Unsubscribe/PUnsubscribe/SUnsubscribe.
+//
 // @Redis: available since v2.0.0
 func (cp *RedisClientProxy) PSubscribe(ctx context.Context, patterns ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
@@ -53,6 +55,8 @@ func (cp *RedisClientProxy) PSubscribe(ctx context.Context, patterns ...string) 
 
 // Subscribe overrides redis.Client/Subscribe to log execution metrics.
 //
+// To unsubscribe from channels, call redis.PubSub/Close or redis.PubSub/Unsubscribe/PUnsubscribe/SUnsubscribe.
+//
 // @Redis: available since v2.0.0
 func (cp *RedisClientProxy) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
@@ -67,6 +71,8 @@ func (cp *RedisClientProxy) Subscribe(ctx context.Context, channels ...string) *
 }
 
 // SSubscribe overrides redis.Client/SSubscribe to log execution metrics.
+//
+// To unsubscribe from channels, call redis.PubSub/Close or redis.PubSub/Unsubscribe/PUnsubscribe/SUnsubscribe.
 //
 // @Redis: available since v7.0.0
 //
@@ -124,6 +130,8 @@ func (cp *RedisClusterClientProxy) Wait(ctx context.Context, numReplicas int, ti
 
 // PSubscribe overrides redis.ClusterClient/PSubscribe to log execution metrics.
 //
+// To unsubscribe from channels, call redis.PubSub/Close or redis.PubSub/Unsubscribe/PUnsubscribe/SUnsubscribe.
+//
 // @Redis: available since v2.0.0
 func (cp *RedisClusterClientProxy) PSubscribe(ctx context.Context, patterns ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
@@ -139,6 +147,8 @@ func (cp *RedisClusterClientProxy) PSubscribe(ctx context.Context, patterns ...s
 
 // Subscribe overrides redis.ClusterClient/Subscribe to log execution metrics.
 //
+// To unsubscribe from channels, call redis.PubSub/Close or redis.PubSub/Unsubscribe/PUnsubscribe/SUnsubscribe.
+//
 // @Redis: available since v2.0.0
 func (cp *RedisClusterClientProxy) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
 	cmd := cp.rc.NewCmdExecInfo()
@@ -153,6 +163,8 @@ func (cp *RedisClusterClientProxy) Subscribe(ctx context.Context, channels ...st
 }
 
 // SSubscribe overrides redis.Client/SSubscribe to log execution metrics.
+//
+// To unsubscribe from channels, call redis.PubSub/Close or redis.PubSub/Unsubscribe/PUnsubscribe/SUnsubscribe.
 //
 // @Redis: available since v7.0.0
 //
@@ -1939,7 +1951,9 @@ func (c *CmdableWrapper) RPushX(ctx context.Context, key string, elements ...int
 
 // Function PSubscribe is overridden by each proxy!
 
-// Publish overrides redis.Cmdable.Publish to log execution metrics.
+// Publish overrides redis.Cmdable/Publish to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) Publish(ctx context.Context, channel string, message interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1954,14 +1968,16 @@ func (c *CmdableWrapper) Publish(ctx context.Context, channel string, message in
 	return result
 }
 
-// PubSubChannels overrides redis.Cmdable.PubSubChannels to log execution metrics.
+// PubSubChannels overrides redis.Cmdable/PubSubChannels to log execution metrics.
+//
+// @Redis: available since v2.8.0
 func (c *CmdableWrapper) PubSubChannels(ctx context.Context, pattern string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "pubSubChannels", m{"pattern": pattern}
+	cmd.CmdName, cmd.CmdRequest = "pubsub_channels", m{"pattern": pattern}
 	result := c.Cmdable.PubSubChannels(ctx, pattern)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1969,14 +1985,16 @@ func (c *CmdableWrapper) PubSubChannels(ctx context.Context, pattern string) *re
 	return result
 }
 
-// PubSubNumPat overrides redis.Cmdable.PubSubNumPat to log execution metrics.
+// PubSubNumPat overrides redis.Cmdable/PubSubNumPat to log execution metrics.
+//
+// @Redis: available since v2.8.0
 func (c *CmdableWrapper) PubSubNumPat(ctx context.Context) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "pubSubNumPat", nil
+	cmd.CmdName, cmd.CmdRequest = "pubsub_num_pat", nil
 	result := c.Cmdable.PubSubNumPat(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1984,14 +2002,16 @@ func (c *CmdableWrapper) PubSubNumPat(ctx context.Context) *redis.IntCmd {
 	return result
 }
 
-// PubSubNumSub overrides redis.Cmdable.PubSubNumSub to log execution metrics.
-func (c *CmdableWrapper) PubSubNumSub(ctx context.Context, channels ...string) *redis.StringIntMapCmd {
+// PubSubNumSub overrides redis.Cmdable/PubSubNumSub to log execution metrics.
+//
+// @Redis: available since v2.8.0
+func (c *CmdableWrapper) PubSubNumSub(ctx context.Context, channels ...string) *redis.MapStringIntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "pubSubNumSub", m{"channels": channels}
+	cmd.CmdName, cmd.CmdRequest = "pubsub_num_sub", m{"channels": channels}
 	result := c.Cmdable.PubSubNumSub(ctx, channels...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -1999,7 +2019,72 @@ func (c *CmdableWrapper) PubSubNumSub(ctx context.Context, channels ...string) *
 	return result
 }
 
+// PubSubShardChannels overrides redis.Cmdable/PubSubShardChannels to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) PubSubShardChannels(ctx context.Context, pattern string) *redis.StringSliceCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "pubsub_shard_channels", m{"pattern": pattern}
+	result := c.Cmdable.PubSubShardChannels(ctx, pattern)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// PubSubShardNumSub overrides redis.Cmdable/PubSubShardNumSub to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) PubSubShardNumSub(ctx context.Context, channels ...string) *redis.MapStringIntCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "pubsub_shard_num_sub", m{"channels": channels}
+	result := c.Cmdable.PubSubShardNumSub(ctx, channels...)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// Function PUnsubscribe: see RedisClientProxy.PSubscribe
+
+// SPublish overrides redis.Cmdable/SPublish to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) SPublish(ctx context.Context, channel string, message interface{}) *redis.IntCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "spublish", m{"channel": channel, "message": message}
+	result := c.Cmdable.SPublish(ctx, channel, message)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// Function SSubscribe is overridden by each proxy!
+
 // Function Subscribe is overridden by each proxy!
+
+// Function SUnsubscribe: see RedisClientProxy.SSubscribe
+
+// Function Unsubscribe: see RedisClientProxy.Subscribe
 
 /*----- Scripting-related commands -----*/
 
