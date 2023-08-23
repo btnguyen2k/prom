@@ -2088,7 +2088,9 @@ func (c *CmdableWrapper) SPublish(ctx context.Context, channel string, message i
 
 /*----- Scripting-related commands -----*/
 
-// Eval overrides redis.Cmdable.Eval to log execution metrics.
+// Eval overrides redis.Cmdable/Eval to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) Eval(ctx context.Context, script string, keys []string, args ...interface{}) *redis.Cmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -2103,14 +2105,35 @@ func (c *CmdableWrapper) Eval(ctx context.Context, script string, keys []string,
 	return result
 }
 
-// EvalSha overrides redis.Cmdable.EvalSha to log execution metrics.
+// EvalRO overrides redis.Cmdable/EvalRO to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) EvalRO(ctx context.Context, script string, keys []string, args ...interface{}) *redis.Cmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "eval_ro", m{"script": script, "keys": keys, "args": args}
+	result := c.Cmdable.EvalRO(ctx, script, keys, args...)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// EvalSha overrides redis.Cmdable/EvalSha to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) EvalSha(ctx context.Context, scriptSha string, keys []string, args ...interface{}) *redis.Cmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "evalSha", m{"sha": scriptSha, "keys": keys, "args": args}
+	cmd.CmdName, cmd.CmdRequest = "eval_sha", m{"sha": scriptSha, "keys": keys, "args": args}
 	result := c.Cmdable.EvalSha(ctx, scriptSha, keys, args...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -2118,16 +2141,263 @@ func (c *CmdableWrapper) EvalSha(ctx context.Context, scriptSha string, keys []s
 	return result
 }
 
-// No function ScriptLoad for now!
+// EvalShaRO overrides redis.Cmdable/EvalShaRO to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) EvalShaRO(ctx context.Context, scriptSha string, keys []string, args ...interface{}) *redis.Cmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "eval_sha_ro", m{"sha": scriptSha, "keys": keys, "args": args}
+	result := c.Cmdable.EvalShaRO(ctx, scriptSha, keys, args...)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
 
-// ScriptExists overrides redis.Cmdable.ScriptExists to log execution metrics.
+// FCall overrides redis.Cmdable/FCall to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FCall(ctx context.Context, function string, keys []string, args ...interface{}) *redis.Cmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "fcall", m{"function": function, "keys": keys, "args": args}
+	result := c.Cmdable.FCall(ctx, function, keys, args...)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FCallRO overrides redis.Cmdable/FCallRO to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FCallRO(ctx context.Context, function string, keys []string, args ...interface{}) *redis.Cmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "fcall_ro", m{"function": function, "keys": keys, "args": args}
+	result := c.Cmdable.FCallRO(ctx, function, keys, args...)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FunctionDelete overrides redis.Cmdable/FunctionDelete to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FunctionDelete(ctx context.Context, libName string) *redis.StringCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "function_delete", m{"library_name": libName}
+	result := c.Cmdable.FunctionDelete(ctx, libName)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FunctionDump overrides redis.Cmdable/FunctionDump to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FunctionDump(ctx context.Context) *redis.StringCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "function_dump", nil
+	result := c.Cmdable.FunctionDump(ctx)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FunctionFlush overrides redis.Cmdable/FunctionFlush to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FunctionFlush(ctx context.Context) *redis.StringCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "function_flush", nil
+	result := c.Cmdable.FunctionFlush(ctx)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FunctionFlushAsync overrides redis.Cmdable/FunctionFlushAsync to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FunctionFlushAsync(ctx context.Context) *redis.StringCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "function_flush", m{"async": true}
+	result := c.Cmdable.FunctionFlushAsync(ctx)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FunctionKill overrides redis.Cmdable/FunctionKill to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FunctionKill(ctx context.Context) *redis.StringCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "function_kill", nil
+	result := c.Cmdable.FunctionKill(ctx)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FunctionList overrides redis.Cmdable/FunctionList to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FunctionList(ctx context.Context, query redis.FunctionListQuery) *redis.FunctionListCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "function_list", m{"args": query}
+	result := c.Cmdable.FunctionList(ctx, query)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FunctionLoad overrides redis.Cmdable/FunctionLoad to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FunctionLoad(ctx context.Context, code string) *redis.StringCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "function_load", m{"function_code": code}
+	result := c.Cmdable.FunctionLoad(ctx, code)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FunctionLoadReplace overrides redis.Cmdable/FunctionLoadReplace to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FunctionLoadReplace(ctx context.Context, code string) *redis.StringCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "function_load", m{"function_code": code, "replace": true}
+	result := c.Cmdable.FunctionLoadReplace(ctx, code)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FunctionRestore overrides redis.Cmdable/FunctionRestore to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FunctionRestore(ctx context.Context, libDump string) *redis.StringCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "function_restore", m{"serialized_value": libDump}
+	result := c.Cmdable.FunctionRestore(ctx, libDump)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// FunctionStats overrides redis.Cmdable/FunctionStats to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) FunctionStats(ctx context.Context) *redis.FunctionStatsCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "function_stats", nil
+	result := c.Cmdable.FunctionStats(ctx)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// ScriptExists overrides redis.Cmdable/ScriptExists to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) ScriptExists(ctx context.Context, hashes ...string) *redis.BoolSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "scriptExists", m{"hashes": hashes}
+	cmd.CmdName, cmd.CmdRequest = "script_exists", m{"hashes": hashes}
 	result := c.Cmdable.ScriptExists(ctx, hashes...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -2135,14 +2405,16 @@ func (c *CmdableWrapper) ScriptExists(ctx context.Context, hashes ...string) *re
 	return result
 }
 
-// ScriptFlush overrides redis.Cmdable.ScriptFlush to log execution metrics.
+// ScriptFlush overrides redis.Cmdable/ScriptFlush to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) ScriptFlush(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "scriptFlush", nil
+	cmd.CmdName, cmd.CmdRequest = "script_flush", nil
 	result := c.Cmdable.ScriptFlush(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -2150,14 +2422,16 @@ func (c *CmdableWrapper) ScriptFlush(ctx context.Context) *redis.StatusCmd {
 	return result
 }
 
-// ScriptKill overrides redis.Cmdable.ScriptKill to log execution metrics.
+// ScriptKill overrides redis.Cmdable/ScriptKill to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) ScriptKill(ctx context.Context) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "scriptKill", nil
+	cmd.CmdName, cmd.CmdRequest = "script_kill", nil
 	result := c.Cmdable.ScriptKill(ctx)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -2165,14 +2439,16 @@ func (c *CmdableWrapper) ScriptKill(ctx context.Context) *redis.StatusCmd {
 	return result
 }
 
-// ScriptLoad overrides redis.Cmdable.ScriptLoad to log execution metrics.
+// ScriptLoad overrides redis.Cmdable/ScriptLoad to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) ScriptLoad(ctx context.Context, script string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "scriptLoad", m{"script": script}
+	cmd.CmdName, cmd.CmdRequest = "script_load", m{"script": script}
 	result := c.Cmdable.ScriptLoad(ctx, script)
 	val, err := result.Result()
 	cmd.CmdResponse = val
