@@ -4086,30 +4086,35 @@ func (c *CmdableWrapper) ZUnionStore(ctx context.Context, destKey string, store 
 
 /*----- Stream-related commands -----*/
 
-// XAck overrides redis.Cmdable.XAck to log execution metrics.
-func (c *CmdableWrapper) XAck(ctx context.Context, stream, group string, ids ...string) *redis.IntCmd {
+// XAck overrides redis.Cmdable/XAck to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XAck(ctx context.Context, key, group string, ids ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xack", m{"stream": stream, "group": stream, "ids": ids}
-	result := c.Cmdable.XAck(ctx, stream, group, ids...)
+	cmd.CmdName, cmd.CmdRequest = "xack", m{"key": key, "group": group, "ids": ids}
+	result := c.Cmdable.XAck(ctx, key, group, ids...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// XAdd overrides redis.Cmdable.XAdd to log execution metrics.
+// XAdd overrides redis.Cmdable/XAdd to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XAdd(ctx context.Context, args *redis.XAddArgs) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xadd", m{"stream": args.Stream, "noMkStream": args.NoMkStream, "maxLen": args.MaxLen,
-		"minId": args.MinID, "approx": args.Approx, "limit": args.Limit, "id": args.ID, "values": args.Values}
+	cmd.CmdName, cmd.CmdRequest = "xadd", m{"key": args.Stream, "no_mk_stream": args.NoMkStream,
+		"max_len": args.MaxLen, "min_id": args.MinID, "approx": args.Approx, "count": args.Limit,
+		"id": args.ID, "fields_values": args.Values}
 	result := c.Cmdable.XAdd(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4117,151 +4122,191 @@ func (c *CmdableWrapper) XAdd(ctx context.Context, args *redis.XAddArgs) *redis.
 	return result
 }
 
-// XAutoClaim overrides redis.Cmdable.XAutoClaim to log execution metrics.
+// XAutoClaim overrides redis.Cmdable/XAutoClaim to log execution metrics.
+//
+// @Redis: available since v6.2.0
 func (c *CmdableWrapper) XAutoClaim(ctx context.Context, args *redis.XAutoClaimArgs) *redis.XAutoClaimCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xautoClaim", m{"stream": args.Stream, "group": args.Group, "minIdle": args.MinIdle,
-		"start": args.Start, "count": args.Count, "consumer": args.Consumer}
+	cmd.CmdName, cmd.CmdRequest = "xauto_claim", m{"key": args.Stream, "group": args.Group, "consumer": args.Consumer,
+		"min_idle_time": args.MinIdle, "start": args.Start, "count": args.Count}
 	result := c.Cmdable.XAutoClaim(ctx, args)
-	val, _, err := result.Result()
-	cmd.CmdResponse = val
+	val, start, err := result.Result()
+	cmd.CmdResponse = m{"messages": val, "start": start}
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// XAutoClaimJustID overrides redis.Cmdable.XAutoClaimJustID to log execution metrics.
+// XAutoClaimJustID overrides redis.Cmdable/XAutoClaimJustID to log execution metrics.
+//
+// @Redis: available since v6.2.0
 func (c *CmdableWrapper) XAutoClaimJustID(ctx context.Context, args *redis.XAutoClaimArgs) *redis.XAutoClaimJustIDCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xautoClaim", m{"stream": args.Stream, "group": args.Group, "minIdle": args.MinIdle,
-		"start": args.Start, "count": args.Count, "consumer": args.Consumer, "justId": true}
+	cmd.CmdName, cmd.CmdRequest = "xauto_claim", m{"key": args.Stream, "group": args.Group, "consumer": args.Consumer,
+		"min_idle_time": args.MinIdle, "start": args.Start, "count": args.Count, "justid": true}
 	result := c.Cmdable.XAutoClaimJustID(ctx, args)
-	val, _, err := result.Result()
-	cmd.CmdResponse = val
+	val, start, err := result.Result()
+	cmd.CmdResponse = m{"messages": val, "start": start}
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// XDel overrides redis.Cmdable.XDel to log execution metrics.
-func (c *CmdableWrapper) XDel(ctx context.Context, stream string, ids ...string) *redis.IntCmd {
-	cmd := c.rc.NewCmdExecInfo()
-	defer func() {
-		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
-	}()
-	cmd.CmdName, cmd.CmdRequest = "xdel", m{"stream": stream, "ids": ids}
-	result := c.Cmdable.XDel(ctx, stream, ids...)
-	val, err := result.Result()
-	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
-	return result
-}
-
-// XGroupCreate overrides redis.Cmdable.XGroupCreate to log execution metrics.
-func (c *CmdableWrapper) XGroupCreate(ctx context.Context, stream, group, start string) *redis.StatusCmd {
-	cmd := c.rc.NewCmdExecInfo()
-	defer func() {
-		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
-	}()
-	cmd.CmdName, cmd.CmdRequest = "xgroupCreate", m{"stream": stream, "group": group, "start": start}
-	result := c.Cmdable.XGroupCreate(ctx, stream, group, start)
-	val, err := result.Result()
-	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
-	return result
-}
-
-// XGroupCreateMkStream overrides redis.Cmdable.XGroupCreateMkStream to log execution metrics.
-func (c *CmdableWrapper) XGroupCreateMkStream(ctx context.Context, stream, group, start string) *redis.StatusCmd {
-	cmd := c.rc.NewCmdExecInfo()
-	defer func() {
-		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
-	}()
-	cmd.CmdName, cmd.CmdRequest = "xgroupCreate", m{"stream": stream, "group": group, "start": start, "mkStream": true}
-	result := c.Cmdable.XGroupCreateMkStream(ctx, stream, group, start)
-	val, err := result.Result()
-	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
-	return result
-}
-
-// XGroupCreateConsumer overrides redis.Cmdable.XGroupCreateConsumer to log execution metrics.
-func (c *CmdableWrapper) XGroupCreateConsumer(ctx context.Context, stream, group, consumer string) *redis.IntCmd {
+// XClaim overrides redis.Cmdable/XClaim to log execution metrics.
+//
+// @Redis: available since v5.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) XClaim(ctx context.Context, args *redis.XClaimArgs) *redis.XMessageSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xgroupCreateConsumer", m{"stream": stream, "group": group, "consumer": consumer}
-	result := c.Cmdable.XGroupCreateConsumer(ctx, stream, group, consumer)
+	cmd.CmdName, cmd.CmdRequest = "xauto_claim", m{"key": args.Stream, "group": args.Group, "consumer": args.Consumer,
+		"min_idle_time": args.MinIdle, "messages": args.Messages}
+	result := c.Cmdable.XClaim(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// XGroupDelConsumer overrides redis.Cmdable.XGroupDelConsumer to log execution metrics.
-func (c *CmdableWrapper) XGroupDelConsumer(ctx context.Context, stream, group, consumer string) *redis.IntCmd {
-	cmd := c.rc.NewCmdExecInfo()
-	defer func() {
-		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
-	}()
-	cmd.CmdName, cmd.CmdRequest = "xgroupDelConsumer", m{"stream": stream, "group": group, "consumer": consumer}
-	result := c.Cmdable.XGroupDelConsumer(ctx, stream, group, consumer)
-	val, err := result.Result()
-	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
-	return result
-}
-
-// XGroupDestroy overrides redis.Cmdable.XGroupDestroy to log execution metrics.
-func (c *CmdableWrapper) XGroupDestroy(ctx context.Context, stream, group string) *redis.IntCmd {
-	cmd := c.rc.NewCmdExecInfo()
-	defer func() {
-		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
-	}()
-	cmd.CmdName, cmd.CmdRequest = "xgroupDestroy", m{"stream": stream, "group": group}
-	result := c.Cmdable.XGroupDestroy(ctx, stream, group)
-	val, err := result.Result()
-	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
-	return result
-}
-
-// XGroupSetID overrides redis.Cmdable.XGroupSetID to log execution metrics.
-func (c *CmdableWrapper) XGroupSetID(ctx context.Context, stream, group, start string) *redis.StatusCmd {
+// XDel overrides redis.Cmdable/XDel to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XDel(ctx context.Context, key string, ids ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xgroupSetId", m{"stream": stream, "group": group, "start": start}
-	result := c.Cmdable.XGroupSetID(ctx, stream, group, start)
+	cmd.CmdName, cmd.CmdRequest = "xdel", m{"key": key, "ids": ids}
+	result := c.Cmdable.XDel(ctx, key, ids...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// XInfoConsumers overrides redis.Cmdable.XInfoConsumers to log execution metrics.
+// XGroupCreate overrides redis.Cmdable/XGroupCreate to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XGroupCreate(ctx context.Context, key, group, id string) *redis.StatusCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "xgroup_create", m{"key": key, "group": group, "id": id}
+	result := c.Cmdable.XGroupCreate(ctx, key, group, id)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// XGroupCreateMkStream overrides redis.Cmdable/XGroupCreateMkStream to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XGroupCreateMkStream(ctx context.Context, key, group, id string) *redis.StatusCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "xgroup_create", m{"key": key, "group": group, "id": id, "mk_stream": true}
+	result := c.Cmdable.XGroupCreateMkStream(ctx, key, group, id)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// XGroupCreateConsumer overrides redis.Cmdable/XGroupCreateConsumer to log execution metrics.
+//
+// @Redis: available since v6.2.0
+func (c *CmdableWrapper) XGroupCreateConsumer(ctx context.Context, key, group, consumer string) *redis.IntCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "xgroup_create_consumer", m{"key": key, "group": group, "consumer": consumer}
+	result := c.Cmdable.XGroupCreateConsumer(ctx, key, group, consumer)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// XGroupDelConsumer overrides redis.Cmdable/XGroupDelConsumer to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XGroupDelConsumer(ctx context.Context, key, group, consumer string) *redis.IntCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "xgroup_del_consumer", m{"key": key, "group": group, "consumer": consumer}
+	result := c.Cmdable.XGroupDelConsumer(ctx, key, group, consumer)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// XGroupDestroy overrides redis.Cmdable/XGroupDestroy to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XGroupDestroy(ctx context.Context, key, group string) *redis.IntCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "xgroup_destroy", m{"key": key, "group": group}
+	result := c.Cmdable.XGroupDestroy(ctx, key, group)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// XGroupSetID overrides redis.Cmdable/XGroupSetID to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XGroupSetID(ctx context.Context, key, group, id string) *redis.StatusCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "xgroup_set_id", m{"key": key, "group": group, "id": id}
+	result := c.Cmdable.XGroupSetID(ctx, key, group, id)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// XInfoConsumers overrides redis.Cmdable/XInfoConsumers to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XInfoConsumers(ctx context.Context, key, group string) *redis.XInfoConsumersCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xinfoConsumers", m{"key": key, "group": group}
+	cmd.CmdName, cmd.CmdRequest = "xinfo_consumers", m{"key": key, "group": group}
 	result := c.Cmdable.XInfoConsumers(ctx, key, group)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4269,14 +4314,16 @@ func (c *CmdableWrapper) XInfoConsumers(ctx context.Context, key, group string) 
 	return result
 }
 
-// XInfoGroups overrides redis.Cmdable.XInfoGroups to log execution metrics.
+// XInfoGroups overrides redis.Cmdable/XInfoGroups to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XInfoGroups(ctx context.Context, key string) *redis.XInfoGroupsCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xinfoGroups", m{"key": key}
+	cmd.CmdName, cmd.CmdRequest = "xinfo_groups", m{"key": key}
 	result := c.Cmdable.XInfoGroups(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4284,14 +4331,16 @@ func (c *CmdableWrapper) XInfoGroups(ctx context.Context, key string) *redis.XIn
 	return result
 }
 
-// XInfoStream overrides redis.Cmdable.XInfoStream to log execution metrics.
+// XInfoStream overrides redis.Cmdable/XInfoStream to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XInfoStream(ctx context.Context, key string) *redis.XInfoStreamCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xinfoStream", m{"key": key}
+	cmd.CmdName, cmd.CmdRequest = "xinfo_stream", m{"key": key}
 	result := c.Cmdable.XInfoStream(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4299,14 +4348,16 @@ func (c *CmdableWrapper) XInfoStream(ctx context.Context, key string) *redis.XIn
 	return result
 }
 
-// XInfoStreamFull overrides redis.Cmdable.XInfoStreamFull to log execution metrics.
+// XInfoStreamFull overrides redis.Cmdable/XInfoStreamFull to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XInfoStreamFull(ctx context.Context, key string, count int) *redis.XInfoStreamFullCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xinfoStream", m{"key": key, "full": true, "count": count}
+	cmd.CmdName, cmd.CmdRequest = "xinfo_stream", m{"key": key, "full": true, "count": count}
 	result := c.Cmdable.XInfoStreamFull(ctx, key, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4314,45 +4365,51 @@ func (c *CmdableWrapper) XInfoStreamFull(ctx context.Context, key string, count 
 	return result
 }
 
-// XLen overrides redis.Cmdable.XLen to log execution metrics.
-func (c *CmdableWrapper) XLen(ctx context.Context, stream string) *redis.IntCmd {
+// XLen overrides redis.Cmdable/XLen to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XLen(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xlen", m{"stream": stream}
-	result := c.Cmdable.XLen(ctx, stream)
+	cmd.CmdName, cmd.CmdRequest = "xlen", m{"key": key}
+	result := c.Cmdable.XLen(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// XPending overrides redis.Cmdable.XPending to log execution metrics.
-func (c *CmdableWrapper) XPending(ctx context.Context, stream, group string) *redis.XPendingCmd {
+// XPending overrides redis.Cmdable/XPending to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XPending(ctx context.Context, key, group string) *redis.XPendingCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xpending", m{"stream": stream, "group": group}
-	result := c.Cmdable.XPending(ctx, stream, group)
+	cmd.CmdName, cmd.CmdRequest = "xpending", m{"key": key, "group": group}
+	result := c.Cmdable.XPending(ctx, key, group)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// XPendingExt overrides redis.Cmdable.XPendingExt to log execution metrics.
+// XPendingExt overrides redis.Cmdable/XPendingExt to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XPendingExt(ctx context.Context, args *redis.XPendingExtArgs) *redis.XPendingExtCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xpending", m{"stream": args.Stream, "group": args.Group, "consumer": args.Consumer,
-		"idle": args.Idle, "start": args.Start, "end": args.End, "count": args.Count}
+	cmd.CmdName, cmd.CmdRequest = "xpending", m{"key": args.Stream, "group": args.Group, "consumer": args.Consumer,
+		"min_idle_time": args.Idle, "start": args.Start, "end": args.End, "count": args.Count}
 	result := c.Cmdable.XPendingExt(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4360,44 +4417,50 @@ func (c *CmdableWrapper) XPendingExt(ctx context.Context, args *redis.XPendingEx
 	return result
 }
 
-// XRange overrides redis.Cmdable.XRange to log execution metrics.
-func (c *CmdableWrapper) XRange(ctx context.Context, stream, start, stop string) *redis.XMessageSliceCmd {
+// XRange overrides redis.Cmdable/XRange to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XRange(ctx context.Context, key, start, end string) *redis.XMessageSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xrange", m{"stream": stream, "start": start, "stop": stop}
-	result := c.Cmdable.XRange(ctx, stream, start, stop)
+	cmd.CmdName, cmd.CmdRequest = "xrange", m{"key": key, "start": start, "end": end}
+	result := c.Cmdable.XRange(ctx, key, start, end)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// XRangeN overrides redis.Cmdable.XRangeN to log execution metrics.
-func (c *CmdableWrapper) XRangeN(ctx context.Context, stream, start, stop string, count int64) *redis.XMessageSliceCmd {
+// XRangeN overrides redis.Cmdable/XRangeN to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XRangeN(ctx context.Context, key, start, end string, count int64) *redis.XMessageSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xrange", m{"stream": stream, "start": start, "stop": stop, "count": count}
-	result := c.Cmdable.XRangeN(ctx, stream, start, stop, count)
+	cmd.CmdName, cmd.CmdRequest = "xrange", m{"key": key, "start": start, "end": end, "count": count}
+	result := c.Cmdable.XRangeN(ctx, key, start, end, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// XRead overrides redis.Cmdable.XRead to log execution metrics.
+// XRead overrides redis.Cmdable/XRead to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XRead(ctx context.Context, args *redis.XReadArgs) *redis.XStreamSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xread", m{"streams": args.Streams, "block": args.Block, "count": args.Count}
+	cmd.CmdName, cmd.CmdRequest = "xread", m{"keys": args.Streams, "block_milliseconds": args.Block, "count": args.Count}
 	result := c.Cmdable.XRead(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4405,15 +4468,17 @@ func (c *CmdableWrapper) XRead(ctx context.Context, args *redis.XReadArgs) *redi
 	return result
 }
 
-// XReadGroup overrides redis.Cmdable.XReadGroup to log execution metrics.
+// XReadGroup overrides redis.Cmdable/XReadGroup to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XReadGroup(ctx context.Context, args *redis.XReadGroupArgs) *redis.XStreamSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xreadGroup", m{"group": args.Group, "consumer": args.Consumer, "streams": args.Streams,
-		"block": args.Block, "count": args.Count, "noAck": args.NoAck}
+	cmd.CmdName, cmd.CmdRequest = "xread_group", m{"group": args.Group, "consumer": args.Consumer, "keys": args.Streams,
+		"block_milliseconds": args.Block, "count": args.Count, "noack": args.NoAck}
 	result := c.Cmdable.XReadGroup(ctx, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4421,48 +4486,52 @@ func (c *CmdableWrapper) XReadGroup(ctx context.Context, args *redis.XReadGroupA
 	return result
 }
 
-// XRevRange overrides redis.Cmdable.XRevRange to log execution metrics.
-func (c *CmdableWrapper) XRevRange(ctx context.Context, stream, start, stop string) *redis.XMessageSliceCmd {
+// XRevRange overrides redis.Cmdable/XRevRange to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XRevRange(ctx context.Context, key, start, end string) *redis.XMessageSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xrevRange", m{"stream": stream, "start": start, "stop": stop}
-	result := c.Cmdable.XRevRange(ctx, stream, start, stop)
+	cmd.CmdName, cmd.CmdRequest = "xrev_range", m{"key": key, "start": start, "end": end}
+	result := c.Cmdable.XRevRange(ctx, key, start, end)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// XRevRangeN overrides redis.Cmdable.XRevRangeN to log execution metrics.
-func (c *CmdableWrapper) XRevRangeN(ctx context.Context, stream, start, stop string, count int64) *redis.XMessageSliceCmd {
+// XRevRangeN overrides redis.Cmdable/XRevRangeN to log execution metrics.
+//
+// @Redis: available since v5.0.0
+func (c *CmdableWrapper) XRevRangeN(ctx context.Context, key, start, end string, count int64) *redis.XMessageSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xrevRange", m{"stream": stream, "start": start, "stop": stop, "count": count}
-	result := c.Cmdable.XRevRangeN(ctx, stream, start, stop, count)
+	cmd.CmdName, cmd.CmdRequest = "xrev_range", m{"key": key, "start": start, "end": end, "count": count}
+	result := c.Cmdable.XRevRangeN(ctx, key, start, end, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// Function XTrim is deprecated, use XTrimMaxLen
+// No function XSetID for now!
 
-// Function XTrimApprox is deprecated, use XTrimMaxlenApprox
-
-// XTrimMaxLen overrides redis.Cmdable.XTrimMaxLen to log execution metrics.
+// XTrimMaxLen overrides redis.Cmdable/XTrimMaxLen to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XTrimMaxLen(ctx context.Context, key string, maxLen int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "maxLen": maxLen}
+	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "maxlen": maxLen}
 	result := c.Cmdable.XTrimMaxLen(ctx, key, maxLen)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4470,14 +4539,16 @@ func (c *CmdableWrapper) XTrimMaxLen(ctx context.Context, key string, maxLen int
 	return result
 }
 
-// XTrimMaxLenApprox overrides redis.Cmdable.XTrimMaxLenApprox to log execution metrics.
+// XTrimMaxLenApprox overrides redis.Cmdable/XTrimMaxLenApprox to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XTrimMaxLenApprox(ctx context.Context, key string, maxLen, limit int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "maxLen": maxLen, "approx": true, "limit": limit}
+	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "maxlen": maxLen, "approx": true, "count": limit}
 	result := c.Cmdable.XTrimMaxLenApprox(ctx, key, maxLen, limit)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4485,14 +4556,16 @@ func (c *CmdableWrapper) XTrimMaxLenApprox(ctx context.Context, key string, maxL
 	return result
 }
 
-// XTrimMinID overrides redis.Cmdable.XTrimMinID to log execution metrics.
+// XTrimMinID overrides redis.Cmdable/XTrimMinID to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XTrimMinID(ctx context.Context, key, minId string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "minId": minId}
+	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "minid": minId}
 	result := c.Cmdable.XTrimMinID(ctx, key, minId)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4500,14 +4573,16 @@ func (c *CmdableWrapper) XTrimMinID(ctx context.Context, key, minId string) *red
 	return result
 }
 
-// XTrimMinIDApprox overrides redis.Cmdable.XTrimMinIDApprox to log execution metrics.
+// XTrimMinIDApprox overrides redis.Cmdable/XTrimMinIDApprox to log execution metrics.
+//
+// @Redis: available since v5.0.0
 func (c *CmdableWrapper) XTrimMinIDApprox(ctx context.Context, key, minId string, limit int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "minId": minId, "limit": limit}
+	cmd.CmdName, cmd.CmdRequest = "xtrim", m{"key": key, "minid": minId, "approx": true, "limit": limit}
 	result := c.Cmdable.XTrimMinIDApprox(ctx, key, minId, limit)
 	val, err := result.Result()
 	cmd.CmdResponse = val

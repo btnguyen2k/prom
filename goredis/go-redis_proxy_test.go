@@ -1119,7 +1119,7 @@ func TestRedisProxy_HRandField(t *testing.T) {
 			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
 				t.SkipNow()
 			}
-			c.HRandField(context.TODO(), "key", 2, true)
+			c.HRandField(context.TODO(), "key", 2)
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "hrandField", []error{redis.Nil}, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
@@ -2120,7 +2120,7 @@ func TestRedisProxy_ZAdd(t *testing.T) {
 			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
 				t.SkipNow()
 			}
-			c.ZAdd(context.TODO(), "key", &redis.Z{Member: "member1", Score: 1.23}, &redis.Z{Member: 2, Score: 2.34}, &redis.Z{Member: true, Score: 3.45})
+			c.ZAdd(context.TODO(), "key", redis.Z{Member: "member1", Score: 1.23}, redis.Z{Member: 2, Score: 2.34}, redis.Z{Member: true, Score: 3.45})
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "zadd", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
