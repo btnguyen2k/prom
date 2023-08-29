@@ -2956,24 +2956,26 @@ func (c *CmdableWrapper) Time(ctx context.Context) *redis.TimeCmd {
 
 /*----- Set-related commands -----*/
 
-// No function SAdd for now!
-
-// SAdd overrides redis.Cmdable.SAdd to log execution metrics.
-func (c *CmdableWrapper) SAdd(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
+// SAdd overrides redis.Cmdable/SAdd to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) SAdd(ctx context.Context, key string, members ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "sadd", m{"key": key, "values": values}
-	result := c.Cmdable.SAdd(ctx, key, values...)
+	cmd.CmdName, cmd.CmdRequest = "sadd", m{"key": key, "members": members}
+	result := c.Cmdable.SAdd(ctx, key, members...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// SCard overrides redis.Cmdable.SCard to log execution metrics.
+// SCard overrides redis.Cmdable/SCard to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SCard(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -2988,7 +2990,9 @@ func (c *CmdableWrapper) SCard(ctx context.Context, key string) *redis.IntCmd {
 	return result
 }
 
-// SDiff overrides redis.Cmdable.SDiff to log execution metrics.
+// SDiff overrides redis.Cmdable/SDiff to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SDiff(ctx context.Context, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -3003,14 +3007,16 @@ func (c *CmdableWrapper) SDiff(ctx context.Context, keys ...string) *redis.Strin
 	return result
 }
 
-// SDiffStore overrides redis.Cmdable.SDiffStore to log execution metrics.
+// SDiffStore overrides redis.Cmdable/SDiffStore to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SDiffStore(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "sdiffStore", m{"dest": destKey, "keys": keys}
+	cmd.CmdName, cmd.CmdRequest = "sdiff_store", m{"destination": destKey, "keys": keys}
 	result := c.Cmdable.SDiffStore(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -3018,7 +3024,9 @@ func (c *CmdableWrapper) SDiffStore(ctx context.Context, destKey string, keys ..
 	return result
 }
 
-// SInter overrides redis.Cmdable.SInter to log execution metrics.
+// SInter overrides redis.Cmdable/SInter to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SInter(ctx context.Context, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -3033,14 +3041,35 @@ func (c *CmdableWrapper) SInter(ctx context.Context, keys ...string) *redis.Stri
 	return result
 }
 
-// SInterStore overrides redis.Cmdable.SInterStore to log execution metrics.
+// SInterCard overrides redis.Cmdable/SInterCard to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) SInterCard(ctx context.Context, limit int64, keys ...string) *redis.IntCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "sinter_card", m{"limit": limit, "keys": keys}
+	result := c.Cmdable.SInterCard(ctx, limit, keys...)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// SInterStore overrides redis.Cmdable/SInterStore to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SInterStore(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "sinterStore", m{"dest": destKey, "keys": keys}
+	cmd.CmdName, cmd.CmdRequest = "sinter_store", m{"destination": destKey, "keys": keys}
 	result := c.Cmdable.SInterStore(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -3048,22 +3077,26 @@ func (c *CmdableWrapper) SInterStore(ctx context.Context, destKey string, keys .
 	return result
 }
 
-// SIsMember overrides redis.Cmdable.SIsMember to log execution metrics.
-func (c *CmdableWrapper) SIsMember(ctx context.Context, key string, value interface{}) *redis.BoolCmd {
+// SIsMember overrides redis.Cmdable/SIsMember to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) SIsMember(ctx context.Context, key string, member interface{}) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "sisMember", m{"key": key, "value": value}
-	result := c.Cmdable.SIsMember(ctx, key, value)
+	cmd.CmdName, cmd.CmdRequest = "sis_member", m{"key": key, "member": member}
+	result := c.Cmdable.SIsMember(ctx, key, member)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// SMembers overrides redis.Cmdable.SMembers to log execution metrics.
+// SMembers overrides redis.Cmdable/SMembers to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SMembers(ctx context.Context, key string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -3078,37 +3111,43 @@ func (c *CmdableWrapper) SMembers(ctx context.Context, key string) *redis.String
 	return result
 }
 
-// SMIsMember overrides redis.Cmdable.SMIsMember to log execution metrics.
-func (c *CmdableWrapper) SMIsMember(ctx context.Context, key string, values ...interface{}) *redis.BoolSliceCmd {
+// SMIsMember overrides redis.Cmdable/SMIsMember to log execution metrics.
+//
+// @Redis: available since v6.2.0
+func (c *CmdableWrapper) SMIsMember(ctx context.Context, key string, members ...interface{}) *redis.BoolSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "smisMember", m{"key": key, "values": values}
-	result := c.Cmdable.SMIsMember(ctx, key, values...)
+	cmd.CmdName, cmd.CmdRequest = "smis_member", m{"key": key, "members": members}
+	result := c.Cmdable.SMIsMember(ctx, key, members...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// SMove overrides redis.Cmdable.SMove to log execution metrics.
-func (c *CmdableWrapper) SMove(ctx context.Context, srcKey, destKey string, value interface{}) *redis.BoolCmd {
+// SMove overrides redis.Cmdable/SMove to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) SMove(ctx context.Context, srcKey, destKey string, member interface{}) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "smove", m{"src": srcKey, "dest": destKey, "value": value}
-	result := c.Cmdable.SMove(ctx, srcKey, destKey, value)
+	cmd.CmdName, cmd.CmdRequest = "smove", m{"source": srcKey, "destination": destKey, "member": member}
+	result := c.Cmdable.SMove(ctx, srcKey, destKey, member)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// SPop overrides redis.Cmdable.SPop to log execution metrics.
+// SPop overrides redis.Cmdable/SPop to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SPop(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -3123,7 +3162,9 @@ func (c *CmdableWrapper) SPop(ctx context.Context, key string) *redis.StringCmd 
 	return result
 }
 
-// SPopN overrides redis.Cmdable.SPopN to log execution metrics.
+// SPopN overrides redis.Cmdable/SPopN to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SPopN(ctx context.Context, key string, count int64) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -3138,14 +3179,16 @@ func (c *CmdableWrapper) SPopN(ctx context.Context, key string, count int64) *re
 	return result
 }
 
-// SRandMember overrides redis.Cmdable.SRandMember to log execution metrics.
+// SRandMember overrides redis.Cmdable/SRandMember to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SRandMember(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "srandMember", m{"key": key}
+	cmd.CmdName, cmd.CmdRequest = "srand_member", m{"key": key}
 	result := c.Cmdable.SRandMember(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -3153,14 +3196,16 @@ func (c *CmdableWrapper) SRandMember(ctx context.Context, key string) *redis.Str
 	return result
 }
 
-// SRandMemberN overrides redis.Cmdable.SRandMemberN to log execution metrics.
+// SRandMemberN overrides redis.Cmdable/SRandMemberN to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SRandMemberN(ctx context.Context, key string, count int64) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "srandMember", m{"key": key, "count": count}
+	cmd.CmdName, cmd.CmdRequest = "srand_member", m{"key": key, "count": count}
 	result := c.Cmdable.SRandMemberN(ctx, key, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -3168,22 +3213,26 @@ func (c *CmdableWrapper) SRandMemberN(ctx context.Context, key string, count int
 	return result
 }
 
-// SRem overrides redis.Cmdable.SRem to log execution metrics.
-func (c *CmdableWrapper) SRem(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
+// SRem overrides redis.Cmdable/SRem to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) SRem(ctx context.Context, key string, members ...interface{}) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "srem", m{"key": key, "values": values}
-	result := c.Cmdable.SRem(ctx, key, values...)
+	cmd.CmdName, cmd.CmdRequest = "srem", m{"key": key, "members": members}
+	result := c.Cmdable.SRem(ctx, key, members...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// SScan overrides redis.Cmdable.SScan to log execution metrics.
+// SScan overrides redis.Cmdable/SScan to log execution metrics.
+//
+// @Redis: available since v2.8.0
 func (c *CmdableWrapper) SScan(ctx context.Context, key string, cursor uint64, pattern string, count int64) *redis.ScanCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -3198,7 +3247,9 @@ func (c *CmdableWrapper) SScan(ctx context.Context, key string, cursor uint64, p
 	return result
 }
 
-// SUnion overrides redis.Cmdable.SUnion to log execution metrics.
+// SUnion overrides redis.Cmdable/SUnion to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SUnion(ctx context.Context, keys ...string) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -3213,14 +3264,16 @@ func (c *CmdableWrapper) SUnion(ctx context.Context, keys ...string) *redis.Stri
 	return result
 }
 
-// SUnionStore overrides redis.Cmdable.SUnionStore to log execution metrics.
+// SUnionStore overrides redis.Cmdable/SUnionStore to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) SUnionStore(ctx context.Context, destKey string, keys ...string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "sunionStore", m{"dest": destKey, "keys": keys}
+	cmd.CmdName, cmd.CmdRequest = "sunion_store", m{"destination": destKey, "keys": keys}
 	result := c.Cmdable.SUnionStore(ctx, destKey, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
