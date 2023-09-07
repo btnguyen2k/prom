@@ -2330,7 +2330,7 @@ func TestRedisProxy_ZRandMember(t *testing.T) {
 			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
 				t.SkipNow()
 			}
-			c.ZRandMember(context.TODO(), "key", 1, false)
+			c.ZRandMember(context.TODO(), "key", 1)
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "zrandMember", []error{redis.Nil}, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
@@ -2420,7 +2420,7 @@ func TestRedisProxy_ZRangeStore(t *testing.T) {
 			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
 				t.SkipNow()
 			}
-			c.ZAdd(context.TODO(), "{key}", &redis.Z{Member: "one", Score: 1}, &redis.Z{Member: "two", Score: 2}, &redis.Z{Member: "three", Score: 3}, &redis.Z{Member: "four", Score: 4})
+			c.ZAdd(context.TODO(), "{key}", redis.Z{Member: "one", Score: 1}, redis.Z{Member: "two", Score: 2}, redis.Z{Member: "three", Score: 3}, redis.Z{Member: "four", Score: 4})
 			c.ZRangeStore(context.TODO(), "dest{key}", redis.ZRangeArgs{Key: "{key}", Start: "2", Stop: "-1"})
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "zrangeStore", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})

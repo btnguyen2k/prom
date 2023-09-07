@@ -4592,7 +4592,9 @@ func (c *CmdableWrapper) XTrimMinIDApprox(ctx context.Context, key, minId string
 
 /*----- String-related commands -----*/
 
-// Append overrides redis.Cmdable.Append to log execution metrics.
+// Append overrides redis.Cmdable/Append to log execution metrics.
+//
+// @Redis: available since v2.0.0
 func (c *CmdableWrapper) Append(ctx context.Context, key, value string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -4607,7 +4609,9 @@ func (c *CmdableWrapper) Append(ctx context.Context, key, value string) *redis.I
 	return result
 }
 
-// Decr overrides redis.Cmdable.Decr to log execution metrics.
+// Decr overrides redis.Cmdable/Decr to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) Decr(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -4622,14 +4626,16 @@ func (c *CmdableWrapper) Decr(ctx context.Context, key string) *redis.IntCmd {
 	return result
 }
 
-// DecrBy overrides redis.Cmdable.DecrBy to log execution metrics.
+// DecrBy overrides redis.Cmdable/DecrBy to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) DecrBy(ctx context.Context, key string, value int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "decrBy", m{"key": key, "value": value}
+	cmd.CmdName, cmd.CmdRequest = "decr_by", m{"key": key, "decrement": value}
 	result := c.Cmdable.DecrBy(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4637,7 +4643,9 @@ func (c *CmdableWrapper) DecrBy(ctx context.Context, key string, value int64) *r
 	return result
 }
 
-// Get overrides redis.Cmdable.Get to log execution metrics.
+// Get overrides redis.Cmdable/Get to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) Get(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -4652,14 +4660,16 @@ func (c *CmdableWrapper) Get(ctx context.Context, key string) *redis.StringCmd {
 	return result
 }
 
-// GetDel overrides redis.Cmdable.GetDel to log execution metrics.
+// GetDel overrides redis.Cmdable/GetDel to log execution metrics.
+//
+// @Redis: available since v6.2.0
 func (c *CmdableWrapper) GetDel(ctx context.Context, key string) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "getDel", m{"key": key}
+	cmd.CmdName, cmd.CmdRequest = "get_del", m{"key": key}
 	result := c.Cmdable.GetDel(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4667,14 +4677,16 @@ func (c *CmdableWrapper) GetDel(ctx context.Context, key string) *redis.StringCm
 	return result
 }
 
-// GetEx overrides redis.Cmdable.GetEx to log execution metrics.
+// GetEx overrides redis.Cmdable/GetEx to log execution metrics.
+//
+// @Redis: available since v6.2.0
 func (c *CmdableWrapper) GetEx(ctx context.Context, key string, expiration time.Duration) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "getEx", m{"key": key, "expiration": expiration}
+	cmd.CmdName, cmd.CmdRequest = "get_ex", m{"key": key, "expiration": expiration}
 	result := c.Cmdable.GetEx(ctx, key, expiration)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4682,14 +4694,16 @@ func (c *CmdableWrapper) GetEx(ctx context.Context, key string, expiration time.
 	return result
 }
 
-// GetRange overrides redis.Cmdable.GetRange to log execution metrics.
+// GetRange overrides redis.Cmdable/GetRange to log execution metrics.
+//
+// @Redis: available since v2.4.0
 func (c *CmdableWrapper) GetRange(ctx context.Context, key string, start, end int64) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "getRange", m{"key": key, "start": start, "end": end}
+	cmd.CmdName, cmd.CmdRequest = "get_range", m{"key": key, "start": start, "end": end}
 	result := c.Cmdable.GetRange(ctx, key, start, end)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4697,14 +4711,16 @@ func (c *CmdableWrapper) GetRange(ctx context.Context, key string, start, end in
 	return result
 }
 
-// GetSet overrides redis.Cmdable.GetSet to log execution metrics.
+// GetSet overrides redis.Cmdable/GetSet to log execution metrics.
+//
+// @Redis: available since v1.0.0 / deprecated since v6.2.0
 func (c *CmdableWrapper) GetSet(ctx context.Context, key string, value interface{}) *redis.StringCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "getSet", m{"key": key, "value": value}
+	cmd.CmdName, cmd.CmdRequest = "get_set", m{"key": key, "value": value}
 	result := c.Cmdable.GetSet(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4712,7 +4728,9 @@ func (c *CmdableWrapper) GetSet(ctx context.Context, key string, value interface
 	return result
 }
 
-// Incr overrides redis.Cmdable.Decr to log execution metrics.
+// Incr overrides redis.Cmdable/Incr to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) Incr(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -4727,14 +4745,16 @@ func (c *CmdableWrapper) Incr(ctx context.Context, key string) *redis.IntCmd {
 	return result
 }
 
-// IncrBy overrides redis.Cmdable.IncrBy to log execution metrics.
+// IncrBy overrides redis.Cmdable/IncrBy to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) IncrBy(ctx context.Context, key string, value int64) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "incrBy", m{"key": key, "value": value}
+	cmd.CmdName, cmd.CmdRequest = "incr_by", m{"key": key, "increment": value}
 	result := c.Cmdable.IncrBy(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4742,14 +4762,16 @@ func (c *CmdableWrapper) IncrBy(ctx context.Context, key string, value int64) *r
 	return result
 }
 
-// IncrByFloat overrides redis.Cmdable.IncrByFloat to log execution metrics.
+// IncrByFloat overrides redis.Cmdable/IncrByFloat to log execution metrics.
+//
+// @Redis: available since v2.6.0
 func (c *CmdableWrapper) IncrByFloat(ctx context.Context, key string, value float64) *redis.FloatCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "incrByFloat", m{"key": key, "value": value}
+	cmd.CmdName, cmd.CmdRequest = "incr_by_float", m{"key": key, "increment": value}
 	result := c.Cmdable.IncrByFloat(ctx, key, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4757,7 +4779,29 @@ func (c *CmdableWrapper) IncrByFloat(ctx context.Context, key string, value floa
 	return result
 }
 
-// MGet overrides redis.Cmdable.MGet to log execution metrics.
+// LCS overrides redis.Cmdable/LCS to log execution metrics.
+//
+// @Redis: available since v7.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) LCS(ctx context.Context, query *redis.LCSQuery) *redis.LCSCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "lcs", m{"key1": query.Key1, "key2": query.Key2, "len": query.Len, "idx": query.Idx,
+		"min_match_len": query.MinMatchLen, "with_match_len": query.WithMatchLen}
+	result := c.Cmdable.LCS(ctx, query)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// MGet overrides redis.Cmdable/MGet to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) MGet(ctx context.Context, keys ...string) *redis.SliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -4772,30 +4816,34 @@ func (c *CmdableWrapper) MGet(ctx context.Context, keys ...string) *redis.SliceC
 	return result
 }
 
-// MSet overrides redis.Cmdable.MSet to log execution metrics.
-func (c *CmdableWrapper) MSet(ctx context.Context, values ...interface{}) *redis.StatusCmd {
+// MSet overrides redis.Cmdable/MSet to log execution metrics.
+//
+// @Redis: available since v1.0.1
+func (c *CmdableWrapper) MSet(ctx context.Context, keysValues ...interface{}) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "mset", m{"values": values}
-	result := c.Cmdable.MSet(ctx, values...)
+	cmd.CmdName, cmd.CmdRequest = "mset", m{"keys_values": keysValues}
+	result := c.Cmdable.MSet(ctx, keysValues...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// MSetNX overrides redis.Cmdable.MSetNX to log execution metrics.
-func (c *CmdableWrapper) MSetNX(ctx context.Context, values ...interface{}) *redis.BoolCmd {
+// MSetNX overrides redis.Cmdable/MSetNX to log execution metrics.
+//
+// @Redis: available since v1.0.1
+func (c *CmdableWrapper) MSetNX(ctx context.Context, keysValues ...interface{}) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "msetnx", m{"values": values}
-	result := c.Cmdable.MSetNX(ctx, values...)
+	cmd.CmdName, cmd.CmdRequest = "mset_nx", m{"keys_values": keysValues}
+	result := c.Cmdable.MSetNX(ctx, keysValues...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
@@ -4804,7 +4852,9 @@ func (c *CmdableWrapper) MSetNX(ctx context.Context, values ...interface{}) *red
 
 // No function PSetEx available! Use SetEX
 
-// Set overrides redis.Cmdable.Set to log execution metrics.
+// Set overrides redis.Cmdable/Set to log execution metrics.
+//
+// @Redis: available since v1.0.0
 func (c *CmdableWrapper) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -4819,29 +4869,52 @@ func (c *CmdableWrapper) Set(ctx context.Context, key string, value interface{},
 	return result
 }
 
-// SetEX overrides redis.Cmdable.SetEX to log execution metrics.
-func (c *CmdableWrapper) SetEX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
+// SetArgs overrides redis.Cmdable/SetArgs to log execution metrics.
+//
+// @Redis: available since v1.0.0
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) SetArgs(ctx context.Context, key string, value interface{}, args redis.SetArgs) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "setex", m{"key": key, "value": value, "expiration": expiration}
-	result := c.Cmdable.SetEX(ctx, key, value, expiration)
+	cmd.CmdName, cmd.CmdRequest = "set", m{"key": key, "value": value, "args": args}
+	result := c.Cmdable.SetArgs(ctx, key, value, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
 	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
 	return result
 }
 
-// SetNX overrides redis.Cmdable.SetNX to log execution metrics.
+// SetEX overrides redis.Cmdable/SetEX to log execution metrics.
+//
+// @Redis: available since v2.0.0 / deprecated since v2.6.12
+func (c *CmdableWrapper) SetEX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "set_ex", m{"key": key, "value": value, "expiration": expiration}
+	result := c.Cmdable.SetEx(ctx, key, value, expiration)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// SetNX overrides redis.Cmdable/SetNX to log execution metrics.
+//
+// @Redis: available since v1.0.0 / deprecated since v2.6.12
 func (c *CmdableWrapper) SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.BoolCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "setnx", m{"key": key, "value": value, "expiration": expiration}
+	cmd.CmdName, cmd.CmdRequest = "set_nx", m{"key": key, "value": value, "expiration": expiration}
 	result := c.Cmdable.SetNX(ctx, key, value, expiration)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4849,14 +4922,33 @@ func (c *CmdableWrapper) SetNX(ctx context.Context, key string, value interface{
 	return result
 }
 
-// SetRange overrides redis.Cmdable.SetRange to log execution metrics.
+// SetXX overrides redis.Cmdable/SetXX to log execution metrics.
+//
+// @Redis: available since v1.0.0
+func (c *CmdableWrapper) SetXX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.BoolCmd {
+	cmd := c.rc.NewCmdExecInfo()
+	defer func() {
+		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
+	}()
+	cmd.CmdName, cmd.CmdRequest = "set", m{"key": key, "value": value, "expiration": expiration, "xx": true}
+	result := c.Cmdable.SetXX(ctx, key, value, expiration)
+	val, err := result.Result()
+	cmd.CmdResponse = val
+	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+	return result
+}
+
+// SetRange overrides redis.Cmdable/SetRange to log execution metrics.
+//
+// @Redis: available since v2.2.0
 func (c *CmdableWrapper) SetRange(ctx context.Context, key string, offset int64, value string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "setRange", m{"key": key, "offset": offset, "value": value}
+	cmd.CmdName, cmd.CmdRequest = "set_range", m{"key": key, "offset": offset, "value": value}
 	result := c.Cmdable.SetRange(ctx, key, offset, value)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4879,7 +4971,7 @@ func (c *CmdableWrapper) StrLen(ctx context.Context, key string) *redis.IntCmd {
 	return result
 }
 
-// Function SubStr is deprecated! Use GetRange.
+// No function SubStr available! Use GetRange
 
 /*----- Transaction-related commands -----*/
 
