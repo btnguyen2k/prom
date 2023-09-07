@@ -4956,14 +4956,16 @@ func (c *CmdableWrapper) SetRange(ctx context.Context, key string, offset int64,
 	return result
 }
 
-// StrLen overrides redis.Cmdable.StrLen to log execution metrics.
+// StrLen overrides redis.Cmdable/StrLen to log execution metrics.
+//
+// @Redis: available since v2.2.0
 func (c *CmdableWrapper) StrLen(ctx context.Context, key string) *redis.IntCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "strLen", m{"key": key}
+	cmd.CmdName, cmd.CmdRequest = "strlen", m{"key": key}
 	result := c.Cmdable.StrLen(ctx, key)
 	val, err := result.Result()
 	cmd.CmdResponse = val
