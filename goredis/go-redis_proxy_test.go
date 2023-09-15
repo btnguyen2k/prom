@@ -57,19 +57,18 @@ func _rcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, rc *GoRedis
 	}
 }
 
-func _newGoRedisConnectForRedisClient(t *testing.T, testName string) *GoRedisConnect {
-	hostsAndPorts := os.Getenv("REDIS_HOSTS_AND_PORTS")
-	hostsAndPorts = strings.ReplaceAll(hostsAndPorts, `"`, "")
+func _newGoRedisConnectForRedisClient(t *testing.T, testName, hostAndPort, redisPassword string) *GoRedisConnect {
+	hostsAndPorts := hostAndPort
+	if hostsAndPorts == "" {
+		hostsAndPorts = strings.ReplaceAll(os.Getenv("REDIS_HOSTS_AND_PORTS"), `"`, "")
+	}
 	if hostsAndPorts == "" {
 		return nil
 	}
-
-	// user := os.Getenv("REDIS_USER")
-	// user = strings.ReplaceAll(user, `"`, "")
-
-	password := os.Getenv("REDIS_PASSWORD")
-	password = strings.ReplaceAll(password, `"`, "")
-
+	password := redisPassword
+	if password == "" {
+		password = strings.ReplaceAll(os.Getenv("REDIS_PASSWORD"), `"`, "")
+	}
 	rc, err := NewGoRedisConnect(hostsAndPorts, password, 0)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
@@ -77,44 +76,18 @@ func _newGoRedisConnectForRedisClient(t *testing.T, testName string) *GoRedisCon
 	return rc
 }
 
-func _newGoRedisConnectForRedisFailoverClient(t *testing.T, testName string) *GoRedisConnect {
-	hostsAndPorts := os.Getenv("REDIS_FAILOVER_HOSTS_AND_PORTS")
-	hostsAndPorts = strings.ReplaceAll(hostsAndPorts, `"`, "")
+func _newGoRedisConnectForRedisClusterClient(t *testing.T, testName, hostAndPort, redisPassword string) *GoRedisConnect {
+	hostsAndPorts := hostAndPort
+	if hostsAndPorts == "" {
+		hostsAndPorts = strings.ReplaceAll(os.Getenv("REDIS_CLUSTER_HOSTS_AND_PORTS"), `"`, "")
+	}
 	if hostsAndPorts == "" {
 		return nil
 	}
-
-	// user := os.Getenv("REDIS_FAILOVER_USER")
-	// user = strings.ReplaceAll(user, `"`, "")
-
-	password := os.Getenv("REDIS_FAILOVER_PASSWORD")
-	password = strings.ReplaceAll(password, `"`, "")
-
-	rc, err := NewGoRedisConnect(hostsAndPorts, password, 0)
-	if err != nil {
-		t.Fatalf("%s failed: %s", testName, err)
+	password := redisPassword
+	if password == "" {
+		password = strings.ReplaceAll(os.Getenv("REDIS_CLUSTER_PASSWORD"), `"`, "")
 	}
-
-	masterName := os.Getenv("REDIS_FAILOVER_MASTER_NAME")
-	masterName = strings.ReplaceAll(masterName, `"`, "")
-	rc.SetSentinelMasterName(masterName)
-
-	return rc
-}
-
-func _newGoRedisConnectForRedisClusterClient(t *testing.T, testName string) *GoRedisConnect {
-	hostsAndPorts := os.Getenv("REDIS_CLUSTER_HOSTS_AND_PORTS")
-	hostsAndPorts = strings.ReplaceAll(hostsAndPorts, `"`, "")
-	if hostsAndPorts == "" {
-		return nil
-	}
-
-	// user := os.Getenv("REDIS_CLUSTER_USER")
-	// user = strings.ReplaceAll(user, `"`, "")
-
-	password := os.Getenv("REDIS_CLUSTER_PASSWORD")
-	password = strings.ReplaceAll(password, `"`, "")
-
 	rc, err := NewGoRedisConnect(hostsAndPorts, password, 0)
 	if err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
@@ -125,45 +98,95 @@ func _newGoRedisConnectForRedisClusterClient(t *testing.T, testName string) *GoR
 	return rc
 }
 
-var _testList = []string{"Normal", "Failover", "Cluster"}
-var _testRcList []*GoRedisConnect
-var _testCmdableList []redis.Cmdable
+func _newGoRedisConnectForRedisFailoverClient(t *testing.T, testName, hostAndPort, redisPassword, masterName string) *GoRedisConnect {
+	hostsAndPorts := hostAndPort
+	if hostsAndPorts == "" {
+		hostsAndPorts = strings.ReplaceAll(os.Getenv("REDIS_FAILOVER_HOSTS_AND_PORTS"), `"`, "")
+	}
+	if hostsAndPorts == "" {
+		return nil
+	}
+	password := redisPassword
+	if password == "" {
+		password = strings.ReplaceAll(os.Getenv("REDIS_FAILOVER_PASSWORD"), `"`, "")
+	}
+	rc, err := NewGoRedisConnect(hostsAndPorts, password, 0)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+
+	if masterName == "" {
+		masterName = strings.ReplaceAll(os.Getenv("REDIS_FAILOVER_MASTER_NAME"), `"`, "")
+	}
+	rc.SetSentinelMasterName(masterName)
+
+	return rc
+}
+
+var _testList = []string{"SINGLE", "FAILOVER", "CLUSTER"}
+
+var (
+	_testRcSingle   *GoRedisConnect
+	_testRcCluster  *GoRedisConnect
+	_testRcFailover map[string]*GoRedisConnect
+)
 
 var _setupTestRedisProxy _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
-	_testRcList = make([]*GoRedisConnect, len(_testList))
-	_testCmdableList = make([]redis.Cmdable, len(_testList))
-	for i, testItem := range _testList {
-		if strings.ToUpper(testItem) == "FAILOVER" {
-			_testRcList[i] = _newGoRedisConnectForRedisFailoverClient(t, testName)
-			if _testRcList[i] != nil {
-				_testCmdableList[i] = _testRcList[i].GetFailoverClientProxy(0)
-				_testRcList[i].GetFailoverClient(0).FlushAll(context.TODO())
-			}
-		} else if strings.ToUpper(testItem) == "CLUSTER" {
-			_testRcList[i] = _newGoRedisConnectForRedisClusterClient(t, testName)
-			if _testRcList[i] != nil {
-				_testCmdableList[i] = _testRcList[i].GetClusterClientProxy()
-				for _, hostAndPort := range _testRcList[i].hostsAndPorts {
-					client := _testRcList[i].newClientWithHostAndPort(hostAndPort, 0)
-					client.FlushAll(context.TODO())
-				}
-			}
-		} else {
-			_testRcList[i] = _newGoRedisConnectForRedisClient(t, testName)
-			if _testRcList[i] != nil {
-				_testCmdableList[i] = _testRcList[i].GetClientProxy(0)
-				_testRcList[i].GetClient(0).FlushAll(context.TODO())
-			}
+	_testRcSingle = _newGoRedisConnectForRedisClient(t, testName, "localhost:6379", "")
+	if _testRcSingle != nil {
+		_testRcSingle.GetClient(0).FlushAll(context.TODO())
+	}
+
+	_testRcCluster = _newGoRedisConnectForRedisClusterClient(t, testName, "localhost:7000,localhost:7001,localhost:7002", "")
+	if _testRcCluster != nil {
+		for _, hostAndPort := range _testRcCluster.hostsAndPorts {
+			client := _testRcCluster.newClientWithHostAndPort(hostAndPort, 0)
+			client.FlushAll(context.TODO())
 		}
 	}
+
+	_testRcFailover = make(map[string]*GoRedisConnect)
+	_testRcFailover["5000"] = _newGoRedisConnectForRedisFailoverClient(t, testName, "localhost:5000", "", "sentinel7000")
+	_testRcFailover["5001"] = _newGoRedisConnectForRedisFailoverClient(t, testName, "localhost:5001", "", "sentinel7001")
+	_testRcFailover["5002"] = _newGoRedisConnectForRedisFailoverClient(t, testName, "localhost:5002", "", "sentinel7002")
 }
 
 var _teardownTestRedisProxy _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
-	for _, rc := range _testRcList {
-		if rc != nil {
-			go rc.Close()
-		}
+	if _testRcSingle != nil {
+		_testRcSingle.Close()
 	}
+	if _testRcCluster != nil {
+		_testRcCluster.Close()
+	}
+	for _, rc := range _testRcFailover {
+		rc.Close()
+	}
+}
+
+var _testRcList []*GoRedisConnect
+var _testCmdableList []redis.Cmdable
+
+func _getRedisConnectAndCmdable(typ, key string) (*GoRedisConnect, redis.Cmdable) {
+	switch typ {
+	case "SINGLE":
+		return _testRcSingle, _testRcSingle.GetClientProxy(0)
+	case "FAILOVER":
+		client, _ := _testRcCluster.GetClusterClient().MasterForKey(context.TODO(), key)
+		info := ParseRedisInfo(client.Info(context.TODO()).Val())
+		tcpPort := info.GetSection("Server")["tcp_port"]
+		if tcpPort == "7000" {
+			return _testRcFailover["5000"], _testRcFailover["5000"].GetFailoverClientProxy(0)
+		}
+		if tcpPort == "7001" {
+			return _testRcFailover["5001"], _testRcFailover["5001"].GetFailoverClientProxy(0)
+		}
+		if tcpPort == "7002" {
+			return _testRcFailover["5002"], _testRcFailover["5002"].GetFailoverClientProxy(0)
+		}
+	case "CLUSTER":
+		return _testRcCluster, _testRcCluster.GetClusterClientProxy()
+	}
+	return nil, nil
 }
 
 /* Redis' bitmap-related commands */
@@ -172,13 +195,12 @@ func TestRedisProxy_BitCount(t *testing.T) {
 	testName := "TestRedisProxy_BitCount"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-			// 	t.SkipNow()
-			// }
-			c.BitCount(context.TODO(), "key", &redis.BitCount{})
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_count", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.BitCount(context.TODO(), key, &redis.BitCount{})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "bit_count", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
@@ -187,13 +209,12 @@ func TestRedisProxy_BitField(t *testing.T) {
 	testName := "TestRedisProxy_BitField"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-			// 	t.SkipNow()
-			// }
-			c.BitField(context.TODO(), "key")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_field", nil, prom.MetricsCatAll, prom.MetricsCatOther)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.BitField(context.TODO(), key)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "bit_field", nil, prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
@@ -202,13 +223,12 @@ func TestRedisProxy_BitOpAnd(t *testing.T) {
 	testName := "TestRedisProxy_BitOpAnd"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-			// 	t.SkipNow()
-			// }
-			c.BitOpAnd(context.TODO(), "dest{key}", "{key}1", "{key}2")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			key := "{key}"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.BitOpAnd(context.TODO(), key+"dest", key+"1", key+"2")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
@@ -217,13 +237,12 @@ func TestRedisProxy_BitOpNot(t *testing.T) {
 	testName := "TestRedisProxy_BitOpNot"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-			// 	t.SkipNow()
-			// }
-			c.BitOpNot(context.TODO(), "dest{key}", "{key}")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			key := "{key}"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.BitOpNot(context.TODO(), key+"dest", key)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
@@ -232,13 +251,12 @@ func TestRedisProxy_BitOpOr(t *testing.T) {
 	testName := "TestRedisProxy_BitOpOr"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-			// 	t.SkipNow()
-			// }
-			c.BitOpOr(context.TODO(), "dest{key}", "{key}1", "{key}2")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			key := "{key}"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.BitOpOr(context.TODO(), key+"dest", key+"1", key+"2")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
@@ -247,13 +265,12 @@ func TestRedisProxy_BitOpXor(t *testing.T) {
 	testName := "TestRedisProxy_BitOpXor"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
-			c.BitOpXor(context.TODO(), "dest{key}", "{key}1", "{key}2")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			key := "{key}"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.BitOpXor(context.TODO(), key+"dest", key+"1", key+"2")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "bit_op", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
@@ -262,13 +279,12 @@ func TestRedisProxy_BitPos(t *testing.T) {
 	testName := "TestRedisProxy_BitPos"
 	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
 	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
-			c.BitPos(context.TODO(), "dest", 1, 2, 4)
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "bit_pos", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			key := "dest"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.BitPos(context.TODO(), key, 1, 2, 4)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "bit_pos", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
@@ -3339,7 +3355,7 @@ func TestRedisProxy_SetEX(t *testing.T) {
 			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
 				t.SkipNow()
 			}
-			c.SetEX(context.TODO(), "key", "value", 10*time.Second)
+			c.SetEx(context.TODO(), "key", "value", 10*time.Second)
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "setex", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
