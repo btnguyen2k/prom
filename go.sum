@@ -23,6 +23,8 @@ github.com/btnguyen2k/consu/reddo v0.1.8/go.mod h1:pdY5oIVX3noZIaZu3nvoKZ59+seXL
 github.com/btnguyen2k/consu/semita v0.1.4/go.mod h1:EmOAKM4o+iljiR2kShq3MlIvGrzALnUW4IkgI292p10=
 github.com/btnguyen2k/consu/semita v0.1.5 h1:fu71xNJTbCV8T+6QPJdJu3bxtmLWvTjCepkvujF74+I=
 github.com/btnguyen2k/consu/semita v0.1.5/go.mod h1:fksCe3L4kxiJVnKKhUXKI8mcFdB9974mtedwUVVFu1M=
+github.com/btnguyen2k/consu/semver v0.2.1 h1:le0FzrM7u0IOR4MnOyBySHpZ/p3vV4JjofAhPB7edWE=
+github.com/btnguyen2k/consu/semver v0.2.1/go.mod h1:jxK/nwIWTXcWlcWcfkhPfLWq9b5dVzAtJLycySBFHTc=
 github.com/btnguyen2k/gocosmos v0.3.0 h1:218OaZpnWRuXoHiLA8DuSf80xL0If7n9Yt8N6t2JWvI=
 github.com/btnguyen2k/gocosmos v0.3.0/go.mod h1:eToVV+1+mpht97WvC/EzTOb+4kHTUc/9Z2zNUSKbCUI=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
