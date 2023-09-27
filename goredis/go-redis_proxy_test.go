@@ -1301,45 +1301,45 @@ func TestRedisProxy_HVals(t *testing.T) {
 
 func TestRedisProxy_PFAdd(t *testing.T) {
 	testName := "TestRedisProxy_PFAdd"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
-			c.PFAdd(context.TODO(), "key", "value1", "value2", "value3")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "pfadd", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.PFAdd(context.TODO(), key, "value1", "value2", "value3")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "pfadd", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
 
 func TestRedisProxy_PFCount(t *testing.T) {
 	testName := "TestRedisProxy_PFCount"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
-			c.PFCount(context.TODO(), "{key}1", "{key}2", "{key}3")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "pfcount", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "{key}"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.PFCount(context.TODO(), key+"1", key+"2", key+"3")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "pfcount", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
 func TestRedisProxy_PFMerge(t *testing.T) {
 	testName := "TestRedisProxy_PFMerge"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
-			c.PFMerge(context.TODO(), "dest{key}", "{key}1", "{key}2", "{key}3")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "pfmerge", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "{key}"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.PFMerge(context.TODO(), key+"dest", key+"1", key+"2", key+"3")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "pfmerge", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
