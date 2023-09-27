@@ -883,167 +883,179 @@ func TestRedisProxy_Generic_Wait(t *testing.T) {
 
 func TestRedisProxy_GeoAdd(t *testing.T) {
 	testName := "TestRedisProxy_GeoAdd"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
-			c.GeoAdd(context.TODO(), "key", &redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "Palermo"})
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoAdd", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.GeoAdd(context.TODO(), key, &redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "Palermo"})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "geo_add", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
 
 func TestRedisProxy_GeoDist(t *testing.T) {
 	testName := "TestRedisProxy_GeoDist"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
-			c.GeoAdd(context.TODO(), "key",
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.GeoAdd(context.TODO(), key,
 				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "member1"},
 				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "member2"},
 			)
-			c.GeoDist(context.TODO(), "key", "member1", "member2", "km")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoDist", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			c.GeoDist(context.TODO(), key, "member1", "member2", "km")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "geo_dist", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
 func TestRedisProxy_GeoHash(t *testing.T) {
 	testName := "TestRedisProxy_GeoHash"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
-			c.GeoAdd(context.TODO(), "key",
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.GeoAdd(context.TODO(), key,
 				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "member1"},
 				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "member2"},
 			)
-			c.GeoHash(context.TODO(), "key", "member1", "member2", "member3")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoHash", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			c.GeoHash(context.TODO(), key, "member1", "member2", "member3")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "geo_hash", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
 func TestRedisProxy_GeoPos(t *testing.T) {
 	testName := "TestRedisProxy_GeoPos"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
-			c.GeoAdd(context.TODO(), "key",
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.GeoAdd(context.TODO(), key,
 				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "member1"},
 				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "member2"},
 			)
-			c.GeoPos(context.TODO(), "key", "member1", "member2", "member3")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoPos", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			c.GeoPos(context.TODO(), key, "member1", "member2", "member3")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "geo_pos", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
 func TestRedisProxy_GeoRadius(t *testing.T) {
 	testName := "TestRedisProxy_GeoRadius"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-			// 	t.SkipNow()
-			// }
-			c.GeoAdd(context.TODO(), "key",
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.GeoAdd(context.TODO(), key,
 				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "member1"},
 				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "member2"},
 			)
-			c.GeoRadius(context.TODO(), "key", 13.361389, 38.115556, nil)
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoRadius", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			c.GeoRadius(context.TODO(), key, 13.361389, 38.115556, &redis.GeoRadiusQuery{Radius: 12.34})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "geo_radius", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
 func TestRedisProxy_GeoRadiusByMember(t *testing.T) {
 	testName := "TestRedisProxy_GeoRadiusByMember"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			// if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-			// 	t.SkipNow()
-			// }
-			c.GeoAdd(context.TODO(), "key",
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.GeoAdd(context.TODO(), key,
 				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "member1"},
 				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "member2"},
 			)
-			c.GeoRadiusByMember(context.TODO(), "key", "member1", nil)
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoRadiusByMember", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			c.GeoRadiusByMember(context.TODO(), key, "member1", &redis.GeoRadiusQuery{Radius: 12.34})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "geo_radius", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
 func TestRedisProxy_GeoSearch(t *testing.T) {
 	testName := "TestRedisProxy_GeoSearch"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			ver := _getRedisVersion(c)
+			if ver.Compare(v6_2_0) < 0 {
+				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v6_2_0)
 			}
-			c.GeoAdd(context.TODO(), "key",
+			c.GeoAdd(context.TODO(), key,
 				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "member1"},
 				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "member2"},
 			)
-			c.GeoSearch(context.TODO(), "key", &redis.GeoSearchQuery{})
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoSearch", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			c.GeoSearch(context.TODO(), key, &redis.GeoSearchQuery{})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "geo_search", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
 func TestRedisProxy_GeoSearchLocation(t *testing.T) {
 	testName := "TestRedisProxy_GeoSearchLocation"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			ver := _getRedisVersion(c)
+			if ver.Compare(v6_2_0) < 0 {
+				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v6_2_0)
 			}
-			c.GeoAdd(context.TODO(), "key",
+			c.GeoAdd(context.TODO(), key,
 				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "member1"},
 				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "member2"},
 			)
-			c.GeoSearchLocation(context.TODO(), "key", &redis.GeoSearchLocationQuery{})
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoSearchLocation", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			c.GeoSearchLocation(context.TODO(), key, &redis.GeoSearchLocationQuery{})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "geo_search", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
 func TestRedisProxy_GeoSearchStore(t *testing.T) {
 	testName := "TestRedisProxy_GeoSearchStore"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "{key}"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			ver := _getRedisVersion(c)
+			if ver.Compare(v6_2_0) < 0 {
+				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v6_2_0)
 			}
-			c.GeoAdd(context.TODO(), "{key}",
+			c.GeoAdd(context.TODO(), key,
 				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "member1"},
 				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "member2"},
 			)
-			c.GeoSearchStore(context.TODO(), "{key}", "store{key}", &redis.GeoSearchStoreQuery{})
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "geoSearchStore", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			c.GeoSearchStore(context.TODO(), key, key+"store", &redis.GeoSearchStoreQuery{})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "geo_search_store", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
