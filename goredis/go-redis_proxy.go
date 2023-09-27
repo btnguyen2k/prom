@@ -1406,7 +1406,7 @@ func (c *CmdableWrapper) HMSet(ctx context.Context, key string, fieldsAndValues 
 
 // HRandField overrides redis.Cmdable/HRandField to log execution metrics.
 //
-// @Redis: available since v2.0.0
+// @Redis: available since v6.2.0
 func (c *CmdableWrapper) HRandField(ctx context.Context, key string, count int) *redis.StringSliceCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
@@ -1423,7 +1423,7 @@ func (c *CmdableWrapper) HRandField(ctx context.Context, key string, count int) 
 
 // HRandFieldWithValues overrides redis.Cmdable/HRandFieldWithValues to log execution metrics.
 //
-// @Redis: available since v2.0.0
+// @Redis: available since v6.2.0
 //
 // @Available since <<VERSION>>
 func (c *CmdableWrapper) HRandFieldWithValues(ctx context.Context, key string, count int) *redis.KeyValueSliceCmd {
