@@ -1650,22 +1650,22 @@ func TestRedisProxy_List_RPushX(t *testing.T) {
 
 /* Redis' PubSub-related commands */
 
-func TestRedisProxy_PSubscribe(t *testing.T) {
-	testName := "TestRedisProxy_PSubscribe"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, rc := range _testRcList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if rc == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_PubSub_PSubscribe(t *testing.T) {
+	testName := "TestRedisProxy_PubSub_PSubscribe"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, _ := _getRedisConnectAndCmdable(tc, key)
 			var pubsub *redis.PubSub
 			defer func() {
 				if pubsub != nil {
 					pubsub.Close()
 				}
 			}()
-			switch strings.ToUpper(_testList[i]) {
+			switch tc {
 			case "FAILOVER":
 				c := rc.GetFailoverClientProxy(0)
 				pubsub = c.PSubscribe(context.TODO(), "channel1", "channel2", "channel3")
@@ -1676,87 +1676,87 @@ func TestRedisProxy_PSubscribe(t *testing.T) {
 				c := rc.GetClientProxy(0)
 				pubsub = c.PSubscribe(context.TODO(), "channel1", "channel2", "channel3")
 			}
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "psubscribe", nil, prom.MetricsCatAll, prom.MetricsCatOther)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "psubscribe", nil, prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
 
-func TestRedisProxy_Publish(t *testing.T) {
-	testName := "TestRedisProxy_Publish"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_PubSub_Publish(t *testing.T) {
+	testName := "TestRedisProxy_PubSub_Publish"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.Publish(context.TODO(), "channel", "message")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "publish", nil, prom.MetricsCatAll, prom.MetricsCatOther)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "publish", nil, prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
 
-func TestRedisProxy_PubSubChannels(t *testing.T) {
-	testName := "TestRedisProxy_PubSubChannels"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_PubSub_PubSubChannels(t *testing.T) {
+	testName := "TestRedisProxy_PubSub_PubSubChannels"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.PubSubChannels(context.TODO(), "pattern")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "pubSubChannels", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "pubsub_channels", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
-func TestRedisProxy_PubSubNumPat(t *testing.T) {
-	testName := "TestRedisProxy_PubSubNumPat"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_PubSub_PubSubNumPat(t *testing.T) {
+	testName := "TestRedisProxy_PubSub_PubSubNumPat"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.PubSubNumPat(context.TODO())
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "pubSubNumPat", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "pubsub_num_pat", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
-func TestRedisProxy_PubSubNumSub(t *testing.T) {
-	testName := "TestRedisProxy_PubSubNumSub"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_PubSub_PubSubNumSub(t *testing.T) {
+	testName := "TestRedisProxy_PubSub_PubSubNumSub"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.PubSubNumSub(context.TODO(), "channel1", "channel2", "channel3")
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "pubSubNumSub", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "pubsub_num_sub", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
-func TestRedisProxy_Subscribe(t *testing.T) {
-	testName := "TestRedisProxy_Subscribe"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, rc := range _testRcList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if rc == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_PubSub_Subscribe(t *testing.T) {
+	testName := "TestRedisProxy_PubSub_Subscribe"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, _ := _getRedisConnectAndCmdable(tc, key)
 			var pubsub *redis.PubSub
 			defer func() {
 				if pubsub != nil {
 					pubsub.Close()
 				}
 			}()
-			switch strings.ToUpper(_testList[i]) {
+			switch tc {
 			case "FAILOVER":
 				c := rc.GetFailoverClientProxy(0)
 				pubsub = c.Subscribe(context.TODO(), "channel1", "channel2", "channel3")
@@ -1767,7 +1767,7 @@ func TestRedisProxy_Subscribe(t *testing.T) {
 				c := rc.GetClientProxy(0)
 				pubsub = c.Subscribe(context.TODO(), "channel1", "channel2", "channel3")
 			}
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "subscribe", nil, prom.MetricsCatAll, prom.MetricsCatOther)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "subscribe", nil, prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
 }
