@@ -1874,77 +1874,77 @@ func TestRedisProxy_Script_ScriptLoad(t *testing.T) {
 
 /* Redis' server-related commands */
 
-func TestRedisProxy_DBSize(t *testing.T) {
-	testName := "TestRedisProxy_DBSize"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_Server_DBSize(t *testing.T) {
+	testName := "TestRedisProxy_Server_DBSize"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.DBSize(context.TODO())
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "dbsize", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "dbsize", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
 
-func TestRedisProxy_FlushAll(t *testing.T) {
-	testName := "TestRedisProxy_FlushAll"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_Server_FlushAll(t *testing.T) {
+	testName := "TestRedisProxy_Server_FlushAll"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.FlushAll(context.TODO())
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "flushAll", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "flush_all", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
 
-func TestRedisProxy_FlushAllAsync(t *testing.T) {
-	testName := "TestRedisProxy_FlushAllAsync"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_Server_FlushAllAsync(t *testing.T) {
+	testName := "TestRedisProxy_Server_FlushAllAsync"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.FlushAllAsync(context.TODO())
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "flushAllAsync", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "flush_all", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
 
-func TestRedisProxy_FlushDB(t *testing.T) {
-	testName := "TestRedisProxy_FlushDB"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_Server_FlushDB(t *testing.T) {
+	testName := "TestRedisProxy_Server_FlushDB"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.FlushDB(context.TODO())
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "flushDb", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "flush_db", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
 
-func TestRedisProxy_FlushDBAsync(t *testing.T) {
-	testName := "TestRedisProxy_FlushDBAsync"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
-	for i, c := range _testCmdableList {
-		t.Run(_testList[i], func(t *testing.T) {
-			if c == nil || strings.ToUpper(_testList[i]) == "FAILOVER" {
-				t.SkipNow()
-			}
+func TestRedisProxy_Server_FlushDBAsync(t *testing.T) {
+	testName := "TestRedisProxy_Server_FlushDBAsync"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.FlushDBAsync(context.TODO())
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+_testList[i], _testRcList[i], "flushDbAsync", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "flush_db", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
