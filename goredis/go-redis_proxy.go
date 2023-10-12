@@ -2,6 +2,7 @@ package goredis
 
 import (
 	"context"
+	"github.com/btnguyen2k/consu/semver"
 	"time"
 
 	"github.com/btnguyen2k/prom"
@@ -17,6 +18,13 @@ type m map[string]interface{}
 // Available since v0.3.0
 type RedisClientProxy struct {
 	CmdableWrapper
+}
+
+// RedisServerVersion returns the version number Redis server.
+//
+// @Available since <<VERSION>>
+func (cp *RedisClientProxy) RedisServerVersion(forceUpdate bool) (semver.Semver, error) {
+	return cp.CmdableWrapper.RedisServerVersion(forceUpdate)
 }
 
 // Wait overrides redis.Client/Wait to log execution metrics.
@@ -109,6 +117,13 @@ type RedisFailoverClientProxy struct {
 // Available since v0.3.0
 type RedisClusterClientProxy struct {
 	CmdableWrapper
+}
+
+// RedisServerVersion returns the version number Redis server.
+//
+// @Available since <<VERSION>>
+func (cp *RedisClusterClientProxy) RedisServerVersion(forceUpdate bool) (semver.Semver, error) {
+	return cp.CmdableWrapper.RedisServerVersion(forceUpdate)
 }
 
 // ClusterFailover overrides redis.ClusterClient/ClusterFailover to log execution metrics.
@@ -205,7 +220,27 @@ func (cp *RedisClusterClientProxy) SSubscribe(ctx context.Context, shardChannels
 // CmdableWrapper is a wrapper for redis.Cmdable; overrides redis.Cmdable's function to log execution metrics.
 type CmdableWrapper struct {
 	redis.Cmdable
-	rc *GoRedisConnect
+	rc            *GoRedisConnect
+	serverVersion *semver.Semver
+}
+
+var (
+	zeroVersion = semver.Semver{}
+)
+
+// RedisServerVersion returns the version number Redis server.
+//
+// @Available since <<VERSION>>
+func (c *CmdableWrapper) RedisServerVersion(forceUpdate bool) (semver.Semver, error) {
+	if forceUpdate || c.serverVersion == nil {
+		infoResult := c.Info(context.Background(), "Server")
+		if infoResult.Err() != nil {
+			return zeroVersion, infoResult.Err()
+		}
+		ver := semver.ParseSemver(ParseRedisInfo(infoResult.Val()).GetSection("Server")["redis_version"])
+		c.serverVersion = &ver
+	}
+	return *c.serverVersion, nil
 }
 
 /*----- Bitmap-related commands -----*/
@@ -3484,7 +3519,7 @@ func (c *CmdableWrapper) ZDiffWithScores(ctx context.Context, keys ...string) *r
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "zdiff", m{"keys": keys, "withscores": true}
+	cmd.CmdName, cmd.CmdRequest = "zdiff", m{"keys": keys, "with_scores": true}
 	result := c.Cmdable.ZDiffWithScores(ctx, keys...)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -3552,7 +3587,7 @@ func (c *CmdableWrapper) ZInterWithScores(ctx context.Context, store *redis.ZSto
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "zinter", m{"keys": store.Keys, "weights": store.Weights, "aggregate": store.Aggregate, "withscores": true}
+	cmd.CmdName, cmd.CmdRequest = "zinter", m{"keys": store.Keys, "weights": store.Weights, "aggregate": store.Aggregate, "with_scores": true}
 	result := c.Cmdable.ZInterWithScores(ctx, store)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -3711,7 +3746,7 @@ func (c *CmdableWrapper) ZRandMemberWithScores(ctx context.Context, key string, 
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "zrand_member", m{"key": key, "count": count, "withscores": true}
+	cmd.CmdName, cmd.CmdRequest = "zrand_member", m{"key": key, "count": count, "with_scores": true}
 	result := c.Cmdable.ZRandMemberWithScores(ctx, key, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -3723,7 +3758,6 @@ func (c *CmdableWrapper) ZRandMemberWithScores(ctx context.Context, key string, 
 //
 // @Redis: available since v1.2.0
 func (c *CmdableWrapper) ZRange(ctx context.Context, key string, start, stop int64) *redis.StringSliceCmd {
-	// c.ZRange(ctx, key, start, stop)
 	return c.ZRangeArgs(ctx, redis.ZRangeArgs{Key: key, Start: start, Stop: stop})
 }
 
@@ -3731,7 +3765,6 @@ func (c *CmdableWrapper) ZRange(ctx context.Context, key string, start, stop int
 //
 // @Redis: available since v1.2.0
 func (c *CmdableWrapper) ZRangeWithScores(ctx context.Context, key string, start, stop int64) *redis.ZSliceCmd {
-	// c.ZRangeWithScores(ctx, key, start, stop)
 	return c.ZRangeArgsWithScores(ctx, redis.ZRangeArgs{Key: key, Start: start, Stop: stop})
 }
 
@@ -3739,7 +3772,23 @@ func (c *CmdableWrapper) ZRangeWithScores(ctx context.Context, key string, start
 //
 // @Redis: available since v2.8.9 / deprecated since v6.2.0
 func (c *CmdableWrapper) ZRangeByLex(ctx context.Context, key string, opts *redis.ZRangeBy) *redis.StringSliceCmd {
-	// c.ZRangeByLex(ctx, key, opts)
+	ver, _ := c.RedisServerVersion(false)
+	if ver.Compare(v6_2_0) < 0 {
+		cmd := c.rc.NewCmdExecInfo()
+		defer func() {
+			c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+			c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+		}()
+		cmd.CmdName, cmd.CmdRequest = "zrange_by_lex", m{"key": key, "max": opts.Max, "min": opts.Min,
+			"count": opts.Count, "offset": opts.Offset}
+		result := c.Cmdable.ZRangeByLex(ctx, key, opts)
+		val, err := result.Result()
+		cmd.CmdResponse = val
+		cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+		return result
+	}
+
+	// v6.2.0 and latter
 	return c.ZRangeArgs(ctx, redis.ZRangeArgs{Key: key, Start: opts.Min, Stop: opts.Max, Offset: opts.Offset, Count: opts.Count, ByLex: true})
 }
 
@@ -3747,7 +3796,23 @@ func (c *CmdableWrapper) ZRangeByLex(ctx context.Context, key string, opts *redi
 //
 // @Redis: available since v1.0.5 / deprecated since v6.2.0
 func (c *CmdableWrapper) ZRangeByScore(ctx context.Context, key string, opts *redis.ZRangeBy) *redis.StringSliceCmd {
-	// c.ZRangeByScore(ctx, key, opts)
+	ver, _ := c.RedisServerVersion(false)
+	if ver.Compare(v6_2_0) < 0 {
+		cmd := c.rc.NewCmdExecInfo()
+		defer func() {
+			c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+			c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+		}()
+		cmd.CmdName, cmd.CmdRequest = "zrange_by_score", m{"key": key, "max": opts.Max, "min": opts.Min,
+			"count": opts.Count, "offset": opts.Offset}
+		result := c.Cmdable.ZRangeByScore(ctx, key, opts)
+		val, err := result.Result()
+		cmd.CmdResponse = val
+		cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+		return result
+	}
+
+	// v6.2.0 and latter
 	return c.ZRangeArgs(ctx, redis.ZRangeArgs{Key: key, Start: opts.Min, Stop: opts.Max, Offset: opts.Offset, Count: opts.Count, ByScore: true})
 }
 
@@ -3755,7 +3820,23 @@ func (c *CmdableWrapper) ZRangeByScore(ctx context.Context, key string, opts *re
 //
 // @Redis: available since v1.0.5 / deprecated since v6.2.0
 func (c *CmdableWrapper) ZRangeByScoreWithScores(ctx context.Context, key string, opts *redis.ZRangeBy) *redis.ZSliceCmd {
-	// c.ZRangeByScoreWithScores(ctx, key, opts)
+	ver, _ := c.RedisServerVersion(false)
+	if ver.Compare(v6_2_0) < 0 {
+		cmd := c.rc.NewCmdExecInfo()
+		defer func() {
+			c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+			c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+		}()
+		cmd.CmdName, cmd.CmdRequest = "zrange_by_score", m{"key": key, "max": opts.Max, "min": opts.Min,
+			"count": opts.Count, "offset": opts.Offset, "with_scores": true}
+		result := c.Cmdable.ZRangeByScoreWithScores(ctx, key, opts)
+		val, err := result.Result()
+		cmd.CmdResponse = val
+		cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+		return result
+	}
+
+	// v6.2.0 and latter
 	return c.ZRangeArgsWithScores(ctx, redis.ZRangeArgs{Key: key, Start: opts.Min, Stop: opts.Max, Offset: opts.Offset, Count: opts.Count, ByScore: true})
 }
 
@@ -3789,7 +3870,7 @@ func (c *CmdableWrapper) ZRangeArgsWithScores(ctx context.Context, args redis.ZR
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "zrange", m{"key": args.Key, "rev": args.Rev,
-		"byscore": args.ByScore, "bylex": args.ByLex, "withscores": true,
+		"byscore": args.ByScore, "bylex": args.ByLex, "with_scores": true,
 		"start": args.Start, "stop": args.Stop, "offset": args.Offset, "count": args.Count,
 	}
 	result := c.Cmdable.ZRangeArgsWithScores(ctx, args)
@@ -3847,7 +3928,7 @@ func (c *CmdableWrapper) ZRankWithScore(ctx context.Context, key, member string)
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "zrank", m{"key": key, "member": member, "withscore": true}
+	cmd.CmdName, cmd.CmdRequest = "zrank", m{"key": key, "member": member, "with_score": true}
 	result := c.Cmdable.ZRankWithScore(ctx, key, member)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -3927,7 +4008,22 @@ func (c *CmdableWrapper) ZRemRangeByScore(ctx context.Context, key, min, max str
 //
 // @Redis: available since v1.2.0 / deprecated since v6.2.0
 func (c *CmdableWrapper) ZRevRange(ctx context.Context, key string, start, stop int64) *redis.StringSliceCmd {
-	// c.ZRevRange(ctx, key, start, stop)
+	ver, _ := c.RedisServerVersion(false)
+	if ver.Compare(v6_2_0) < 0 {
+		cmd := c.rc.NewCmdExecInfo()
+		defer func() {
+			c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+			c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+		}()
+		cmd.CmdName, cmd.CmdRequest = "zrev_range", m{"key": key, "start": start, "stop": stop}
+		result := c.Cmdable.ZRevRange(ctx, key, start, stop)
+		val, err := result.Result()
+		cmd.CmdResponse = val
+		cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+		return result
+	}
+
+	// v6.2.0 and latter
 	return c.ZRangeArgs(ctx, redis.ZRangeArgs{Key: key, Start: start, Stop: stop, Rev: true})
 }
 
@@ -3935,7 +4031,22 @@ func (c *CmdableWrapper) ZRevRange(ctx context.Context, key string, start, stop 
 //
 // @Redis: available since v1.2.0 / deprecated since v6.2.0
 func (c *CmdableWrapper) ZRevRangeWithScores(ctx context.Context, key string, start, stop int64) *redis.ZSliceCmd {
-	// c.ZRevRangeWithScores(ctx, key, start, stop)
+	ver, _ := c.RedisServerVersion(false)
+	if ver.Compare(v6_2_0) < 0 {
+		cmd := c.rc.NewCmdExecInfo()
+		defer func() {
+			c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+			c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+		}()
+		cmd.CmdName, cmd.CmdRequest = "zrev_range", m{"key": key, "start": start, "stop": stop, "with_scores": true}
+		result := c.Cmdable.ZRevRangeWithScores(ctx, key, start, stop)
+		val, err := result.Result()
+		cmd.CmdResponse = val
+		cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+		return result
+	}
+
+	// v6.2.0 and latter
 	return c.ZRangeArgsWithScores(ctx, redis.ZRangeArgs{Key: key, Start: start, Stop: stop, Rev: true})
 }
 
@@ -3943,7 +4054,23 @@ func (c *CmdableWrapper) ZRevRangeWithScores(ctx context.Context, key string, st
 //
 // @Redis: available since v2.8.9 / deprecated since v6.2.0
 func (c *CmdableWrapper) ZRevRangeByLex(ctx context.Context, key string, opts *redis.ZRangeBy) *redis.StringSliceCmd {
-	// c.ZRevRangeByLex(ctx, key, opts)
+	ver, _ := c.RedisServerVersion(false)
+	if ver.Compare(v6_2_0) < 0 {
+		cmd := c.rc.NewCmdExecInfo()
+		defer func() {
+			c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+			c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+		}()
+		cmd.CmdName, cmd.CmdRequest = "zrev_range_by_lex", m{"key": key, "min": opts.Min, "max": opts.Max,
+			"offset": opts.Offset, "count": opts.Count}
+		result := c.Cmdable.ZRevRangeByLex(ctx, key, opts)
+		val, err := result.Result()
+		cmd.CmdResponse = val
+		cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+		return result
+	}
+
+	// v6.2.0 and latter
 	return c.ZRangeArgs(ctx, redis.ZRangeArgs{Key: key, Start: opts.Min, Stop: opts.Max, Offset: opts.Offset, Count: opts.Count, Rev: true, ByLex: true})
 }
 
@@ -3951,7 +4078,23 @@ func (c *CmdableWrapper) ZRevRangeByLex(ctx context.Context, key string, opts *r
 //
 // @Redis: available since v2.2.0 / deprecated since v6.2.0
 func (c *CmdableWrapper) ZRevRangeByScore(ctx context.Context, key string, opts *redis.ZRangeBy) *redis.StringSliceCmd {
-	// c.ZRevRangeByScore(ctx, key, opts)
+	ver, _ := c.RedisServerVersion(false)
+	if ver.Compare(v6_2_0) < 0 {
+		cmd := c.rc.NewCmdExecInfo()
+		defer func() {
+			c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+			c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+		}()
+		cmd.CmdName, cmd.CmdRequest = "zrev_range_by_score", m{"key": key, "min": opts.Min, "max": opts.Max,
+			"offset": opts.Offset, "count": opts.Count}
+		result := c.Cmdable.ZRevRangeByScore(ctx, key, opts)
+		val, err := result.Result()
+		cmd.CmdResponse = val
+		cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+		return result
+	}
+
+	// v6.2.0 and latter
 	return c.ZRangeArgs(ctx, redis.ZRangeArgs{Key: key, Start: opts.Min, Stop: opts.Max, Offset: opts.Offset, Count: opts.Count, Rev: true, ByScore: true})
 }
 
@@ -3959,7 +4102,23 @@ func (c *CmdableWrapper) ZRevRangeByScore(ctx context.Context, key string, opts 
 //
 // @Redis: available since v2.2.0 / deprecated since v6.2.0
 func (c *CmdableWrapper) ZRevRangeByScoreWithScores(ctx context.Context, key string, opts *redis.ZRangeBy) *redis.ZSliceCmd {
-	// c.ZRevRangeByScoreWithScores(ctx, key, opts)
+	ver, _ := c.RedisServerVersion(false)
+	if ver.Compare(v6_2_0) < 0 {
+		cmd := c.rc.NewCmdExecInfo()
+		defer func() {
+			c.rc.LogMetrics(prom.MetricsCatAll, cmd)
+			c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
+		}()
+		cmd.CmdName, cmd.CmdRequest = "zrev_range_by_score", m{"key": key, "min": opts.Min, "max": opts.Max,
+			"offset": opts.Offset, "count": opts.Count, "with_scores": true}
+		result := c.Cmdable.ZRevRangeByScoreWithScores(ctx, key, opts)
+		val, err := result.Result()
+		cmd.CmdResponse = val
+		cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
+		return result
+	}
+
+	// v6.2.0 and latter
 	return c.ZRangeArgsWithScores(ctx, redis.ZRangeArgs{Key: key, Start: opts.Min, Stop: opts.Max, Offset: opts.Offset, Count: opts.Count, Rev: true, ByScore: true})
 }
 
@@ -3991,7 +4150,7 @@ func (c *CmdableWrapper) ZRevRankWithScore(ctx context.Context, key string, memb
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "zrev_rank", m{"key": key, "member": member, "withscore": true}
+	cmd.CmdName, cmd.CmdRequest = "zrev_rank", m{"key": key, "member": member, "with_score": true}
 	result := c.Cmdable.ZRevRankWithScore(ctx, key, member)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -4059,7 +4218,7 @@ func (c *CmdableWrapper) ZUnionWithScores(ctx context.Context, store redis.ZStor
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDQL, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "zunion", m{"keys": store.Keys, "aggregate": store.Aggregate, "weights": store.Weights, "withscores": true}
+	cmd.CmdName, cmd.CmdRequest = "zunion", m{"keys": store.Keys, "aggregate": store.Aggregate, "weights": store.Weights, "with_scores": true}
 	result := c.Cmdable.ZUnionWithScores(ctx, store)
 	val, err := result.Result()
 	cmd.CmdResponse = val

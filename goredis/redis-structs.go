@@ -1,8 +1,15 @@
 package goredis
 
 import (
+	"github.com/btnguyen2k/consu/semver"
 	"regexp"
 	"strings"
+)
+
+var (
+	v6_0_0 = semver.ParseSemver("6.0.0")
+	v6_2_0 = semver.ParseSemver("6.2.0")
+	v7_0_0 = semver.ParseSemver("7.0.0")
 )
 
 // InfoRedisSection captures a section block from the output of command INFO.
