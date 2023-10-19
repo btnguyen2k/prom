@@ -4309,7 +4309,7 @@ func (c *CmdableWrapper) XAutoClaimJustID(ctx context.Context, args *redis.XAuto
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xauto_claim", m{"key": args.Stream, "group": args.Group, "consumer": args.Consumer,
-		"min_idle_time": args.MinIdle, "start": args.Start, "count": args.Count, "justid": true}
+		"min_idle_time": args.MinIdle, "start": args.Start, "count": args.Count, "just_id": true}
 	result := c.Cmdable.XAutoClaimJustID(ctx, args)
 	val, start, err := result.Result()
 	cmd.CmdResponse = m{"messages": val, "start": start}
@@ -4446,7 +4446,7 @@ func (c *CmdableWrapper) XGroupSetID(ctx context.Context, key, group, id string)
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatDDL, cmd)
+		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "xgroup_set_id", m{"key": key, "group": group, "id": id}
 	result := c.Cmdable.XGroupSetID(ctx, key, group, id)
