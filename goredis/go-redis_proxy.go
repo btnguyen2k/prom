@@ -5047,10 +5047,10 @@ func (c *CmdableWrapper) SetArgs(ctx context.Context, key string, value interfac
 	return result
 }
 
-// SetEX overrides redis.Cmdable/SetEX to log execution metrics.
+// SetEx overrides redis.Cmdable/SetEx to log execution metrics.
 //
 // @Redis: available since v2.0.0 / deprecated since v2.6.12
-func (c *CmdableWrapper) SetEX(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
+func (c *CmdableWrapper) SetEx(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
 	cmd := c.rc.NewCmdExecInfo()
 	defer func() {
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
