@@ -2,6 +2,8 @@ package goredis
 
 import (
 	"context"
+	"fmt"
+	"github.com/btnguyen2k/consu/semver"
 	"strings"
 	"testing"
 	"time"
@@ -192,5 +194,34 @@ func TestGoRedisConnect_FastFailed_GetClusterClient(t *testing.T) {
 	dmax := (dbase*2 + 1) * time.Millisecond
 	if d > dmax {
 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
+	}
+}
+
+func TestGoRedisConnect_RedisServerVersion(t *testing.T) {
+	testName := "TestGoRedisConnect_RedisServerVersion_Client"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			var ver semver.Semver
+			var err error
+			rc, _ := _getRedisConnectAndCmdable(tc, "")
+			switch tc {
+			case "FAILOVER":
+				c := rc.GetFailoverClientProxy(0)
+				ver, err = c.RedisServerVersion(false)
+			case "CLUSTER":
+				c := rc.GetClusterClientProxy()
+				ver, err = c.RedisServerVersion(false)
+			default:
+				c := rc.GetClientProxy(0)
+				ver, err = c.RedisServerVersion(false)
+			}
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+tc, err)
+			}
+			fmt.Printf("%s - Redis version: %s", testName+"/"+tc, ver)
+		})
 	}
 }

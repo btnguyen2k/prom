@@ -7,11 +7,13 @@ import (
 
 func TestRedisStruct_RedisInfo(t *testing.T) {
 	testName := "TestRedisStruct_RedisInfo"
-	teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
-	defer teardownTest(t)
 	for _, tc := range _testList {
 		t.Run(tc, func(t *testing.T) {
-			_, c := _getRedisConnectAndCmdable(tc, "mykey")
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			_, c := _getRedisConnectAndCmdable(tc, key)
 			resultInfo := c.Info(context.TODO())
 			if resultInfo.Err() != nil {
 				t.Fatalf("%s failed: %s", testName, resultInfo.Err())
