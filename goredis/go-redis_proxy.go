@@ -2954,7 +2954,7 @@ func (c *CmdableWrapper) SlowLogGet(ctx context.Context, count int64) *redis.Slo
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "slowlog_get", m{"count": count}
+	cmd.CmdName, cmd.CmdRequest = "slow_log_get", m{"count": count}
 	result := c.Cmdable.SlowLogGet(ctx, count)
 	val, err := result.Result()
 	cmd.CmdResponse = val
