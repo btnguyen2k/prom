@@ -3,7 +3,7 @@ module github.com/btnguyen2k/prom
 go 1.13
 
 require (
-	github.com/aws/aws-sdk-go v1.46.6
+	github.com/aws/aws-sdk-go v1.47.3
 	github.com/btnguyen2k/consu/olaf v0.1.3
 	github.com/btnguyen2k/consu/reddo v0.1.8
 	github.com/btnguyen2k/consu/semita v0.1.5
@@ -15,6 +15,7 @@ require (
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/mattn/go-sqlite3 v1.14.18
 	github.com/onsi/gomega v1.19.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	go.mongodb.org/mongo-driver v1.12.1
 )
