@@ -3020,7 +3020,7 @@ func TestRedisProxy_SSet_BZPopMin(t *testing.T) {
 	}
 }
 
-func TestRedisProxy_ZSSet_Add(t *testing.T) {
+func TestRedisProxy_SSet_ZAdd(t *testing.T) {
 	testName := "TestRedisProxy_SSet_ZAdd"
 	for _, tc := range _testList {
 		t.Run(tc, func(t *testing.T) {
@@ -3030,6 +3030,83 @@ func TestRedisProxy_ZSSet_Add(t *testing.T) {
 			key := "key"
 			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.ZAdd(context.TODO(), key, redis.Z{Member: "member1", Score: 1.23}, redis.Z{Member: 2, Score: 2.34}, redis.Z{Member: true, Score: 3.45})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zadd", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+		})
+	}
+}
+
+func TestRedisProxy_SSet_ZAddGT(t *testing.T) {
+	testName := "TestRedisProxy_SSet_ZAddGT"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.ZAddGT(context.TODO(), key, redis.Z{Member: "member1", Score: 1.23}, redis.Z{Member: 2, Score: 2.34}, redis.Z{Member: true, Score: 3.45})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zadd", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+		})
+	}
+}
+
+func TestRedisProxy_SSet_ZAddLT(t *testing.T) {
+	testName := "TestRedisProxy_SSet_ZAddLT"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.ZAddLT(context.TODO(), key, redis.Z{Member: "member1", Score: 1.23}, redis.Z{Member: 2, Score: 2.34}, redis.Z{Member: true, Score: 3.45})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zadd", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+		})
+	}
+}
+
+func TestRedisProxy_SSet_ZAddNX(t *testing.T) {
+	testName := "TestRedisProxy_SSet_ZAddNX"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.ZAddNX(context.TODO(), key, redis.Z{Member: "member1", Score: 1.23}, redis.Z{Member: 2, Score: 2.34}, redis.Z{Member: true, Score: 3.45})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zadd", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+		})
+	}
+}
+
+func TestRedisProxy_SSet_ZAddXX(t *testing.T) {
+	testName := "TestRedisProxy_SSet_ZAddXX"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.ZAddXX(context.TODO(), key, redis.Z{Member: "member1", Score: 1.23}, redis.Z{Member: 2, Score: 2.34}, redis.Z{Member: true, Score: 3.45})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zadd", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+		})
+	}
+}
+
+func TestRedisProxy_SSet_ZAddArgsIncr(t *testing.T) {
+	testName := "TestRedisProxy_SSet_ZAddArgsIncr"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.ZAddArgsIncr(context.TODO(), key, redis.ZAddArgs{
+				Members: []redis.Z{redis.Z{Member: "member1", Score: 1.23}},
+			})
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zadd", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
@@ -3175,6 +3252,25 @@ func TestRedisProxy_SSet_ZInterWithScores(t *testing.T) {
 	}
 }
 
+func TestRedisProxy_SSet_ZInterCard(t *testing.T) {
+	testName := "TestRedisProxy_SSet_ZInterCard"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "{key}"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			ver := _getRedisVersion(c)
+			if ver.Compare(v7_0_0) < 0 {
+				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v7_0_0)
+			}
+			c.ZInterCard(context.TODO(), 1, key+"1", key+"2", key+"3")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zinter_card", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+		})
+	}
+}
+
 func TestRedisProxy_SSet_ZInterStore(t *testing.T) {
 	testName := "TestRedisProxy_SSet_ZInterStore"
 	for _, tc := range _testList {
@@ -3201,6 +3297,25 @@ func TestRedisProxy_SSet_ZLexCount(t *testing.T) {
 			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.ZLexCount(context.TODO(), key, "-", "+")
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zlex_count", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+		})
+	}
+}
+
+func TestRedisProxy_SSet_ZMPop(t *testing.T) {
+	testName := "TestRedisProxy_SSet_ZMPop"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "{key}"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			ver := _getRedisVersion(c)
+			if ver.Compare(v7_0_0) < 0 {
+				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v7_0_0)
+			}
+			c.ZMPop(context.TODO(), "MIN", 1, key+"1", key+"2", key+"3")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zmpop", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
@@ -3269,6 +3384,25 @@ func TestRedisProxy_SSet_ZRandMember(t *testing.T) {
 			}
 			c.ZRandMember(context.TODO(), key, 1)
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zrand_member", []error{redis.Nil}, prom.MetricsCatAll, prom.MetricsCatDQL)
+		})
+	}
+}
+
+func TestRedisProxy_SSet_ZRandMemberWithScores(t *testing.T) {
+	testName := "TestRedisProxy_SSet_ZRandMemberWithScores"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			ver := _getRedisVersion(c)
+			if ver.Compare(v6_2_0) < 0 {
+				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v6_2_0)
+			}
+			c.ZRandMemberWithScores(context.TODO(), key, 1)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zrand_member", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
@@ -3395,6 +3529,21 @@ func TestRedisProxy_SSet_ZRank(t *testing.T) {
 			key := "key"
 			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.ZRank(context.TODO(), key, "member")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zrank", []error{redis.Nil}, prom.MetricsCatAll, prom.MetricsCatDQL)
+		})
+	}
+}
+
+func TestRedisProxy_SSet_ZRankWithScore(t *testing.T) {
+	testName := "TestRedisProxy_SSet_ZRankWithScore"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.ZRankWithScore(context.TODO(), key, "member")
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zrank", []error{redis.Nil}, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
@@ -3570,6 +3719,25 @@ func TestRedisProxy_SSet_ZRevRank(t *testing.T) {
 			key := "key"
 			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.ZRevRank(context.TODO(), key, "member")
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zrev_rank", []error{redis.Nil}, prom.MetricsCatAll, prom.MetricsCatDQL)
+		})
+	}
+}
+
+func TestRedisProxy_SSet_ZRevRankWithScore(t *testing.T) {
+	testName := "TestRedisProxy_SSet_ZRevRankWithScore"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			ver := _getRedisVersion(c)
+			if ver.Compare(v7_2_0) < 0 {
+				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v7_2_0)
+			}
+			c.ZRevRankWithScore(context.TODO(), key, "member")
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zrev_rank", []error{redis.Nil}, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
