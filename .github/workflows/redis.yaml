@@ -14,7 +14,7 @@ jobs:
 #      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/redis'
     strategy:
       matrix:
-        go: [ '1.13', 'oldstable', 'stable' ]
+        go: [ '1.18', 'oldstable', 'stable' ]
         redis: [ '6.0.0', '6.2.0', '7.0.0' ]
     name: GoRedis tests with Go ${{ matrix.go }} - Redis server ${{ matrix.redis }}
     steps:

@@ -1,6 +1,6 @@
 module github.com/btnguyen2k/prom
 
-go 1.13
+go 1.18
 
 require (
 	github.com/aws/aws-sdk-go v1.48.1
