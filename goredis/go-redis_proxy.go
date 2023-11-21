@@ -3919,7 +3919,7 @@ func (c *CmdableWrapper) ZRank(ctx context.Context, key, member string) *redis.I
 
 // ZRankWithScore overrides redis.Cmdable/ZRankWithScore to log execution metrics.
 //
-// @Redis: available since v2.0.0
+// @Redis: available since v7.2.0
 //
 // @Available since <<VERSION>>
 func (c *CmdableWrapper) ZRankWithScore(ctx context.Context, key, member string) *redis.RankWithScoreCmd {
@@ -4141,7 +4141,7 @@ func (c *CmdableWrapper) ZRevRank(ctx context.Context, key string, member string
 
 // ZRevRankWithScore overrides redis.Cmdable/ZRevRankWithScore to log execution metrics.
 //
-// @Redis: available since v2.0.0
+// @Redis: available since v7.2.0
 //
 // @Available since <<VERSION>>
 func (c *CmdableWrapper) ZRevRankWithScore(ctx context.Context, key string, member string) *redis.RankWithScoreCmd {
@@ -5015,17 +5015,7 @@ func (c *CmdableWrapper) MSetNX(ctx context.Context, keysValues ...interface{}) 
 //
 // @Redis: available since v1.0.0
 func (c *CmdableWrapper) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
-	cmd := c.rc.NewCmdExecInfo()
-	defer func() {
-		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
-		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
-	}()
-	cmd.CmdName, cmd.CmdRequest = "set", m{"key": key, "value": value, "expiration": expiration}
-	result := c.Cmdable.Set(ctx, key, value, expiration)
-	val, err := result.Result()
-	cmd.CmdResponse = val
-	cmd.EndWithCostAsExecutionTime(prom.CmdResultOk, prom.CmdResultError, err)
-	return result
+	return c.SetArgs(ctx, key, value, redis.SetArgs{TTL: expiration})
 }
 
 // SetArgs overrides redis.Cmdable/SetArgs to log execution metrics.
@@ -5039,7 +5029,8 @@ func (c *CmdableWrapper) SetArgs(ctx context.Context, key string, value interfac
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "set", m{"key": key, "value": value, "args": args}
+	cmd.CmdName, cmd.CmdRequest = "set", m{"key": key, "value": value, "mode": args.Mode,
+		"ex": args.TTL, "ex_at": args.ExpireAt, "get": args.Get, "Keep_ttl": args.KeepTTL}
 	result := c.Cmdable.SetArgs(ctx, key, value, args)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -5056,7 +5047,7 @@ func (c *CmdableWrapper) SetEx(ctx context.Context, key string, value interface{
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "set_ex", m{"key": key, "value": value, "expiration": expiration}
+	cmd.CmdName, cmd.CmdRequest = "set", m{"key": key, "value": value, "ttl": expiration}
 	result := c.Cmdable.SetEx(ctx, key, value, expiration)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -5073,7 +5064,7 @@ func (c *CmdableWrapper) SetNX(ctx context.Context, key string, value interface{
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "set_nx", m{"key": key, "value": value, "expiration": expiration}
+	cmd.CmdName, cmd.CmdRequest = "set", m{"key": key, "value": value, "mode": "NX", "ttl": expiration}
 	result := c.Cmdable.SetNX(ctx, key, value, expiration)
 	val, err := result.Result()
 	cmd.CmdResponse = val
@@ -5090,7 +5081,7 @@ func (c *CmdableWrapper) SetXX(ctx context.Context, key string, value interface{
 		c.rc.LogMetrics(prom.MetricsCatAll, cmd)
 		c.rc.LogMetrics(prom.MetricsCatDML, cmd)
 	}()
-	cmd.CmdName, cmd.CmdRequest = "set", m{"key": key, "value": value, "expiration": expiration, "xx": true}
+	cmd.CmdName, cmd.CmdRequest = "set", m{"key": key, "value": value, "mode": "XX", "ttl": expiration}
 	result := c.Cmdable.SetXX(ctx, key, value, expiration)
 	val, err := result.Result()
 	cmd.CmdResponse = val

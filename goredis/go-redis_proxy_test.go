@@ -133,28 +133,26 @@ var (
 )
 
 var _setupTestRedisProxy _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
-	_testRcSingle = _newGoRedisConnectForRedisClient(t, testName, "localhost:6379", "")
-	if _testRcSingle != nil {
-		client := _testRcSingle.GetClient(0)
+	hosts := []string{"localhost:7000", "localhost:7001", "localhost:7002", "localhost:7003", "localhost:7004", "localhost:7005", "localhost:7006", "localhost:7007"}
+	for _, host := range hosts {
+		conn := _newGoRedisConnectForRedisClient(t, testName, host, "")
+		client := conn.GetClient(0)
+		client.SlaveOf(context.Background(), "no", "one")
 		client.ConfigSet(context.TODO(), "appendonly", "no")
 		client.ConfigSet(context.TODO(), "save", "")
 		client.FlushAll(context.TODO())
 	}
 
-	_clusterHostAndPorts := []string{"localhost:7000", "localhost:7001", "localhost:7002", "localhost:7003", "localhost:7004", "localhost:7005"}
-	for _, hostAndPort := range _clusterHostAndPorts {
-		_client := _newGoRedisConnectForRedisClient(t, testName, hostAndPort, "")
-		_client.GetClient(0).ConfigSet(context.TODO(), "appendonly", "no")
-		_client.GetClient(0).ConfigSet(context.TODO(), "save", "")
-	}
+	// localhost:7005 --> localhost:7000
+	// localhost:7004 --> localhost:7001
+	// localhost:7003 --> localhost:7002
+	_newGoRedisConnectForRedisClient(t, testName, "localhost:7005", "").GetClient(0).SlaveOf(context.Background(), "localhost", "7000")
+	_newGoRedisConnectForRedisClient(t, testName, "localhost:7004", "").GetClient(0).SlaveOf(context.Background(), "localhost", "7001")
+	_newGoRedisConnectForRedisClient(t, testName, "localhost:7003", "").GetClient(0).SlaveOf(context.Background(), "localhost", "7002")
+
+	_testRcSingle = _newGoRedisConnectForRedisClient(t, testName, "localhost:6379", "")
 
 	_testRcCluster = _newGoRedisConnectForRedisClusterClient(t, testName, "localhost:7000,localhost:7001,localhost:7002", "")
-	if _testRcCluster != nil {
-		for _, hostAndPort := range _testRcCluster.hostsAndPorts {
-			client := _testRcCluster.newClientWithHostAndPort(hostAndPort, 0)
-			client.FlushAll(context.TODO())
-		}
-	}
 
 	_testRcFailover = make(map[string]*GoRedisConnect)
 	_testRcFailover["5000"] = _newGoRedisConnectForRedisFailoverClient(t, testName, "localhost:5000", "", "sentinel7000")
@@ -3314,6 +3312,9 @@ func TestRedisProxy_SSet_ZMPop(t *testing.T) {
 			if ver.Compare(v7_0_0) < 0 {
 				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v7_0_0)
 			}
+			c.ZAdd(context.TODO(), key+"1", redis.Z{Member: "member1", Score: 1.23})
+			c.ZAdd(context.TODO(), key+"2", redis.Z{Member: 2, Score: 2.34})
+			c.ZAdd(context.TODO(), key+"3", redis.Z{Member: true, Score: 3.45})
 			c.ZMPop(context.TODO(), "MIN", 1, key+"1", key+"2", key+"3")
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zmpop", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
@@ -3402,7 +3403,7 @@ func TestRedisProxy_SSet_ZRandMemberWithScores(t *testing.T) {
 				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v6_2_0)
 			}
 			c.ZRandMemberWithScores(context.TODO(), key, 1)
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zrand_member", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zrand_member", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
 	}
 }
@@ -3543,6 +3544,10 @@ func TestRedisProxy_SSet_ZRankWithScore(t *testing.T) {
 
 			key := "key"
 			rc, c := _getRedisConnectAndCmdable(tc, key)
+			ver := _getRedisVersion(c)
+			if ver.Compare(v7_2_0) < 0 {
+				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v7_2_0)
+			}
 			c.ZRankWithScore(context.TODO(), key, "member")
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "zrank", []error{redis.Nil}, prom.MetricsCatAll, prom.MetricsCatDQL)
 		})
@@ -3897,6 +3902,22 @@ func TestRedisProxy_Stream_XAutoClaimJustID(t *testing.T) {
 			}
 			c.XGroupCreateMkStream(context.TODO(), key, "group", "0-0")
 			c.XAutoClaimJustID(context.TODO(), &redis.XAutoClaimArgs{Stream: key, Group: "group", Consumer: "consumer", MinIdle: 10 * time.Second, Start: "0-0"})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "xauto_claim", nil, prom.MetricsCatAll, prom.MetricsCatOther)
+		})
+	}
+}
+
+func TestRedisProxy_Stream_XClaim(t *testing.T) {
+	testName := "TestRedisProxy_Stream_XClaim"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.XGroupCreateMkStream(context.TODO(), key, "group", "0-0")
+			c.XClaim(context.TODO(), &redis.XClaimArgs{Stream: key, Group: "group", Consumer: "consumer", MinIdle: 3600 * time.Second, Messages: []string{"0-0"}})
 			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "xauto_claim", nil, prom.MetricsCatAll, prom.MetricsCatOther)
 		})
 	}
@@ -4453,6 +4474,28 @@ func TestRedisProxy_String_IncrByFloat(t *testing.T) {
 	}
 }
 
+func TestRedisProxy_String_LCS(t *testing.T) {
+	testName := "TestRedisProxy_String_LCS"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "{key}"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			ver := _getRedisVersion(c)
+			if ver.Compare(v7_0_0) < 0 {
+				t.Skipf("%s skipped: Redis version %s does support the specified command, need version %s", testName+"/"+tc, ver, v7_0_0)
+			}
+			c.LCS(context.TODO(), &redis.LCSQuery{
+				Key1: key + "1",
+				Key2: key + "2",
+			})
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "lcs", nil, prom.MetricsCatAll, prom.MetricsCatDQL)
+		})
+	}
+}
+
 func TestRedisProxy_String_MGet(t *testing.T) {
 	testName := "TestRedisProxy_String_MGet"
 	for _, tc := range _testList {
@@ -4538,7 +4581,22 @@ func TestRedisProxy_String_SetNX(t *testing.T) {
 			key := "key"
 			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.SetNX(context.TODO(), key, "value", 10*time.Second)
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "set_nx", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "set", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+		})
+	}
+}
+
+func TestRedisProxy_String_SetXX(t *testing.T) {
+	testName := "TestRedisProxy_String_SetXX"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			key := "key"
+			rc, c := _getRedisConnectAndCmdable(tc, key)
+			c.SetXX(context.TODO(), key, "value", 10*time.Second)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "set", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
