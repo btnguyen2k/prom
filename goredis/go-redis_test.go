@@ -2,20 +2,22 @@ package goredis
 
 import (
 	"context"
+	"fmt"
+	"github.com/btnguyen2k/consu/semver"
 	"strings"
 	"testing"
 	"time"
 )
 
-func TestNewGoRedisConnectClose(t *testing.T) {
-	testName := "TestNewGoRedisConnectClose"
+func TestGoRedisConnect_NewClose(t *testing.T) {
+	testName := "TestGoRedisConnect_NewClose"
 	rc, err := NewGoRedisConnect("localhost", "", 3)
 	if rc == nil || err != nil {
 		t.Fatalf("%s failed: %s", testName, err)
 	}
 	err = rc.Close()
 	if err != nil {
-		t.Fatalf("%s failed: error [%e]", testName, err)
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 }
 
@@ -101,12 +103,6 @@ func TestGoRedisConnect_GetRedisPoolOpts(t *testing.T) {
 }
 
 func _newGoRedisConnect(t *testing.T, testName, redisHostsAndPorts, redisPassword string, maxRetries int) *GoRedisConnect {
-	// redisHostsAndPorts := strings.ReplaceAll(os.Getenv("REDIS_HOSTS_AND_PORTS"), `"`, "")
-	// if redisHostsAndPorts == "" {
-	// 	t.Skipf("%s skipped", testName)
-	// 	return nil
-	// }
-	// redisPassword := strings.ReplaceAll(os.Getenv("REDIS_PASSWORD"), `"`, "")
 	redisHostsAndPorts = strings.ReplaceAll(redisHostsAndPorts, `"`, "")
 	if redisHostsAndPorts == "" {
 		t.Skipf("%s skipped", testName)
@@ -120,8 +116,8 @@ func _newGoRedisConnect(t *testing.T, testName, redisHostsAndPorts, redisPasswor
 	return rc
 }
 
-func TestGoRedis_FastFailed_Client(t *testing.T) {
-	name := "TestGoRedis_FastFailed_Client"
+func TestGoRedisConnect_FastFailed_Client(t *testing.T) {
+	name := "TestGoRedisConnect_FastFailed_Client"
 	rc := _newGoRedisConnect(t, name, "localhost:1234", "", 0)
 	defer rc.Close()
 
@@ -134,46 +130,48 @@ func TestGoRedis_FastFailed_Client(t *testing.T) {
 	})
 	client := rc.GetClient(0)
 	tstart := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	dbase := time.Duration(10)
+	ctx, _ := context.WithTimeout(context.Background(), dbase*time.Millisecond)
 	result := client.Ping(ctx)
 	if result.Err() == nil {
 		t.Fatalf("%s failed: the operation should not success", name)
 	}
 	d := time.Now().Sub(tstart)
-	dmax := 31 * time.Millisecond
+	dmax := (dbase*2 + 1) * time.Millisecond
 	if d > dmax {
 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
 	}
 }
 
-// func TestGoRedis_FastFailed_FailoverClient(t *testing.T) {
-// 	name := "TestGoRedis_FastFailed_FailoverClient"
-// 	rc := _newGoRedisConnect(t, name, "localhost:1234", "", 0)
-// 	defer rc.Close()
-//
-// 	rc.SetRedisPoolOpts(&RedisPoolOpts{
-// 		PoolSize:     1,
-// 		MinIdleConns: 0,
-// 		DialTimeout:  10 * time.Millisecond,
-// 		ReadTimeout:  20 * time.Millisecond,
-// 		WriteTimeout: 20 * time.Millisecond,
-// 	})
-// 	client := rc.GetFailoverClient(0)
-// 	tstart := time.Now()
-// 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Millisecond)
-// 	result := client.Ping(ctx)
-// 	if result.Err() == nil {
-// 		t.Fatalf("%s failed: the operation should not success", name)
-// 	}
-// 	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
-// 	dmax := 21 * time.Millisecond
-// 	if d > dmax {
-// 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
-// 	}
-// }
+func TestGoRedisConnect_FastFailed_FailoverClient(t *testing.T) {
+	name := "TestGoRedisConnect_FastFailed_FailoverClient"
+	rc := _newGoRedisConnect(t, name, "localhost:1234", "", 0)
+	defer rc.Close()
 
-func TestGoRedis_FastFailed_GetClusterClient(t *testing.T) {
-	name := "TestGoRedis_FastFailed_GetClusterClient"
+	rc.SetRedisPoolOpts(&RedisPoolOpts{
+		PoolSize:     1,
+		MinIdleConns: 0,
+		DialTimeout:  10 * time.Millisecond,
+		ReadTimeout:  20 * time.Millisecond,
+		WriteTimeout: 20 * time.Millisecond,
+	})
+	client := rc.GetFailoverClient(0)
+	tstart := time.Now()
+	dbase := time.Duration(10)
+	ctx, _ := context.WithTimeout(context.Background(), dbase*time.Millisecond)
+	result := client.Ping(ctx)
+	if result.Err() == nil {
+		t.Fatalf("%s failed: the operation should not success", name)
+	}
+	d := time.Duration(time.Now().UnixNano() - tstart.UnixNano())
+	dmax := (dbase*4 + 1) * time.Millisecond
+	if d > dmax {
+		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
+	}
+}
+
+func TestGoRedisConnect_FastFailed_GetClusterClient(t *testing.T) {
+	name := "TestGoRedisConnect_FastFailed_GetClusterClient"
 	rc := _newGoRedisConnect(t, name, "localhost:1234", "", 0)
 	defer rc.Close()
 
@@ -186,14 +184,44 @@ func TestGoRedis_FastFailed_GetClusterClient(t *testing.T) {
 	})
 	client := rc.GetClusterClient()
 	tstart := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	dbase := time.Duration(10)
+	ctx, _ := context.WithTimeout(context.Background(), dbase*time.Millisecond)
 	result := client.Ping(ctx)
 	if result.Err() == nil {
 		t.Fatalf("%s failed: the operation should not success", name)
 	}
 	d := time.Now().Sub(tstart)
-	dmax := 21 * time.Millisecond
+	dmax := (dbase*2 + 1) * time.Millisecond
 	if d > dmax {
 		t.Fatalf("%s failed: operation is expected to fail within %#v ms but in fact %#v ms", name, dmax/1e6, d/1e6)
+	}
+}
+
+func TestGoRedisConnect_RedisServerVersion(t *testing.T) {
+	testName := "TestGoRedisConnect_RedisServerVersion_Client"
+	for _, tc := range _testList {
+		t.Run(tc, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, _setupTestRedisProxy, _teardownTestRedisProxy)
+			defer teardownTest(t)
+
+			var ver semver.Semver
+			var err error
+			rc, _ := _getRedisConnectAndCmdable(tc, "")
+			switch tc {
+			case "FAILOVER":
+				c := rc.GetFailoverClientProxy(0)
+				ver, err = c.RedisServerVersion(false)
+			case "CLUSTER":
+				c := rc.GetClusterClientProxy()
+				ver, err = c.RedisServerVersion(false)
+			default:
+				c := rc.GetClientProxy(0)
+				ver, err = c.RedisServerVersion(false)
+			}
+			if err != nil {
+				t.Fatalf("%s failed: %s", testName+"/"+tc, err)
+			}
+			fmt.Printf("%s - Redis version: %s", testName+"/"+tc, ver)
+		})
 	}
 }
