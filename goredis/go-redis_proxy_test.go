@@ -4566,7 +4566,7 @@ func TestRedisProxy_String_SetEX(t *testing.T) {
 			key := "key"
 			rc, c := _getRedisConnectAndCmdable(tc, key)
 			c.SetEx(context.TODO(), key, "value", 10*time.Second)
-			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "set_ex", nil, prom.MetricsCatAll, prom.MetricsCatDML)
+			_rcVerifyLastCommand(func(msg string) { t.Fatalf(msg) }, testName+"/"+tc, rc, "set", nil, prom.MetricsCatAll, prom.MetricsCatDML)
 		})
 	}
 }
