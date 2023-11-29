@@ -87,3 +87,32 @@ jobs:
         with:
           flags: pgsql
           name: pgsql
+
+  TestMSSQL:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.18', 'oldstable', 'stable' ]
+        mssql: [ '2017-latest', '2019-latest', '2022-latest' ]
+    name: Run MSSQL ${{ matrix.mssql }} tests with Go ${{ matrix.go }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Start MSSQL server
+        run: docker run -d --name mssql-express -e ACCEPT_EULA=Y -e SA_PASSWORD=SecretPassword1 -e MSSQL_PID=Express -p 1433:1433 mcr.microsoft.com/mssql/server:${{ matrix.mssql }}
+      - name: Run tests
+        run: |
+          export TIMEZONE="Asia/Ho_Chi_Minh"
+          export MSSQL_DRIVER="sqlserver"
+          export MSSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
+          go version
+          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mssql.txt ./sql/
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          flags: mssql
+          name: mssql
