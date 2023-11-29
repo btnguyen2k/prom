@@ -153,7 +153,7 @@ type IMetricsLogger interface {
 	Put(category string, cmd *CmdExecInfo) error
 
 	// Metrics returns the snapshot of command execution metrics.
-	Metrics(categogy string, opts ...MetricsOpts) (*Metrics, error)
+	Metrics(category string, opts ...MetricsOpts) (*Metrics, error)
 }
 
 // NewMemoryStoreMetricsLogger creates a new MemoryStoreMetricsLogger instance.
