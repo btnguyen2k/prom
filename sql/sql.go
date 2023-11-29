@@ -126,59 +126,6 @@ func (sc *SqlConnect) Init() error {
 	return err
 }
 
-//// RegisterMetricsLogger associates an IMetricsLogger instance with this SqlConnect.
-//// If non-nil, SqlConnect automatically logs executing commands.
-////
-//// Available since v0.3.0
-//func (sc *SqlConnect) RegisterMetricsLogger(metricsLogger prom.IMetricsLogger) *SqlConnect {
-//	sc.metricsLogger = metricsLogger
-//	return sc
-//}
-//
-//// MetricsLogger returns the associated IMetricsLogger instance.
-////
-//// Available since v0.3.0
-//func (sc *SqlConnect) MetricsLogger() prom.IMetricsLogger {
-//	return sc.metricsLogger
-//}
-
-//// NewCmdExecInfo is convenient function to create a new CmdExecInfo instance.
-////
-//// The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
-////
-//// Available since v0.3.0
-//func (sc *SqlConnect) NewCmdExecInfo() *prom.CmdExecInfo {
-//	return &prom.CmdExecInfo{
-//		Id:        prom.NewId(),
-//		BeginTime: time.Now(),
-//		Cost:      -1,
-//	}
-//}
-//
-//// LogMetrics is convenient function to put the CmdExecInfo to the metrics log.
-////
-//// This function is silently no-op of the input if nil or there is no associated metrics logger.
-////
-//// Available since v0.3.0
-//func (sc *SqlConnect) LogMetrics(category string, cmd *prom.CmdExecInfo) error {
-//	if cmd != nil && sc.metricsLogger != nil {
-//		return sc.metricsLogger.Put(category, cmd)
-//	}
-//	return nil
-//}
-//
-//// Metrics is convenient function to capture the snapshot of command execution metrics.
-////
-//// This function is silently no-op of there is no associated metrics logger.
-////
-//// Available since v0.3.0
-//func (sc *SqlConnect) Metrics(category string, opts ...prom.MetricsOpts) (*prom.Metrics, error) {
-//	if sc.metricsLogger != nil {
-//		return sc.metricsLogger.Metrics(category, opts...)
-//	}
-//	return nil, nil
-//}
-
 // GetDriver returns the database driver setting.
 //
 // Available: since v0.2.8
@@ -234,22 +181,6 @@ func (sc *SqlConnect) PoolOpts() *PoolOpts {
 	}
 	return nil
 }
-
-//// GetSqlPoolOptions returns the database connection pool configurations.
-////
-//// Available: since v0.2.8
-//func (sc *SqlConnect) GetSqlPoolOptions() *PoolOpts {
-//	return sc.poolOptions
-//}
-//
-//// SetSqlPoolOptions sets the database connection pool configurations.
-//// Note: the change does not take effect if called after Init has been called.
-////
-//// Available: since v0.2.8
-//func (sc *SqlConnect) SetSqlPoolOptions(poolOptions *PoolOpts) *SqlConnect {
-//	sc.poolOptions = poolOptions
-//	return sc
-//}
 
 // GetDbFlavor returns the current database flavor associated with this SqlConnect.
 //
@@ -572,13 +503,6 @@ func isValueTypeRawBytes(v interface{}) bool {
 	t := reflect.TypeOf(v)
 	return t == rawBytesType || t == bytesArrType || t == uint8ArrType
 }
-
-// func isValueTypeString(v interface{}) bool {
-// 	if v == nil {
-// 		return false
-// 	}
-// 	return reflect.TypeOf(v) == reddo.TypeString
-// }
 
 // toIntIfValidInteger converts the input to int64 if:
 //   - the input is an integer/unsigned integer

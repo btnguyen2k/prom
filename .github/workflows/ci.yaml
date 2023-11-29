@@ -132,7 +132,7 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
       - name: Start MySQL server
-        run: docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_USER=test -e MYSQL_PASSWORD=test -p 3306:3306 mysql:${{ matrix.mysql }}
+        run: docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_USER=test -e MYSQL_PASSWORD=test -p 3306:3306 mysql:${{ matrix.mysql }} --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
       - name: Run tests with parseTime
         run: |
           export TIMEZONE="Asia/Ho_Chi_Minh"
