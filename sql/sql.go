@@ -1,3 +1,4 @@
+// Package sql provides database/sql specific implementation of btnguyen2k/prom and other utilities.
 package sql
 
 import (
@@ -32,74 +33,65 @@ const (
 	FlavorCosmosDb
 )
 
-// SqlPoolOptions configures database connection pooling options.
-type SqlPoolOptions struct {
-	// Maximum amount of time a connection may be reused, default is 1 hour,
-	// see https://golang.org/pkg/database/sql/#DB.SetConnMaxLifetime
-	ConnMaxLifetime time.Duration
-
-	// Maximum number of idle connections in the pool, default is 1,
-	// see https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns
-	MaxIdleConns int
-
-	// Maximum number of open connections to the database, default is 2,
-	// see https://golang.org/pkg/database/sql/#DB.SetMaxOpenConns
-	MaxOpenConns int
+// PoolOpts configures database connection pooling options.
+//
+// See:
+//   - Connection's max lifetime: https://golang.org/pkg/database/sql/#DB.SetConnMaxLifetime
+//   - Max idle connections: https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns
+//   - Max open connections: https://golang.org/pkg/database/sql/#DB.SetMaxOpenConns
+//
+// @Available since <<VERSION>>
+type PoolOpts struct {
+	prom.BasePoolOpts
 }
 
-var defaultSqlPoolOptions = &SqlPoolOptions{ConnMaxLifetime: 1 * time.Hour, MaxIdleConns: 1, MaxOpenConns: 2}
+var defaultPoolOpts = &PoolOpts{prom.BasePoolOpts{ConnLifetime: 1 * time.Hour, MinPoolSize: 1, MaxPoolSize: 2}}
 
 // SqlConnect holds a database/sql DB instance (https://golang.org/pkg/database/sql/#DB) that can be shared within the application.
 type SqlConnect struct {
-	driver, dsn    string              // driver and data source name (DSN)
-	poolOptions    *SqlPoolOptions     // connection pool options
-	timeoutMs      int                 // default timeout for db operations, in milliseconds
-	flavor         DbFlavor            // database flavor
-	db             *sql.DB             // database instance
-	dbProxy        *DBProxy            // (since v0.3.0) wrapper around the real sql.DB instance
-	loc            *time.Location      // timezone location to parse date/time data, new since v0.1.2
-	mysqlParseTime bool                // set to 'true' if specifying parseTime=true in MySQL connection string, new since v0.2.12
-	metricsLogger  prom.IMetricsLogger // (since v0.3.0) if non-nil, SqlConnect automatically logs executing commands.
-}
+	*prom.BaseConnection
+	driver, dsn    string         // driver and data source name (DSN)
+	timeoutMs      int            // default timeout for db operations, in milliseconds
+	flavor         DbFlavor       // database flavor
+	db             *sql.DB        // database instance
+	dbProxy        *DBProxy       // (since v0.3.0) wrapper around the real sql.DB instance
+	loc            *time.Location // timezone location to parse date/time data, new since v0.1.2
+	mysqlParseTime bool           // set to 'true' if specifying parseTime=true in MySQL connection string, new since v0.2.12
 
-// NewSqlConnect constructs a new SqlConnect instance.
-//
-// Parameters: see NewSqlConnectWithFlavor.
-//
-// @Deprecated: use NewSqlConnectWithFlavor.
-func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
-	return NewSqlConnectWithFlavor(driver, dsn, defaultTimeoutMs, poolOptions, FlavorDefault)
+	//poolOptions    *PoolOpts           // connection pool options
+	//metricsLogger  prom.IMetricsLogger // (since v0.3.0) if non-nil, SqlConnect automatically logs executing commands.
 }
 
 // NewSqlConnectWithFlavor constructs a new SqlConnect instance.
 //
 // Parameters:
-// 	 - driver          : database driver name
-// 	 - dsn             : data source name (sample format [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN])
-// 	 - defaultTimeoutMs: default timeout for db operations, in milliseconds
-// 	 - poolOptions     : connection pool options. If nil, default value is used
-// 	 - flavor          : database flavor associated with the SqlConnect instance.
+//   - driver          : database driver name
+//   - dsn             : data source name (sample format [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN])
+//   - defaultTimeoutMs: default timeout for db operations, in milliseconds
+//   - poolOpts        : connection pool options. If nil, default value is used
+//   - flavor          : database flavor associated with the SqlConnect instance. See DbFlavor for details.
 //
 // Return: the SqlConnect instance and error (if any). Note:
 //   - In case of connection error: this function returns the SqlConnect instance and the error.
 //   - Other error: this function returns (nil, error)
 //
 // Available: since v0.1.0
-func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions, flavor DbFlavor) (*SqlConnect, error) {
+func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOpts *PoolOpts, flavor DbFlavor) (*SqlConnect, error) {
 	if defaultTimeoutMs < 0 {
 		defaultTimeoutMs = 0
 	}
-	if poolOptions == nil {
-		poolOptions = defaultSqlPoolOptions
+	if poolOpts == nil {
+		poolOpts = defaultPoolOpts
 	}
+	baseConn := &prom.BaseConnection{}
+	baseConn.SetPoolOpts(poolOpts).RegisterMetricsLogger(prom.NewMemoryStoreMetricsLogger(1028))
 	sc := &SqlConnect{
-		driver:        driver,
-		dsn:           dsn,
-		poolOptions:   poolOptions,
-		timeoutMs:     defaultTimeoutMs,
-		flavor:        flavor,
-		loc:           time.UTC,
-		metricsLogger: prom.NewMemoryStoreMetricsLogger(1028),
+		BaseConnection: baseConn,
+		driver:         driver,
+		dsn:            dsn,
+		timeoutMs:      defaultTimeoutMs,
+		flavor:         flavor,
+		loc:            time.UTC,
 	}
 	return sc, sc.Init()
 }
@@ -115,18 +107,18 @@ func (sc *SqlConnect) Init() error {
 	if err != nil {
 		return err
 	}
-	if sc.poolOptions != nil {
-		if sc.poolOptions.MaxOpenConns > 0 {
-			db.SetMaxOpenConns(sc.poolOptions.MaxOpenConns)
+	if poolOpts := sc.PoolOpts(); poolOpts != nil {
+		if poolOpts.MaxPoolSize > 0 {
+			db.SetMaxOpenConns(poolOpts.MaxPoolSize)
 		}
-		if sc.poolOptions.MaxIdleConns > 0 {
-			db.SetMaxIdleConns(sc.poolOptions.MaxIdleConns)
+		if poolOpts.MinPoolSize > 0 {
+			db.SetMaxIdleConns(poolOpts.MinPoolSize)
 		}
-		if sc.poolOptions.ConnMaxLifetime > 0 {
-			db.SetConnMaxLifetime(sc.poolOptions.ConnMaxLifetime)
+		if poolOpts.ConnLifetime > 0 {
+			db.SetConnMaxLifetime(poolOpts.ConnLifetime)
 		}
 	}
-	if sc.metricsLogger == nil {
+	if sc.MetricsLogger() == nil {
 		sc.RegisterMetricsLogger(prom.NewMemoryStoreMetricsLogger(1028))
 	}
 	sc.db = db
@@ -134,58 +126,58 @@ func (sc *SqlConnect) Init() error {
 	return err
 }
 
-// RegisterMetricsLogger associates an IMetricsLogger instance with this SqlConnect.
-// If non-nil, SqlConnect automatically logs executing commands.
+//// RegisterMetricsLogger associates an IMetricsLogger instance with this SqlConnect.
+//// If non-nil, SqlConnect automatically logs executing commands.
+////
+//// Available since v0.3.0
+//func (sc *SqlConnect) RegisterMetricsLogger(metricsLogger prom.IMetricsLogger) *SqlConnect {
+//	sc.metricsLogger = metricsLogger
+//	return sc
+//}
 //
-// Available since v0.3.0
-func (sc *SqlConnect) RegisterMetricsLogger(metricsLogger prom.IMetricsLogger) *SqlConnect {
-	sc.metricsLogger = metricsLogger
-	return sc
-}
+//// MetricsLogger returns the associated IMetricsLogger instance.
+////
+//// Available since v0.3.0
+//func (sc *SqlConnect) MetricsLogger() prom.IMetricsLogger {
+//	return sc.metricsLogger
+//}
 
-// MetricsLogger returns the associated IMetricsLogger instance.
+//// NewCmdExecInfo is convenient function to create a new CmdExecInfo instance.
+////
+//// The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
+////
+//// Available since v0.3.0
+//func (sc *SqlConnect) NewCmdExecInfo() *prom.CmdExecInfo {
+//	return &prom.CmdExecInfo{
+//		Id:        prom.NewId(),
+//		BeginTime: time.Now(),
+//		Cost:      -1,
+//	}
+//}
 //
-// Available since v0.3.0
-func (sc *SqlConnect) MetricsLogger() prom.IMetricsLogger {
-	return sc.metricsLogger
-}
-
-// NewCmdExecInfo is convenient function to create a new CmdExecInfo instance.
+//// LogMetrics is convenient function to put the CmdExecInfo to the metrics log.
+////
+//// This function is silently no-op of the input if nil or there is no associated metrics logger.
+////
+//// Available since v0.3.0
+//func (sc *SqlConnect) LogMetrics(category string, cmd *prom.CmdExecInfo) error {
+//	if cmd != nil && sc.metricsLogger != nil {
+//		return sc.metricsLogger.Put(category, cmd)
+//	}
+//	return nil
+//}
 //
-// The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
-//
-// Available since v0.3.0
-func (sc *SqlConnect) NewCmdExecInfo() *prom.CmdExecInfo {
-	return &prom.CmdExecInfo{
-		Id:        prom.NewId(),
-		BeginTime: time.Now(),
-		Cost:      -1,
-	}
-}
-
-// LogMetrics is convenient function to put the CmdExecInfo to the metrics log.
-//
-// This function is silently no-op of the input if nil or there is no associated metrics logger.
-//
-// Available since v0.3.0
-func (sc *SqlConnect) LogMetrics(category string, cmd *prom.CmdExecInfo) error {
-	if cmd != nil && sc.metricsLogger != nil {
-		return sc.metricsLogger.Put(category, cmd)
-	}
-	return nil
-}
-
-// Metrics is convenient function to capture the snapshot of command execution metrics.
-//
-// This function is silently no-op of there is no associated metrics logger.
-//
-// Available since v0.3.0
-func (sc *SqlConnect) Metrics(category string, opts ...prom.MetricsOpts) (*prom.Metrics, error) {
-	if sc.metricsLogger != nil {
-		return sc.metricsLogger.Metrics(category, opts...)
-	}
-	return nil, nil
-}
+//// Metrics is convenient function to capture the snapshot of command execution metrics.
+////
+//// This function is silently no-op of there is no associated metrics logger.
+////
+//// Available since v0.3.0
+//func (sc *SqlConnect) Metrics(category string, opts ...prom.MetricsOpts) (*prom.Metrics, error) {
+//	if sc.metricsLogger != nil {
+//		return sc.metricsLogger.Metrics(category, opts...)
+//	}
+//	return nil, nil
+//}
 
 // GetDriver returns the database driver setting.
 //
@@ -234,21 +226,30 @@ func (sc *SqlConnect) SetTimeoutMs(timeoutMs int) *SqlConnect {
 	return sc
 }
 
-// GetSqlPoolOptions returns the database connection pool configurations.
-//
-// Available: since v0.2.8
-func (sc *SqlConnect) GetSqlPoolOptions() *SqlPoolOptions {
-	return sc.poolOptions
+// PoolOpts overrides prom.BaseConnection/PoolOpts.
+func (sc *SqlConnect) PoolOpts() *PoolOpts {
+	poolOpts := sc.BaseConnection.PoolOpts()
+	if sqlPoolOpts, ok := poolOpts.(*PoolOpts); ok {
+		return sqlPoolOpts
+	}
+	return nil
 }
 
-// SetSqlPoolOptions sets the database connection pool configurations.
-// Note: the change does not take effect if called after Init has been called.
+//// GetSqlPoolOptions returns the database connection pool configurations.
+////
+//// Available: since v0.2.8
+//func (sc *SqlConnect) GetSqlPoolOptions() *PoolOpts {
+//	return sc.poolOptions
+//}
 //
-// Available: since v0.2.8
-func (sc *SqlConnect) SetSqlPoolOptions(poolOptions *SqlPoolOptions) *SqlConnect {
-	sc.poolOptions = poolOptions
-	return sc
-}
+//// SetSqlPoolOptions sets the database connection pool configurations.
+//// Note: the change does not take effect if called after Init has been called.
+////
+//// Available: since v0.2.8
+//func (sc *SqlConnect) SetSqlPoolOptions(poolOptions *PoolOpts) *SqlConnect {
+//	sc.poolOptions = poolOptions
+//	return sc
+//}
 
 // GetDbFlavor returns the current database flavor associated with this SqlConnect.
 //
@@ -285,11 +286,11 @@ func (sc *SqlConnect) GetLocation() *time.Location {
 //   - In any case, the returned date/time is attached with the specified timezone/location.
 //
 // Available: since v0.1.2
-func (sc *SqlConnect) SetLocation(loc *time.Location) *SqlConnect {
-	if loc == nil {
+func (sc *SqlConnect) SetLocation(inLocation *time.Location) *SqlConnect {
+	if inLocation == nil {
 		sc.loc = time.UTC
 	} else {
-		sc.loc = loc
+		sc.loc = inLocation
 	}
 	return sc
 }
@@ -425,9 +426,11 @@ var bytesArrType = reflect.TypeOf([]byte{})
 var uint8ArrType = reflect.TypeOf([]uint8{})
 var timeType = reflect.TypeOf(time.Time{})
 var sqlNullTime = reflect.TypeOf(sql.NullTime{})
-var sqlNullInt32 = reflect.TypeOf(sql.NullInt32{})
-var sqlNullInt64 = reflect.TypeOf(sql.NullInt64{})
-var sqlNullFloat64 = reflect.TypeOf(sql.NullFloat64{})
+
+// var sqlNullInt32 = reflect.TypeOf(sql.NullInt32{})
+// var sqlNullInt64 = reflect.TypeOf(sql.NullInt64{})
+// var sqlNullFloat64 = reflect.TypeOf(sql.NullFloat64{})
+
 var dbIntTypes = map[string]map[DbFlavor]bool{
 	"TINYINT":   {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
 	"SMALLINT":  {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
@@ -629,7 +632,6 @@ const (
 )
 
 func (sc *SqlConnect) _scanMysqlDateTimeFromRawBytes(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// fmt.Printf("%s / %s / %s (%s) / %s\n", v.Name(), v.DatabaseTypeName(), sc.loc, time.Now().In(sc.loc).Format("Z07:00"), val)
 	loc := sc.ensureLocation()
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
@@ -689,7 +691,6 @@ func (sc *SqlConnect) _transformPgsqlDateTime(result map[string]interface{}, v *
 }
 
 func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// fmt.Println(v.Name(), sc.loc.String(), val.(time.Time).Format(time.RFC3339))
 	loc := sc.ensureLocation()
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
@@ -709,7 +710,6 @@ func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *
 }
 
 func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// fmt.Printf("%s / %s / %s (%T)\n", v.Name(), sc.loc.String(), val, val)
 	loc := sc.ensureLocation()
 	str, ok := val.(string)
 	if !ok {
@@ -724,14 +724,13 @@ func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.
 		var err error
 		result[v.Name()], err = time.Parse(dtlayoutTzz, str)
 		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
-		// fmt.Println("\t", v.Name(), sc.loc.String(), result[v.Name()].(time.Time).Format(dtlayoutTzz))
 		return err
 	}
 
-	time, ok := val.(time.Time)
+	vTime, ok := val.(time.Time)
 	if ok {
 		// date/time is fetched as time.Time, with timezone info
-		result[v.Name()] = time.In(loc)
+		result[v.Name()] = vTime.In(loc)
 		return nil
 	}
 
@@ -739,7 +738,6 @@ func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.
 }
 
 func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// fmt.Println(v.Name(), v.ScanType(), v.DatabaseTypeName(), sc.loc.String(), val.(time.Time).Format(time.RFC3339))
 	loc := sc.ensureLocation()
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
@@ -781,18 +779,13 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 		scanVals[i] = &vals[i]
 	}
 	if err := rows.Scan(scanVals...); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
 	result := map[string]interface{}{}
 	for i, v := range colsAndTypes {
-		// if v.Name() == "data_datetimez" {
-		// 	fmt.Printf("Column: %s / DbType: %s / GoType: %s / Value: %#v(%T)\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
-		// 	fmt.Println(v.DecimalSize())
-		// 	// fmt.Println(v.ScanType().Name())
-		// }
 		switch {
 		case vals[i] == nil:
 			// special care for nil value
@@ -836,22 +829,9 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			if err != nil {
 				return nil, err
 			}
-		// case isValueTypeRawBytes(vals[i]) && (sc.isNumberType(v) || sc.isStringType(v)):
 		case isValueTypeRawBytes(vals[i]) && sc.isStringType(v):
 			// when string is loaded as []byte
 			result[v.Name()] = string(vals[i].([]byte))
-
-			// switch {
-			// case sc.isStringType(v):
-			// 	// when string is loaded as []byte
-			// 	result[v.Name()] = string(vals[i].([]byte))
-			// case sc.isIntType(v):
-			// 	// when number is loaded as []byte
-			// 	result[v.Name()], _ = strconv.ParseInt(string(vals[i].([]byte)), 10, 64)
-			// case sc.isFloatType(v):
-			// 	// when number is loaded as []byte
-			// 	result[v.Name()], _ = strconv.ParseFloat(string(vals[i].([]byte)), 64)
-			// }
 		case sc.flavor == FlavorSqlite && sc.isDateTimeType(v):
 			// special care for SQLite's date/time types
 			if err := sc._scanSqliteDateTime(result, v, vals[i]); err != nil {

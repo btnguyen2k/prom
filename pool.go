@@ -64,6 +64,12 @@ func (c *BaseConnection) PoolOpts() IBasePoolOpts {
 	return c.poolOpts
 }
 
+// SetPoolOpts attaches a pooling options object to the connection.
+func (c *BaseConnection) SetPoolOpts(opts IBasePoolOpts) IBaseConnection {
+	c.poolOpts = opts
+	return c
+}
+
 // MetricsLogger implements IBaseConnection.MetricsLogger.
 func (c *BaseConnection) MetricsLogger() IMetricsLogger {
 	return c.metricsLogger

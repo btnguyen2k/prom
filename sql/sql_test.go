@@ -34,7 +34,7 @@ func setupTest(t *testing.T, testName string, extraSetupFunc, extraTeardownFunc 
 	}
 }
 
-func newSqlConnectSqlite(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+func newSqlConnectSqlite(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
 	os.Remove(url)
 	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorSqlite)
 	if err == nil && sqlc != nil {
@@ -44,7 +44,7 @@ func newSqlConnectSqlite(driver, url, timezone string, timeoutMs int, poolOption
 	return sqlc, err
 }
 
-func newSqlConnectMssql(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+func newSqlConnectMssql(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
 	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorMsSql)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
@@ -53,7 +53,7 @@ func newSqlConnectMssql(driver, url, timezone string, timeoutMs int, poolOptions
 	return sqlc, err
 }
 
-func newSqlConnectMysql(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+func newSqlConnectMysql(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
 	urlTimezone := strings.ReplaceAll(timezone, "/", "%2f")
 	url = strings.ReplaceAll(url, "${loc}", urlTimezone)
 	url = strings.ReplaceAll(url, "${tz}", urlTimezone)
@@ -67,7 +67,7 @@ func newSqlConnectMysql(driver, url, timezone string, timeoutMs int, poolOptions
 	return sqlc, err
 }
 
-func newSqlConnectOracle(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+func newSqlConnectOracle(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
 	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorOracle)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
@@ -76,7 +76,7 @@ func newSqlConnectOracle(driver, url, timezone string, timeoutMs int, poolOption
 	return sqlc, err
 }
 
-func newSqlConnectPgsql(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+func newSqlConnectPgsql(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
 	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorPgSql)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
@@ -85,7 +85,7 @@ func newSqlConnectPgsql(driver, url, timezone string, timeoutMs int, poolOptions
 	return sqlc, err
 }
 
-func newSqlConnectCosmosdb(driver, url, timezone string, timeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
+func newSqlConnectCosmosdb(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
 	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorCosmosDb)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
