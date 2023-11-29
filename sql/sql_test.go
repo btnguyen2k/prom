@@ -105,7 +105,7 @@ func TestNewSqlConnect(t *testing.T) {
 	driver := "mysql"
 	dsn := "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc="
 	dsn += strings.ReplaceAll(timezoneSql, "/", "%2f")
-	sqlc, err := NewSqlConnect(driver, dsn, 10000, nil)
+	sqlc, err := NewSqlConnectWithFlavor(driver, dsn, 10000, nil, FlavorDefault)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
@@ -184,11 +184,11 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 			if sqlc.GetDbFlavor() != FlavorDefault {
 				t.Fatalf("%s failed: expected dbflavor %#v but received %#v", testName+"/"+k, FlavorDefault, sqlc.GetDbFlavor())
 			}
-			if sqlc.GetSqlPoolOptions() == nil {
+			if sqlc.PoolOpts() == nil {
 				t.Fatalf("%s failed: sqlPoolOptions is nil", testName+"/"+k)
 			}
-			sqlc.SetSqlPoolOptions(nil)
-			if sqlc.GetSqlPoolOptions() != nil {
+			sqlc.SetPoolOpts(nil)
+			if sqlc.PoolOpts() != nil {
 				t.Fatalf("%s failed: expect sqlPoolOptions to be nil", testName+"/"+k)
 			}
 			for _, value := range []bool{true, false} {
