@@ -1,0 +1,33 @@
+name: 'ci'
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    types: [ opened, edited, reopened, synchronize, review_requested ]
+    branches: [ '*' ]
+  workflow_call:
+
+jobs:
+  TestCommon:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.18', 'oldstable', 'stable' ]
+    name: Run common tests with Go ${{ matrix.go }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Run tests
+        run: |
+          go version
+          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage.txt .
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          flags: common
+          name: common

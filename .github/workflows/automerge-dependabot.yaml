@@ -1,10 +1,10 @@
-# Automatically merge PR from dependabot
+# Automatically merge PRs from dependabot
 
-name: "automerge"
+name: 'automerge-dependabot'
 on:
   workflow_run:
-    workflows: [ "prom" ]
-    types: [ "completed" ]
+    workflows: [ ci ]
+    types: [ completed ]
 
 permissions:
   contents: write
