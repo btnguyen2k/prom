@@ -116,3 +116,44 @@ jobs:
         with:
           flags: mssql
           name: mssql
+
+  TestMySql:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.18', 'oldstable', 'stable' ]
+        mysql: [ '5.7', '8.0', '8.2' ]
+    name: Run MySQL ${{ matrix.mysql }} tests with Go ${{ matrix.go }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Start MySQL server
+        run: docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_USER=test -e MYSQL_PASSWORD=test -p 3306:3306 mysql:${{ matrix.mysql }}
+      - name: Run tests with parseTime
+        run: |
+          export TIMEZONE="Asia/Ho_Chi_Minh"
+          export MYSQL_DRIVER="mysql"
+          export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=true&loc=\${loc}"
+          go version
+          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mysql_parsetime.txt ./sql/
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          flags: mysql_parsetime
+          name: mysql_parsetime
+      - name: Run tests without parseTime
+        run: |
+          export TIMEZONE="Asia/Ho_Chi_Minh"
+          export MYSQL_DRIVER="mysql"
+          export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=\${loc}"
+          go version
+          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mysql.txt ./sql/
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          flags: mysql
+          name: mysql
