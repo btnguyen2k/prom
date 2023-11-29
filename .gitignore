@@ -8,3 +8,4 @@
 /coverage*
 /qnd/
 /.fleet/
+/sql/temp/

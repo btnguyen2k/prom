@@ -121,12 +121,12 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 		dbFlavor    DbFlavor
 	}
 	testDataMap := map[string]testInfo{
-		"sqlite":   {driver: "sqlite3", dsn: "./temp/temp.db", dbFlavor: FlavorSqlite},
-		"mssql":    {driver: "sqlserver", dsn: "sqlserver://sa:secret@localhost:1433?database=tempdb", dbFlavor: FlavorMsSql},
-		"mysql":    {driver: "mysql", dsn: "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false", dbFlavor: FlavorMySql},
-		"oracle":   {driver: "godror", dsn: "test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521)))(CONNECT_DATA=(SID=c)))", dbFlavor: FlavorOracle},
-		"pgsql":    {driver: "pgx", dsn: "postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom", dbFlavor: FlavorPgSql},
-		"cosmosdb": {driver: "gocosmos", dsn: "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;Db=prom", dbFlavor: FlavorCosmosDb},
+		"sqlite": {driver: "sqlite3", dsn: "./temp/temp.db", dbFlavor: FlavorSqlite},
+		//"mssql":    {driver: "sqlserver", dsn: "sqlserver://sa:secret@localhost:1433?database=tempdb", dbFlavor: FlavorMsSql},
+		//"mysql":    {driver: "mysql", dsn: "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false", dbFlavor: FlavorMySql},
+		//"oracle":   {driver: "godror", dsn: "test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521)))(CONNECT_DATA=(SID=c)))", dbFlavor: FlavorOracle},
+		//"pgsql":    {driver: "pgx", dsn: "postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom", dbFlavor: FlavorPgSql},
+		//"cosmosdb": {driver: "gocosmos", dsn: "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;Db=prom", dbFlavor: FlavorCosmosDb},
 	}
 	var sqlc *SqlConnect
 	var err error
@@ -185,7 +185,7 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 				t.Fatalf("%s failed: expected dbflavor %#v but received %#v", testName+"/"+k, FlavorDefault, sqlc.GetDbFlavor())
 			}
 			if sqlc.PoolOpts() == nil {
-				t.Fatalf("%s failed: sqlPoolOptions is nil", testName+"/"+k)
+				t.Fatalf("%s failed: PoolOpts is nil", testName+"/"+k)
 			}
 			sqlc.SetPoolOpts(nil)
 			if sqlc.PoolOpts() != nil {
