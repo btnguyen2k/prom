@@ -1,7 +1,9 @@
-package sql
+package sql_test
 
 import (
 	"fmt"
+	"github.com/btnguyen2k/prom"
+	prom_sql "github.com/btnguyen2k/prom/sql"
 	"math"
 	"math/rand"
 	"os"
@@ -11,10 +13,9 @@ import (
 	"time"
 
 	_ "github.com/btnguyen2k/gocosmos"
-	"github.com/btnguyen2k/prom"
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
-	//_ "github.com/godror/godror"
+	_ "github.com/godror/godror"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -34,9 +35,9 @@ func setupTest(t *testing.T, testName string, extraSetupFunc, extraTeardownFunc 
 	}
 }
 
-func newSqlConnectSqlite(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
+func newSqlConnectSqlite(driver, url, timezone string, timeoutMs int, poolOptions *prom_sql.PoolOpts) (*prom_sql.SqlConnect, error) {
 	os.Remove(url)
-	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorSqlite)
+	sqlc, err := prom_sql.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom_sql.FlavorSqlite)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
@@ -44,8 +45,8 @@ func newSqlConnectSqlite(driver, url, timezone string, timeoutMs int, poolOption
 	return sqlc, err
 }
 
-func newSqlConnectMssql(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
-	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorMsSql)
+func newSqlConnectMssql(driver, url, timezone string, timeoutMs int, poolOptions *prom_sql.PoolOpts) (*prom_sql.SqlConnect, error) {
+	sqlc, err := prom_sql.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom_sql.FlavorMsSql)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
@@ -53,31 +54,22 @@ func newSqlConnectMssql(driver, url, timezone string, timeoutMs int, poolOptions
 	return sqlc, err
 }
 
-func newSqlConnectMysql(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
+func newSqlConnectMysql(driver, url, timezone string, timeoutMs int, poolOptions *prom_sql.PoolOpts) (*prom_sql.SqlConnect, error) {
 	urlTimezone := strings.ReplaceAll(timezone, "/", "%2f")
 	url = strings.ReplaceAll(url, "${loc}", urlTimezone)
 	url = strings.ReplaceAll(url, "${tz}", urlTimezone)
 	url = strings.ReplaceAll(url, "${timezone}", urlTimezone)
-	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorMySql)
+	sqlc, err := prom_sql.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom_sql.FlavorMySql)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
 	}
-	sqlc.mysqlParseTime = strings.Index(url, "parseTime=true") >= 0
+	sqlc.SetMysqlParseTime(strings.Index(strings.ToLower(url), "parsetime=true") >= 0)
 	return sqlc, err
 }
 
-func newSqlConnectOracle(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
-	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorOracle)
-	if err == nil && sqlc != nil {
-		loc, _ := time.LoadLocation(timezone)
-		sqlc.SetLocation(loc)
-	}
-	return sqlc, err
-}
-
-func newSqlConnectPgsql(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
-	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorPgSql)
+func newSqlConnectOracle(driver, url, timezone string, timeoutMs int, poolOptions *prom_sql.PoolOpts) (*prom_sql.SqlConnect, error) {
+	sqlc, err := prom_sql.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom_sql.FlavorOracle)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
@@ -85,8 +77,17 @@ func newSqlConnectPgsql(driver, url, timezone string, timeoutMs int, poolOptions
 	return sqlc, err
 }
 
-func newSqlConnectCosmosdb(driver, url, timezone string, timeoutMs int, poolOptions *PoolOpts) (*SqlConnect, error) {
-	sqlc, err := NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, FlavorCosmosDb)
+func newSqlConnectPgsql(driver, url, timezone string, timeoutMs int, poolOptions *prom_sql.PoolOpts) (*prom_sql.SqlConnect, error) {
+	sqlc, err := prom_sql.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom_sql.FlavorPgSql)
+	if err == nil && sqlc != nil {
+		loc, _ := time.LoadLocation(timezone)
+		sqlc.SetLocation(loc)
+	}
+	return sqlc, err
+}
+
+func newSqlConnectCosmosdb(driver, url, timezone string, timeoutMs int, poolOptions *prom_sql.PoolOpts) (*prom_sql.SqlConnect, error) {
+	sqlc, err := prom_sql.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom_sql.FlavorCosmosDb)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
@@ -105,7 +106,7 @@ func TestNewSqlConnect(t *testing.T) {
 	driver := "mysql"
 	dsn := "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc="
 	dsn += strings.ReplaceAll(timezoneSql, "/", "%2f")
-	sqlc, err := NewSqlConnectWithFlavor(driver, dsn, 10000, nil, FlavorDefault)
+	sqlc, err := prom_sql.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom_sql.FlavorDefault)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName, err)
 	}
@@ -118,94 +119,66 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 	testName := "TestSqlConnect_GetInfo"
 	type testInfo struct {
 		driver, dsn string
-		dbFlavor    DbFlavor
+		dbFlavor    prom_sql.DbFlavor
 	}
-	testDataMap := map[string]testInfo{
-		"sqlite": {driver: "sqlite3", dsn: "./temp/temp.db", dbFlavor: FlavorSqlite},
-		//"mssql":    {driver: "sqlserver", dsn: "sqlserver://sa:secret@localhost:1433?database=tempdb", dbFlavor: FlavorMsSql},
-		//"mysql":    {driver: "mysql", dsn: "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false", dbFlavor: FlavorMySql},
-		//"oracle":   {driver: "godror", dsn: "test/test@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521)))(CONNECT_DATA=(SID=c)))", dbFlavor: FlavorOracle},
-		//"pgsql":    {driver: "pgx", dsn: "postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom", dbFlavor: FlavorPgSql},
-		//"cosmosdb": {driver: "gocosmos", dsn: "AccountEndpoint=https://localhost:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;Db=prom", dbFlavor: FlavorCosmosDb},
+	driver, dsn, dbFlavor := "sqlite3", "./temp/temp.db", prom_sql.FlavorSqlite
+	sqlc, err := newSqlConnectSqlite(driver, dsn, timezoneSql, -1, nil)
+	if err != nil {
+		t.Fatalf("%s failed: error [%s]", testName, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", testName)
 	}
-	var sqlc *SqlConnect
-	var err error
-	for k, info := range testDataMap {
-		t.Run(k, func(t *testing.T) {
-			switch k {
-			case "sqlite", "sqlite3":
-				sqlc, err = newSqlConnectSqlite(info.driver, info.dsn, timezoneSql, -1, nil)
-			case "mssql":
-				sqlc, err = newSqlConnectMssql(info.driver, info.dsn, timezoneSql, -1, nil)
-			case "mysql":
-				sqlc, err = newSqlConnectMysql(info.driver, info.dsn, timezoneSql, -1, nil)
-			case "oracle":
-				sqlc, err = newSqlConnectOracle(info.driver, info.dsn, timezoneSql, -1, nil)
-			case "pgsql", "postgresql":
-				sqlc, err = newSqlConnectPgsql(info.driver, info.dsn, timezoneSql, -1, nil)
-			case "cosmos", "cosmosdb":
-				sqlc, err = newSqlConnectCosmosdb(info.driver, info.dsn, timezoneSql, -1, nil)
-			default:
-				t.Fatalf("%s failed: unknown database type [%s]", testName, k)
-			}
-			if err != nil {
-				t.Fatalf("%s failed: error [%s]", testName, err)
-			} else if sqlc == nil {
-				t.Fatalf("%s failed: nil", testName)
-			}
-			if sqlc.GetDriver() != info.driver {
-				t.Fatalf("%s failed: expected driver %#v but received %#v", testName+"/"+k, info.driver, sqlc.GetDriver())
-			}
-			sqlc.SetDriver("_default_")
-			if sqlc.GetDriver() != "_default_" {
-				t.Fatalf("%s failed: expected driver %#v but received %#v", testName+"/"+k, "_default_", sqlc.GetDriver())
-			}
-			if sqlc.GetDsn() != info.dsn {
-				t.Fatalf("%s failed: expected dsn %#v but received %#v", testName+"/"+k, info.dsn, sqlc.GetDsn())
-			}
-			sqlc.SetDsn("_default_")
-			if sqlc.GetDsn() != "_default_" {
-				t.Fatalf("%s failed: expected dsn %#v but received %#v", testName+"/"+k, "_default_", sqlc.GetDsn())
-			}
-			sqlc.SetTimeoutMs(1234)
-			if sqlc.GetTimeoutMs() != 1234 {
-				t.Fatalf("%s failed: expected timeout %#v but received %#v", testName+"/"+k, 1234, sqlc.GetDsn())
-			}
-			if sqlc.GetLocation() == nil {
-				t.Fatalf("%s failed: GetLocation returns nil", testName+"/"+k)
-			}
-			if sqlc.GetLocation().String() != timezoneSql {
-				t.Fatalf("%s failed: expected timezone %#v but received %#v", testName+"/"+k, timezoneSql, sqlc.GetLocation().String())
-			}
-			if sqlc.GetDbFlavor() != info.dbFlavor {
-				t.Fatalf("%s failed: expected dbflavor %#v but received %#v", testName+"/"+k, info.dbFlavor, sqlc.GetDbFlavor())
-			}
-			sqlc.SetDbFlavor(FlavorDefault)
-			if sqlc.GetDbFlavor() != FlavorDefault {
-				t.Fatalf("%s failed: expected dbflavor %#v but received %#v", testName+"/"+k, FlavorDefault, sqlc.GetDbFlavor())
-			}
-			if sqlc.PoolOpts() == nil {
-				t.Fatalf("%s failed: PoolOpts is nil", testName+"/"+k)
-			}
-			sqlc.SetPoolOpts(nil)
-			if sqlc.PoolOpts() != nil {
-				t.Fatalf("%s failed: expect sqlPoolOptions to be nil", testName+"/"+k)
-			}
-			for _, value := range []bool{true, false} {
-				sqlc.SetMysqlParseTime(value)
-				if sqlc.GetMysqlParseTime() != value {
-					t.Fatalf("%s failed: expect mysqlParseTime to be %v", testName+"/"+k, value)
-				}
-			}
-			metricsLogger := prom.NewMemoryStoreMetricsLogger(1234)
-			if sqlc.MetricsLogger() == metricsLogger {
-				t.Fatalf("%s failed: expect a different metricsLogger", testName+"/"+k)
-			}
-			sqlc.RegisterMetricsLogger(metricsLogger)
-			if sqlc.MetricsLogger() != metricsLogger {
-				t.Fatalf("%s failed: expect metricsLogger to be set correctly", testName+"/"+k)
-			}
-		})
+	if sqlc.GetDriver() != driver {
+		t.Fatalf("%s failed: expected driver %#v but received %#v", testName, driver, sqlc.GetDriver())
+	}
+	sqlc.SetDriver("_default_")
+	if sqlc.GetDriver() != "_default_" {
+		t.Fatalf("%s failed: expected driver %#v but received %#v", testName, "_default_", sqlc.GetDriver())
+	}
+	if sqlc.GetDsn() != dsn {
+		t.Fatalf("%s failed: expected dsn %#v but received %#v", testName, dsn, sqlc.GetDsn())
+	}
+	sqlc.SetDsn("_default_")
+	if sqlc.GetDsn() != "_default_" {
+		t.Fatalf("%s failed: expected dsn %#v but received %#v", testName, "_default_", sqlc.GetDsn())
+	}
+	sqlc.SetTimeoutMs(1234)
+	if sqlc.GetTimeoutMs() != 1234 {
+		t.Fatalf("%s failed: expected timeout %#v but received %#v", testName, 1234, sqlc.GetDsn())
+	}
+	if sqlc.GetLocation() == nil {
+		t.Fatalf("%s failed: GetLocation returns nil", testName)
+	}
+	if sqlc.GetLocation().String() != timezoneSql {
+		t.Fatalf("%s failed: expected timezone %#v but received %#v", testName, timezoneSql, sqlc.GetLocation().String())
+	}
+	if sqlc.GetDbFlavor() != dbFlavor {
+		t.Fatalf("%s failed: expected dbflavor %#v but received %#v", testName, dbFlavor, sqlc.GetDbFlavor())
+	}
+	sqlc.SetDbFlavor(prom_sql.FlavorDefault)
+	if sqlc.GetDbFlavor() != prom_sql.FlavorDefault {
+		t.Fatalf("%s failed: expected dbflavor %#v but received %#v", testName, prom_sql.FlavorDefault, sqlc.GetDbFlavor())
+	}
+	if sqlc.PoolOpts() == nil {
+		t.Fatalf("%s failed: PoolOpts is nil", testName)
+	}
+	sqlc.SetPoolOpts(nil)
+	if sqlc.PoolOpts() != nil {
+		t.Fatalf("%s failed: expect sqlPoolOptions to be nil", testName)
+	}
+	for _, value := range []bool{true, false} {
+		sqlc.SetMysqlParseTime(value)
+		if sqlc.GetMysqlParseTime() != value {
+			t.Fatalf("%s failed: expect mysqlParseTime to be %v", testName, value)
+		}
+	}
+	metricsLogger := prom.NewMemoryStoreMetricsLogger(1234)
+	if sqlc.MetricsLogger() == metricsLogger {
+		t.Fatalf("%s failed: expect a different metricsLogger", testName)
+	}
+	sqlc.RegisterMetricsLogger(metricsLogger)
+	if sqlc.MetricsLogger() != metricsLogger {
+		t.Fatalf("%s failed: expect metricsLogger to be set correctly", testName)
 	}
 }
 
@@ -306,15 +279,15 @@ var (
 	yesNoMapping = map[bool]string{true: "Y", false: "N"}
 )
 
-func _generatePlaceholders(num int, sqlc *SqlConnect) string {
+func _generatePlaceholders(num int, sqlc *prom_sql.SqlConnect) string {
 	result := ""
 	for i := 1; i <= num; i++ {
-		switch sqlc.flavor {
-		case FlavorMsSql:
+		switch sqlc.GetDbFlavor() {
+		case prom_sql.FlavorMsSql:
 			result += "@p" + strconv.Itoa(i)
-		case FlavorOracle:
+		case prom_sql.FlavorOracle:
 			result += ":" + strconv.Itoa(i)
-		case FlavorPgSql, FlavorCosmosDb:
+		case prom_sql.FlavorPgSql, prom_sql.FlavorCosmosDb:
 			result += "$" + strconv.Itoa(i)
 		default:
 			result += "?"
@@ -326,25 +299,25 @@ func _generatePlaceholders(num int, sqlc *SqlConnect) string {
 	return result
 }
 
-func _dbtypeStr(flavor DbFlavor) string {
+func _dbtypeStr(flavor prom_sql.DbFlavor) string {
 	switch flavor {
-	case FlavorSqlite:
+	case prom_sql.FlavorSqlite:
 		return "sqlite"
-	case FlavorMsSql:
+	case prom_sql.FlavorMsSql:
 		return "mssql"
-	case FlavorMySql:
+	case prom_sql.FlavorMySql:
 		return "mysql"
-	case FlavorOracle:
+	case prom_sql.FlavorOracle:
 		return "oracle"
-	case FlavorPgSql:
+	case prom_sql.FlavorPgSql:
 		return "pgsql"
 	default:
 		return "unknown"
 	}
 }
 
-func sqlInitTable(sqlc *SqlConnect, table string, insertSampleRows bool) error {
-	if sqlc.flavor == FlavorCosmosDb {
+func sqlInitTable(sqlc *prom_sql.SqlConnect, table string, insertSampleRows bool) error {
+	if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 		sqlc.GetDB().Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS prom"))
 	}
 	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", table))
@@ -363,20 +336,20 @@ func sqlInitTable(sqlc *SqlConnect, table string, insertSampleRows bool) error {
 	}
 	partInsertValues = _generatePlaceholders(len(sqlTableColNames)-1, sqlc)
 
-	switch sqlc.flavor {
-	case FlavorSqlite, FlavorMsSql, FlavorMySql, FlavorOracle, FlavorPgSql:
+	switch sqlc.GetDbFlavor() {
+	case prom_sql.FlavorSqlite, prom_sql.FlavorMsSql, prom_sql.FlavorMySql, prom_sql.FlavorOracle, prom_sql.FlavorPgSql:
 		for i, n := 1, len(sqlTableColNames); i < n; i++ {
-			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes[_dbtypeStr(sqlc.flavor)][i-1]
+			partCreateCols += sqlTableColNames[i] + " " + sqlTableColTypes[_dbtypeStr(sqlc.GetDbFlavor())][i-1]
 			if i < n-1 {
 				partCreateCols += ","
 			}
 		}
-	case FlavorCosmosDb:
+	case prom_sql.FlavorCosmosDb:
 		sqlCreate = "CREATE COLLECTION %s WITH pk=/%s%s WITH maxru=10000"
 		partCreateCols = ""
 		pkName = sqlTableColNames[0]
 	default:
-		return fmt.Errorf("unknown database type %#v", sqlc.flavor)
+		return fmt.Errorf("unknown database type %#v", sqlc.GetDbFlavor())
 	}
 
 	sqlCreate = fmt.Sprintf(sqlCreate, table, partCreateCols, pkName)
@@ -399,7 +372,7 @@ func sqlInitTable(sqlc *SqlConnect, table string, insertSampleRows bool) error {
 			valTime = time.Now().In(sqlc.GetLocation())
 		}
 		params := []interface{}{uid, uname, isActived, valInt, valReal, valTime, valTime, valTime, valTime}
-		if sqlc.flavor == FlavorCosmosDb {
+		if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 			params = append(params, uid)
 		}
 		if _, err := sqlc.GetDB().Exec(sqlInsert, params...); err != nil {
@@ -410,18 +383,18 @@ func sqlInitTable(sqlc *SqlConnect, table string, insertSampleRows bool) error {
 }
 
 var (
-	sqlcList   []*SqlConnect
-	sqlc2List  []*SqlConnect
+	sqlcList   []*prom_sql.SqlConnect
+	sqlc2List  []*prom_sql.SqlConnect
 	dbtypeList []string
 )
 
 var _setupTestSqlConnect _testSetupOrTeardownFunc = func(t *testing.T, testName string) {
-	sqlcList = make([]*SqlConnect, 0)
-	sqlc2List = make([]*SqlConnect, 0)
+	sqlcList = make([]*prom_sql.SqlConnect, 0)
+	sqlc2List = make([]*prom_sql.SqlConnect, 0)
 	dbtypeList = make([]string, 0)
 	urlMap := sqlGetUrlFromEnv()
 	for dbtype, info := range urlMap {
-		var sqlc, sqlc2 *SqlConnect
+		var sqlc, sqlc2 *prom_sql.SqlConnect
 		var err, err2 error
 		switch dbtype {
 		case "sqlite", "sqlite3":
@@ -493,7 +466,7 @@ func TestSqlConnect_Unicode(t *testing.T) {
 				placeholders := _generatePlaceholders(2, sqlc)
 				sqlInsert = fmt.Sprintf(sqlInsert, testSqlTableName, sqlTableColNames[1], sqlTableColNames[2], placeholders)
 				params := []interface{}{strconv.Itoa(i), str}
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					params = append(params, strconv.Itoa(i))
 				}
 				_, err := sqlc.GetDB().Exec(sqlInsert, params...)
@@ -503,7 +476,7 @@ func TestSqlConnect_Unicode(t *testing.T) {
 
 				placeholders = _generatePlaceholders(1, sqlc)
 				sqlSelect := "SELECT %s FROM %s WHERE %s=%s"
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					sqlSelect = "SELECT t.%s FROM %s t WHERE t.%s=%s"
 				}
 				sqlSelect = fmt.Sprintf(sqlSelect, sqlTableColNames[2], testSqlTableName, sqlTableColNames[0], placeholders)
@@ -525,7 +498,7 @@ func TestSqlConnect_Unicode(t *testing.T) {
 			}
 
 			sqlSelect := fmt.Sprintf("SELECT %s FROM %s ORDER BY %s", sqlTableColNames[2], testSqlTableName, sqlTableColNames[0])
-			if sqlc.flavor == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				sqlSelect = fmt.Sprintf("SELECT t.%s FROM %s t WITH cross_partition=true", sqlTableColNames[2], testSqlTableName)
 			}
 			params := make([]interface{}, 0)
@@ -569,7 +542,7 @@ func TestSqlConnect_FetchRow(t *testing.T) {
 			}
 			placeholder := _generatePlaceholders(1, sqlc)
 			sqlSelect := fmt.Sprintf("SELECT * FROM %s WHERE %s=%s", testSqlTableName, sqlTableColNames[0], placeholder)
-			if sqlc.flavor == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				colList := "t." + sqlTableColNames[1]
 				for i, n := 2, len(sqlTableColNames); i < n; i++ {
 					colList += ",t." + sqlTableColNames[i]
@@ -606,7 +579,7 @@ func TestSqlConnect_FetchRows(t *testing.T) {
 			}
 			placeholder := _generatePlaceholders(1, sqlc)
 			sqlSelect := "SELECT * FROM %s WHERE userid < %s"
-			if sqlc.flavor == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				sqlSelect = "SELECT CROSS PARTITION * FROM %s t WHERE t.userid < %s"
 			}
 			i := rand.Intn(10)
@@ -645,7 +618,7 @@ func TestSqlConnect_FetchRowsCallback(t *testing.T) {
 			}
 			placeholder := _generatePlaceholders(1, sqlc)
 			sqlSelect := "SELECT * FROM %s WHERE userid < %s"
-			if sqlc.flavor == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				sqlSelect = "SELECT CROSS PARTITION * FROM %s t WHERE t.userid < %s"
 			}
 			i := rand.Intn(10)

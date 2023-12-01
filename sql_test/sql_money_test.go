@@ -1,7 +1,8 @@
-package sql
+package sql_test
 
 import (
 	"fmt"
+	prom_sql "github.com/btnguyen2k/prom/sql"
 	"math"
 	"math/rand"
 	"strings"
@@ -22,13 +23,13 @@ func TestSql_DataTypeMoney(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tblName := "test_money"
 	colNameList := sqlColNamesTestDataTypeMoney
-	colTypesMap := map[DbFlavor][]string{
-		FlavorCosmosDb: nil,
-		FlavorMsSql:    {"NVARCHAR(8)", "DEC(36,2)", "MONEY", "DECIMAL(36,6)", "NUMERIC(36,8)"},
-		FlavorMySql:    {"VARCHAR(8)", "DECIMAL(24,2)", "NUMERIC(28,4)", "DEC(32,6)", "NUMERIC(36,8)"},
-		FlavorOracle:   {"NVARCHAR2(8)", "NUMERIC(24,2)", "DECIMAL(28,4)", "DEC(32,6)", "NUMERIC(36,8)"},
-		FlavorPgSql:    {"VARCHAR(8)", "MONEY", "NUMERIC(28,4)", "DECIMAL(32,6)", "DEC(36,8)"},
-		FlavorSqlite:   {"VARCHAR(8)", "DECIMAL(24,2)", "NUMERIC(28,4)", "DEC(32,6)", "NUMERIC(36,8)"},
+	colTypesMap := map[prom_sql.DbFlavor][]string{
+		prom_sql.FlavorCosmosDb: nil,
+		prom_sql.FlavorMsSql:    {"NVARCHAR(8)", "DEC(36,2)", "MONEY", "DECIMAL(36,6)", "NUMERIC(36,8)"},
+		prom_sql.FlavorMySql:    {"VARCHAR(8)", "DECIMAL(24,2)", "NUMERIC(28,4)", "DEC(32,6)", "NUMERIC(36,8)"},
+		prom_sql.FlavorOracle:   {"NVARCHAR2(8)", "NUMERIC(24,2)", "DECIMAL(28,4)", "DEC(32,6)", "NUMERIC(36,8)"},
+		prom_sql.FlavorPgSql:    {"VARCHAR(8)", "MONEY", "NUMERIC(28,4)", "DECIMAL(32,6)", "DEC(36,8)"},
+		prom_sql.FlavorSqlite:   {"VARCHAR(8)", "DECIMAL(24,2)", "NUMERIC(28,4)", "DEC(32,6)", "NUMERIC(36,8)"},
 	}
 	type Row struct {
 		id         string
@@ -43,7 +44,7 @@ func TestSql_DataTypeMoney(t *testing.T) {
 		t.Run(dbtype, func(t *testing.T) {
 			// init table
 			sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
-			if sqlc.flavor == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				stm := fmt.Sprintf("CREATE COLLECTION %s WITH pk=/%s", tblName, colNameList[0])
 				if _, err := sqlc.GetDB().Exec(stm); err != nil {
 					t.Fatalf("%s failed: %s", testName, err)
@@ -78,7 +79,7 @@ func TestSql_DataTypeMoney(t *testing.T) {
 				}
 				rowArr = append(rowArr, row)
 				params := []interface{}{row.id, row.dataMoney2, row.dataMoney4, row.dataMoney6, row.dataMoney8}
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					params = append(params, row.id)
 				}
 				_, err := sqlc.GetDB().Exec(sql, params...)
@@ -89,7 +90,7 @@ func TestSql_DataTypeMoney(t *testing.T) {
 
 			// query some rows
 			sql = "SELECT * FROM %s ORDER BY id"
-			if sqlc.flavor == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				sql = "SELECT * FROM %s t ORDER BY t.id WITH cross_partition=true"
 			}
 			sql = fmt.Sprintf(sql, tblName)
@@ -125,7 +126,7 @@ func TestSql_DataTypeMoney(t *testing.T) {
 					e := expected.dataMoney2
 					f := colNameList[1]
 					v, err := _toFloatIfReal(row[f])
-					if sqlc.flavor == FlavorCosmosDb {
+					if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 						v, err = _toFloatIfNumber(row[f])
 					}
 					if estr, vstr := fmt.Sprintf("%.2f", e), fmt.Sprintf("%.2f", v); err != nil || vstr != estr {
@@ -136,7 +137,7 @@ func TestSql_DataTypeMoney(t *testing.T) {
 					e := expected.dataMoney4
 					f := colNameList[2]
 					v, err := _toFloatIfReal(row[f])
-					if sqlc.flavor == FlavorCosmosDb {
+					if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 						v, err = _toFloatIfNumber(row[f])
 					}
 					if estr, vstr := fmt.Sprintf("%.4f", e), fmt.Sprintf("%.4f", v); err != nil || vstr != estr {
@@ -147,7 +148,7 @@ func TestSql_DataTypeMoney(t *testing.T) {
 					e := expected.dataMoney6
 					f := colNameList[3]
 					v, err := _toFloatIfReal(row[f])
-					if sqlc.flavor == FlavorCosmosDb {
+					if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 						v, err = _toFloatIfNumber(row[f])
 					}
 					if estr, vstr := fmt.Sprintf("%.6f", e), fmt.Sprintf("%.6f", v); err != nil || vstr != estr {
@@ -159,7 +160,7 @@ func TestSql_DataTypeMoney(t *testing.T) {
 					e := expected.dataMoney8
 					f := colNameList[4]
 					v, err := _toFloatIfReal(row[f])
-					if sqlc.flavor == FlavorCosmosDb {
+					if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 						v, err = _toFloatIfNumber(row[f])
 					}
 					if estr, vstr := fmt.Sprintf("%.8f", e), fmt.Sprintf("%.8f", v); err != nil || vstr != estr {

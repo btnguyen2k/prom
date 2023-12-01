@@ -48,11 +48,10 @@ jobs:
       - name: Run tests
         run: |
           export TIMEZONE="Asia/Ho_Chi_Minh"
-          mkdir -p ./sql/temp
           export SQLITE_DRIVER="sqlite3"
           export SQLITE_URL="./temp/temp.db"
           go version
-          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_sqlite.txt ./sql/
+          cd ./sql_test && mkdir -p ./temp && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_sqlite.txt ./ & cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -81,7 +80,7 @@ jobs:
           export PGSQL_DRIVER="pgx"
           export PGSQL_URL="postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
           go version
-          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_pgsql.txt ./sql/
+          cd ./sql_test && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_pgsql.txt ./ && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -110,7 +109,7 @@ jobs:
           export MSSQL_DRIVER="sqlserver"
           export MSSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
           go version
-          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mssql.txt ./sql/
+          cd ./sql_test && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_mssql.txt ./ && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -139,7 +138,7 @@ jobs:
           export MYSQL_DRIVER="mysql"
           export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=true&loc=\${loc}"
           go version
-          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mysql_parsetime.txt ./sql/
+          cd ./sql_test && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_mysql_parsetime.txt ./ && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -151,7 +150,7 @@ jobs:
           export MYSQL_DRIVER="mysql"
           export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=\${loc}"
           go version
-          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mysql.txt ./sql/
+          cd ./sql_test && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_mysql.txt ./ && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -177,19 +176,7 @@ jobs:
         run: docker run -d --name mssql-express -e ACCEPT_EULA=Y -e SA_PASSWORD=SecretPassword1 -e MSSQL_PID=Express -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest
       - name: Start MySQL server
         run: docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_USER=test -e MYSQL_PASSWORD=test -p 3306:3306 mysql:8.2 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-      - name: Run tests with parseTime
-        run: |
-          export TIMEZONE="Asia/Ho_Chi_Minh"
-          export MYSQL_DRIVER="mysql"
-          export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=true&loc=\${loc}"
-          go version
-          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_mysql_parsetime.txt ./sql/
-      - name: Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          flags: mysql_parsetime
-          name: mysql_parsetime
-      - name: Run tests without parseTime
+      - name: Run tests
         run: |
           export TIMEZONE="Asia/Ho_Chi_Minh"
           mkdir -p ./sql/temp
@@ -202,7 +189,7 @@ jobs:
           export MYSQL_DRIVER="mysql"
           export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=true&loc=\${loc}"
           go version
-          go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage_all.txt ./sql/
+          cd ./sql_test && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_all.txt ./ && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:

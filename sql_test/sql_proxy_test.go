@@ -1,15 +1,16 @@
-package sql
+package sql_test
 
 import (
 	"context"
 	"fmt"
+	prom_sql "github.com/btnguyen2k/prom/sql"
 	"strings"
 	"testing"
 
 	"github.com/btnguyen2k/prom"
 )
 
-func _sqlcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, sqlc *SqlConnect, cmdName string, cmdCats ...string) {
+func _sqlcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, sqlc *prom_sql.SqlConnect, cmdName string, cmdCats ...string) {
 	for _, cat := range cmdCats {
 		m, err := sqlc.Metrics(cat, prom.MetricsOpts{ReturnLatestCommands: 1})
 		if err != nil {
@@ -157,7 +158,7 @@ func TestDBProxy_Exec(t *testing.T) {
 			for _, ti := range testInfoList {
 				ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
 				ti.query = strings.ReplaceAll(ti.query, `${colId}`, sqlTableColNames[1])
-				if sqlc.GetDbFlavor() == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					if ti.cmd == "SELECT" {
 						continue
 					}
@@ -206,7 +207,7 @@ func TestDBProxy_ExecContext(t *testing.T) {
 			for _, ti := range testInfoList {
 				ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
 				ti.query = strings.ReplaceAll(ti.query, `${colId}`, sqlTableColNames[1])
-				if sqlc.GetDbFlavor() == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					if ti.cmd == "SELECT" {
 						continue
 					}
@@ -251,7 +252,7 @@ func TestDBProxy_Query(t *testing.T) {
 			}
 			for _, ti := range testInfoList {
 				ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
-				if sqlc.GetDbFlavor() == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					if ti.cmd != "SELECT" {
 						continue
 					}
@@ -289,7 +290,7 @@ func TestDBProxy_QueryContext(t *testing.T) {
 			}
 			for _, ti := range testInfoList {
 				ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
-				if sqlc.GetDbFlavor() == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					if ti.cmd != "SELECT" {
 						continue
 					}
@@ -327,7 +328,7 @@ func TestDBProxy_QueryRow(t *testing.T) {
 			}
 			for _, ti := range testInfoList {
 				ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
-				if sqlc.GetDbFlavor() == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					if ti.cmd != "SELECT" {
 						continue
 					}
@@ -365,7 +366,7 @@ func TestDBProxy_QueryRowContext(t *testing.T) {
 			}
 			for _, ti := range testInfoList {
 				ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
-				if sqlc.GetDbFlavor() == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					if ti.cmd != "SELECT" {
 						continue
 					}
@@ -482,7 +483,7 @@ func TestConnProxy_ExecContext(t *testing.T) {
 			for _, ti := range testInfoList {
 				ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
 				ti.query = strings.ReplaceAll(ti.query, `${colId}`, sqlTableColNames[1])
-				if sqlc.GetDbFlavor() == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					if ti.cmd == "SELECT" {
 						continue
 					}
@@ -531,7 +532,7 @@ func TestConnProxy_QueryContext(t *testing.T) {
 			}
 			for _, ti := range testInfoList {
 				ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
-				if sqlc.GetDbFlavor() == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					if ti.cmd != "SELECT" {
 						continue
 					}
@@ -573,7 +574,7 @@ func TestConnProxy_QueryRowContext(t *testing.T) {
 			}
 			for _, ti := range testInfoList {
 				ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
-				if sqlc.GetDbFlavor() == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					if ti.cmd != "SELECT" {
 						continue
 					}
@@ -590,14 +591,14 @@ func TestConnProxy_QueryRowContext(t *testing.T) {
 
 /*---------- TxProxy ----------*/
 
-func _testTxProxy_Commit(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_Commit(testName, dbtype string, sqlc *prom_sql.SqlConnect, tx *prom_sql.TxProxy, f _testFailedWithMsgFunc) {
 	if err := tx.Commit(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	}
 	_sqlcVerifyLastCommand(f, testName, sqlc, "commit", prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
-func _testTxProxy_DBBegin_Commit(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_Commit(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -605,7 +606,7 @@ func _testTxProxy_DBBegin_Commit(testName, dbtype string, sqlc *SqlConnect, db *
 	}
 }
 
-func _testTxProxy_DBBeginTx_Commit(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_Commit(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -613,7 +614,7 @@ func _testTxProxy_DBBeginTx_Commit(testName, dbtype string, sqlc *SqlConnect, db
 	}
 }
 
-func _testTxProxy_ConnBeginTx_Commit(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_Commit(testName, dbtype string, sqlc *prom_sql.SqlConnect, conn *prom_sql.ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -631,7 +632,7 @@ func TestTxProxy_DB_Commit(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			_testTxProxy_DBBegin_Commit(testName, dbtype, sqlc, sqlc.GetDBProxy(), func(msg string) { t.Fatalf(msg) })
@@ -650,7 +651,7 @@ func TestTxProxy_Conn_Commit(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			if conn, err := sqlc.ConnProxy(nil); err != nil {
@@ -671,14 +672,14 @@ func TestTxProxy_Conn_Commit(t *testing.T) {
 	}
 }
 
-func _testTxProxy_Rollback(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_Rollback(testName, dbtype string, sqlc *prom_sql.SqlConnect, tx *prom_sql.TxProxy, f _testFailedWithMsgFunc) {
 	if err := tx.Rollback(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	}
 	_sqlcVerifyLastCommand(f, testName, sqlc, "rollback", prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
-func _testTxProxy_DBBegin_Rollback(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_Rollback(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -686,7 +687,7 @@ func _testTxProxy_DBBegin_Rollback(testName, dbtype string, sqlc *SqlConnect, db
 	}
 }
 
-func _testTxProxy_DBBeginTx_Rollback(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_Rollback(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -694,7 +695,7 @@ func _testTxProxy_DBBeginTx_Rollback(testName, dbtype string, sqlc *SqlConnect, 
 	}
 }
 
-func _testTxProxy_ConnBeginTx_Rollback(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_Rollback(testName, dbtype string, sqlc *prom_sql.SqlConnect, conn *prom_sql.ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -712,7 +713,7 @@ func TestTxProxy_DB_Rollback(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			_testTxProxy_DBBegin_Rollback(testName, dbtype, sqlc, sqlc.GetDBProxy(), func(msg string) { t.Fatalf(msg) })
@@ -731,7 +732,7 @@ func TestTxProxy_Conn_Rollback(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			if conn, err := sqlc.ConnProxy(nil); err != nil {
@@ -752,7 +753,7 @@ func TestTxProxy_Conn_Rollback(t *testing.T) {
 	}
 }
 
-func _testTxProxy_Prepare(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_Prepare(testName, dbtype string, sqlc *prom_sql.SqlConnect, tx *prom_sql.TxProxy, f _testFailedWithMsgFunc) {
 	if err := sqlInitTable(sqlc, testSqlTableName, false); err != nil {
 		f(fmt.Sprintf("%s failed: error [%s]", testName+"/sqlInitTable/"+dbtype, err))
 	}
@@ -762,7 +763,7 @@ func _testTxProxy_Prepare(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy
 	_sqlcVerifyLastCommand(f, testName, sqlc, "prepare", prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
-func _testTxProxy_DBBegin_Prepare(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_Prepare(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -771,7 +772,7 @@ func _testTxProxy_DBBegin_Prepare(testName, dbtype string, sqlc *SqlConnect, db 
 	}
 }
 
-func _testTxProxy_DBBeginTx_Prepare(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_Prepare(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -780,7 +781,7 @@ func _testTxProxy_DBBeginTx_Prepare(testName, dbtype string, sqlc *SqlConnect, d
 	}
 }
 
-func _testTxProxy_ConnBeginTx_Prepare(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_Prepare(testName, dbtype string, sqlc *prom_sql.SqlConnect, conn *prom_sql.ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -799,7 +800,7 @@ func TestTxProxy_DB_Prepare(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			_testTxProxy_DBBegin_Prepare(testName, dbtype, sqlc, sqlc.GetDBProxy(), func(msg string) { t.Fatalf(msg) })
@@ -818,7 +819,7 @@ func TestTxProxy_Conn_Prepare(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			if conn, err := sqlc.ConnProxy(nil); err != nil {
@@ -839,7 +840,7 @@ func TestTxProxy_Conn_Prepare(t *testing.T) {
 	}
 }
 
-func _testTxProxy_PrepareContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_PrepareContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, tx *prom_sql.TxProxy, f _testFailedWithMsgFunc) {
 	if err := sqlInitTable(sqlc, testSqlTableName, false); err != nil {
 		f(fmt.Sprintf("%s failed: error [%s]", testName+"/sqlInitTable/"+dbtype, err))
 	}
@@ -849,7 +850,7 @@ func _testTxProxy_PrepareContext(testName, dbtype string, sqlc *SqlConnect, tx *
 	_sqlcVerifyLastCommand(f, testName, sqlc, "prepare", prom.MetricsCatAll, prom.MetricsCatOther)
 }
 
-func _testTxProxy_DBBegin_PrepareContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_PrepareContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -858,7 +859,7 @@ func _testTxProxy_DBBegin_PrepareContext(testName, dbtype string, sqlc *SqlConne
 	}
 }
 
-func _testTxProxy_DBBeginTx_PrepareContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_PrepareContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -867,7 +868,7 @@ func _testTxProxy_DBBeginTx_PrepareContext(testName, dbtype string, sqlc *SqlCon
 	}
 }
 
-func _testTxProxy_ConnBeginTx_PrepareContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_PrepareContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, conn *prom_sql.ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -886,7 +887,7 @@ func TestTxProxy_DB_PrepareContext(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			_testTxProxy_DBBegin_PrepareContext(testName, dbtype, sqlc, sqlc.GetDBProxy(), func(msg string) { t.Fatalf(msg) })
@@ -905,7 +906,7 @@ func TestTxProxy_Conn_PrepareContext(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			if conn, err := sqlc.ConnProxy(nil); err != nil {
@@ -926,7 +927,7 @@ func TestTxProxy_Conn_PrepareContext(t *testing.T) {
 	}
 }
 
-func _testTxProxy_Exec(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_Exec(testName, dbtype string, sqlc *prom_sql.SqlConnect, tx *prom_sql.TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
@@ -944,7 +945,7 @@ func _testTxProxy_Exec(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f
 	for _, ti := range testInfoList {
 		ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
 		ti.query = strings.ReplaceAll(ti.query, `${colId}`, sqlTableColNames[1])
-		if sqlc.GetDbFlavor() == FlavorCosmosDb {
+		if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 			if ti.cmd == "SELECT" {
 				continue
 			}
@@ -964,7 +965,7 @@ func _testTxProxy_Exec(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f
 	}
 }
 
-func _testTxProxy_DBBegin_Exec(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_Exec(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -973,7 +974,7 @@ func _testTxProxy_DBBegin_Exec(testName, dbtype string, sqlc *SqlConnect, db *DB
 	}
 }
 
-func _testTxProxy_DBBeginTx_Exec(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_Exec(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -982,7 +983,7 @@ func _testTxProxy_DBBeginTx_Exec(testName, dbtype string, sqlc *SqlConnect, db *
 	}
 }
 
-func _testTxProxy_ConnBeginTx_Exec(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_Exec(testName, dbtype string, sqlc *prom_sql.SqlConnect, conn *prom_sql.ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1001,7 +1002,7 @@ func TestTxProxy_DB_Exec(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			_testTxProxy_DBBegin_Exec(testName, dbtype, sqlc, sqlc.GetDBProxy(), func(msg string) { t.Fatalf(msg) })
@@ -1020,7 +1021,7 @@ func TestTxProxy_Conn_Exec(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			if conn, err := sqlc.ConnProxy(nil); err != nil {
@@ -1041,7 +1042,7 @@ func TestTxProxy_Conn_Exec(t *testing.T) {
 	}
 }
 
-func _testTxProxy_ExecContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ExecContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, tx *prom_sql.TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
@@ -1059,7 +1060,7 @@ func _testTxProxy_ExecContext(testName, dbtype string, sqlc *SqlConnect, tx *TxP
 	for _, ti := range testInfoList {
 		ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
 		ti.query = strings.ReplaceAll(ti.query, `${colId}`, sqlTableColNames[1])
-		if sqlc.GetDbFlavor() == FlavorCosmosDb {
+		if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 			if ti.cmd == "SELECT" {
 				continue
 			}
@@ -1079,7 +1080,7 @@ func _testTxProxy_ExecContext(testName, dbtype string, sqlc *SqlConnect, tx *TxP
 	}
 }
 
-func _testTxProxy_DBBegin_ExecContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_ExecContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1088,7 +1089,7 @@ func _testTxProxy_DBBegin_ExecContext(testName, dbtype string, sqlc *SqlConnect,
 	}
 }
 
-func _testTxProxy_DBBeginTx_ExecContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_ExecContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1097,7 +1098,7 @@ func _testTxProxy_DBBeginTx_ExecContext(testName, dbtype string, sqlc *SqlConnec
 	}
 }
 
-func _testTxProxy_ConnBeginTx_ExecContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_ExecContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, conn *prom_sql.ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1116,7 +1117,7 @@ func TestTxProxy_DB_ExecContext(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			_testTxProxy_DBBegin_ExecContext(testName, dbtype, sqlc, sqlc.GetDBProxy(), func(msg string) { t.Fatalf(msg) })
@@ -1135,7 +1136,7 @@ func TestTxProxy_Conn_ExecContext(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			if conn, err := sqlc.ConnProxy(nil); err != nil {
@@ -1156,7 +1157,7 @@ func TestTxProxy_Conn_ExecContext(t *testing.T) {
 	}
 }
 
-func _testTxProxy_Query(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_Query(testName, dbtype string, sqlc *prom_sql.SqlConnect, tx *prom_sql.TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
@@ -1170,7 +1171,7 @@ func _testTxProxy_Query(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, 
 	}
 	for _, ti := range testInfoList {
 		ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
-		if sqlc.GetDbFlavor() == FlavorCosmosDb {
+		if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 			if ti.cmd != "SELECT" {
 				continue
 			}
@@ -1183,7 +1184,7 @@ func _testTxProxy_Query(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, 
 	}
 }
 
-func _testTxProxy_DBBegin_Query(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_Query(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1192,7 +1193,7 @@ func _testTxProxy_DBBegin_Query(testName, dbtype string, sqlc *SqlConnect, db *D
 	}
 }
 
-func _testTxProxy_DBBeginTx_Query(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_Query(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1201,7 +1202,7 @@ func _testTxProxy_DBBeginTx_Query(testName, dbtype string, sqlc *SqlConnect, db 
 	}
 }
 
-func _testTxProxy_ConnBeginTx_Query(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_Query(testName, dbtype string, sqlc *prom_sql.SqlConnect, conn *prom_sql.ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1220,7 +1221,7 @@ func TestTxProxy_DB_Query(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			_testTxProxy_DBBegin_Query(testName, dbtype, sqlc, sqlc.GetDBProxy(), func(msg string) { t.Fatalf(msg) })
@@ -1239,7 +1240,7 @@ func TestTxProxy_Conn_Query(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			if conn, err := sqlc.ConnProxy(nil); err != nil {
@@ -1260,7 +1261,7 @@ func TestTxProxy_Conn_Query(t *testing.T) {
 	}
 }
 
-func _testTxProxy_QueryContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_QueryContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, tx *prom_sql.TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
@@ -1274,7 +1275,7 @@ func _testTxProxy_QueryContext(testName, dbtype string, sqlc *SqlConnect, tx *Tx
 	}
 	for _, ti := range testInfoList {
 		ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
-		if sqlc.GetDbFlavor() == FlavorCosmosDb {
+		if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 			if ti.cmd != "SELECT" {
 				continue
 			}
@@ -1287,7 +1288,7 @@ func _testTxProxy_QueryContext(testName, dbtype string, sqlc *SqlConnect, tx *Tx
 	}
 }
 
-func _testTxProxy_DBBegin_QueryContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_QueryContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1296,7 +1297,7 @@ func _testTxProxy_DBBegin_QueryContext(testName, dbtype string, sqlc *SqlConnect
 	}
 }
 
-func _testTxProxy_DBBeginTx_QueryContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_QueryContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1305,7 +1306,7 @@ func _testTxProxy_DBBeginTx_QueryContext(testName, dbtype string, sqlc *SqlConne
 	}
 }
 
-func _testTxProxy_ConnBeginTx_QueryContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_QueryContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, conn *prom_sql.ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1324,7 +1325,7 @@ func TestTxProxy_DB_QueryContext(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			_testTxProxy_DBBegin_QueryContext(testName, dbtype, sqlc, sqlc.GetDBProxy(), func(msg string) { t.Fatalf(msg) })
@@ -1343,7 +1344,7 @@ func TestTxProxy_Conn_QueryContext(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			if conn, err := sqlc.ConnProxy(nil); err != nil {
@@ -1364,7 +1365,7 @@ func TestTxProxy_Conn_QueryContext(t *testing.T) {
 	}
 }
 
-func _testTxProxy_QueryRow(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_QueryRow(testName, dbtype string, sqlc *prom_sql.SqlConnect, tx *prom_sql.TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
@@ -1378,7 +1379,7 @@ func _testTxProxy_QueryRow(testName, dbtype string, sqlc *SqlConnect, tx *TxProx
 	}
 	for _, ti := range testInfoList {
 		ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
-		if sqlc.GetDbFlavor() == FlavorCosmosDb {
+		if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 			if ti.cmd != "SELECT" {
 				continue
 			}
@@ -1391,7 +1392,7 @@ func _testTxProxy_QueryRow(testName, dbtype string, sqlc *SqlConnect, tx *TxProx
 	}
 }
 
-func _testTxProxy_DBBegin_QueryRow(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_QueryRow(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1400,7 +1401,7 @@ func _testTxProxy_DBBegin_QueryRow(testName, dbtype string, sqlc *SqlConnect, db
 	}
 }
 
-func _testTxProxy_DBBeginTx_QueryRow(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_QueryRow(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1409,7 +1410,7 @@ func _testTxProxy_DBBeginTx_QueryRow(testName, dbtype string, sqlc *SqlConnect, 
 	}
 }
 
-func _testTxProxy_ConnBeginTx_QueryRow(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_QueryRow(testName, dbtype string, sqlc *prom_sql.SqlConnect, conn *prom_sql.ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1428,7 +1429,7 @@ func TestTxProxy_DB_QueryRow(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			_testTxProxy_DBBegin_QueryRow(testName, dbtype, sqlc, sqlc.GetDBProxy(), func(msg string) { t.Fatalf(msg) })
@@ -1447,7 +1448,7 @@ func TestTxProxy_Conn_QueryRow(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			if conn, err := sqlc.ConnProxy(nil); err != nil {
@@ -1468,7 +1469,7 @@ func TestTxProxy_Conn_QueryRow(t *testing.T) {
 	}
 }
 
-func _testTxProxy_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, tx *TxProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_QueryRowContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, tx *prom_sql.TxProxy, f _testFailedWithMsgFunc) {
 	type testInfo struct {
 		cmd, query string
 		params     []interface{}
@@ -1482,7 +1483,7 @@ func _testTxProxy_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, tx 
 	}
 	for _, ti := range testInfoList {
 		ti.query = strings.ReplaceAll(ti.query, `${table}`, testSqlTableName)
-		if sqlc.GetDbFlavor() == FlavorCosmosDb {
+		if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 			if ti.cmd != "SELECT" {
 				continue
 			}
@@ -1495,7 +1496,7 @@ func _testTxProxy_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, tx 
 	}
 }
 
-func _testTxProxy_DBBegin_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBegin_QueryRowContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginProxy(); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1504,7 +1505,7 @@ func _testTxProxy_DBBegin_QueryRowContext(testName, dbtype string, sqlc *SqlConn
 	}
 }
 
-func _testTxProxy_DBBeginTx_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, db *DBProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_DBBeginTx_QueryRowContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, db *prom_sql.DBProxy, f _testFailedWithMsgFunc) {
 	if tx, err := db.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1513,7 +1514,7 @@ func _testTxProxy_DBBeginTx_QueryRowContext(testName, dbtype string, sqlc *SqlCo
 	}
 }
 
-func _testTxProxy_ConnBeginTx_QueryRowContext(testName, dbtype string, sqlc *SqlConnect, conn *ConnProxy, f _testFailedWithMsgFunc) {
+func _testTxProxy_ConnBeginTx_QueryRowContext(testName, dbtype string, sqlc *prom_sql.SqlConnect, conn *prom_sql.ConnProxy, f _testFailedWithMsgFunc) {
 	if tx, err := conn.BeginTxProxy(context.TODO(), nil); err != nil {
 		f(fmt.Sprintf("%s failed: %s", testName+"/"+dbtype, err))
 	} else {
@@ -1532,7 +1533,7 @@ func TestTxProxy_DB_QueryRowContext(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			_testTxProxy_DBBegin_QueryRowContext(testName, dbtype, sqlc, sqlc.GetDBProxy(), func(msg string) { t.Fatalf(msg) })
@@ -1551,7 +1552,7 @@ func TestTxProxy_Conn_QueryRowContext(t *testing.T) {
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
 		t.Run(dbtype, func(t *testing.T) {
-			if sqlc.GetDbFlavor() == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				t.SkipNow()
 			}
 			if conn, err := sqlc.ConnProxy(nil); err != nil {

@@ -1,8 +1,9 @@
-package sql
+package sql_test
 
 import (
 	"errors"
 	"fmt"
+	prom_sql "github.com/btnguyen2k/prom/sql"
 	"math/rand"
 	"reflect"
 	"strings"
@@ -55,25 +56,25 @@ func TestSql_DataTypeInt(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tblName := "test_int"
 	colNameList := sqlColNamesTestDataTypeInt
-	colTypesMap := map[DbFlavor][]string{
-		FlavorCosmosDb: nil,
-		FlavorMsSql: {"NVARCHAR(8)",
+	colTypesMap := map[prom_sql.DbFlavor][]string{
+		prom_sql.FlavorCosmosDb: nil,
+		prom_sql.FlavorMsSql: {"NVARCHAR(8)",
 			"INT", "INTEGER", "DECIMAL(32,0)", "DECIMAL(36,0)", "NUMERIC(38,0)",
 			"TINYINT", "SMALLINT", "INT", "BIGINT",
 			"TINYINT", "SMALLINT", "INTEGER", "BIGINT"},
-		FlavorMySql: {"NVARCHAR(8)",
+		prom_sql.FlavorMySql: {"NVARCHAR(8)",
 			"INT", "INTEGER", "DECIMAL(32,0)", "NUMERIC(36,0)", "NUMERIC(40,0)",
 			"TINYINT", "SMALLINT", "MEDIUMINT", "BIGINT",
 			"TINYINT", "SMALLINT", "MEDIUMINT", "BIGINT"},
-		FlavorOracle: {"NVARCHAR2(8)",
+		prom_sql.FlavorOracle: {"NVARCHAR2(8)",
 			"INT", "INTEGER", "NUMERIC(38,0)", "NUMBER(38,0)", "DECIMAL(38,0)",
 			"NUMERIC(3,0)", "SMALLINT", "DECIMAL(19,0)", "DEC(38,0)",
 			"DEC(4,0)", "NUMBER(8,0)", "DECIMAL(16,0)", "NUMERIC(32,0)"},
-		FlavorPgSql: {"VARCHAR(8)",
+		prom_sql.FlavorPgSql: {"VARCHAR(8)",
 			"INT", "INTEGER", "INT", "INTEGER", "INT",
 			"INT", "SMALLINT", "INTEGER", "BIGINT",
 			"INT", "INT2", "INT4", "INT8"},
-		FlavorSqlite: {"NVARCHAR(8)",
+		prom_sql.FlavorSqlite: {"NVARCHAR(8)",
 			"INT", "INTEGER", "INTEGER", "INT", "INT",
 			"TINYINT", "SMALLINT", "MEDIUMINT", "BIGINT",
 			"INT1", "INT2", "INT4", "INT8"},
@@ -100,7 +101,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 		t.Run(dbtype, func(t *testing.T) {
 			// init table
 			sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
-			if sqlc.flavor == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				stm := fmt.Sprintf("CREATE COLLECTION %s WITH pk=/%s", tblName, colNameList[0])
 				if _, err := sqlc.GetDB().Exec(stm); err != nil {
 					t.Fatalf("%s failed: %s", testName, err)
@@ -125,7 +126,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 			sql += _generatePlaceholders(len(colNameList), sqlc) + ")"
 			for i := 1; i <= numRows; i++ {
 				vInt := rand.Int63()
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					vInt >>= 63 - 48
 				}
 				row := Row{
@@ -148,7 +149,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				params := []interface{}{row.id, row.dataInt, row.dataInteger, row.dataDecimal, row.dataNumber, row.dataNumeric,
 					row.dataTinyInt, row.dataSmallInt, row.dataMediumInt, row.dataBigInt,
 					row.dataInt1, row.dataInt2, row.dataInt4, row.dataInt8}
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					params = append(params, row.id)
 				}
 				_, err := sqlc.GetDB().Exec(sql, params...)
@@ -161,7 +162,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 			id := rand.Intn(numRows) + 1
 			placeholder := _generatePlaceholders(1, sqlc)
 			sql = "SELECT * FROM %s WHERE id>=%s ORDER BY id"
-			if sqlc.flavor == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				sql = "SELECT * FROM %s t WHERE t.id>=%s WITH cross_partition=true"
 			}
 			sql = fmt.Sprintf(sql, tblName, placeholder)
@@ -198,7 +199,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataInt)
 				f := colNameList[1]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -209,7 +210,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataInteger)
 				f := colNameList[2]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -220,7 +221,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataDecimal)
 				f := colNameList[3]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -231,7 +232,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataNumber)
 				f := colNameList[4]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -242,7 +243,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataNumeric)
 				f := colNameList[5]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -253,7 +254,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataTinyInt)
 				f := colNameList[6]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -264,7 +265,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataSmallInt)
 				f := colNameList[7]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -275,7 +276,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataMediumInt)
 				f := colNameList[8]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -286,7 +287,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataBigInt)
 				f := colNameList[9]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -297,7 +298,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataInt1)
 				f := colNameList[10]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -308,7 +309,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataInt2)
 				f := colNameList[11]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -319,7 +320,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataInt4)
 				f := colNameList[12]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {
@@ -330,7 +331,7 @@ func TestSql_DataTypeInt(t *testing.T) {
 				e := int64(expected.dataInt8)
 				f := colNameList[13]
 				v, err := _toIntIfInteger(row[f])
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					v, err = _toIntIfNumber(row[f])
 				}
 				if err != nil || v != e {

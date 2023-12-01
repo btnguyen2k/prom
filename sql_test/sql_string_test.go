@@ -1,8 +1,9 @@
-package sql
+package sql_test
 
 import (
 	"encoding/base64"
 	"fmt"
+	prom_sql "github.com/btnguyen2k/prom/sql"
 	"math/rand"
 	"reflect"
 	"strings"
@@ -25,25 +26,25 @@ func TestSql_DataTypeString(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	tblName := "test_string"
 	colNameList := sqlColNamesTestDataTypeString
-	colTypesMap := map[DbFlavor][]string{
-		FlavorCosmosDb: nil,
-		FlavorMsSql: {"NVARCHAR(8)",
+	colTypesMap := map[prom_sql.DbFlavor][]string{
+		prom_sql.FlavorCosmosDb: nil,
+		prom_sql.FlavorMsSql: {"NVARCHAR(8)",
 			"CHAR(255)", "VARCHAR(255)", "VARBINARY(255)", "TEXT",
 			"NCHAR(255)", "NVARCHAR(255)", "NTEXT",
 			"TEXT", "NTEXT", "IMAGE"},
-		FlavorMySql: {"VARCHAR(8)",
+		prom_sql.FlavorMySql: {"VARCHAR(8)",
 			"CHAR(255)", "VARCHAR(255)", "VARBINARY(255)", "TEXT",
 			"CHAR(255)", "VARCHAR(255)", "TEXT",
 			"MEDIUMTEXT", "LONGTEXT", "BLOB"},
-		FlavorOracle: {"NVARCHAR2(8)",
+		prom_sql.FlavorOracle: {"NVARCHAR2(8)",
 			"CHAR(255)", "VARCHAR2(255)", "RAW(255)", "CLOB",
 			"NCHAR(255)", "NVARCHAR2(255)", "NCLOB",
 			"CLOB", "NCLOB", "BLOB"},
-		FlavorPgSql: {"VARCHAR(8)",
+		prom_sql.FlavorPgSql: {"VARCHAR(8)",
 			"CHAR(255)", "VARCHAR(255)", "BYTEA", "TEXT",
 			"CHAR(255)", "VARCHAR(255)", "TEXT",
 			"TEXT", "TEXT", "BYTEA"},
-		FlavorSqlite: {"VARCHAR(8)",
+		prom_sql.FlavorSqlite: {"VARCHAR(8)",
 			"CHAR(255)", "VARCHAR(255)", "BLOB", "TEXT",
 			"NCHAR(255)", "NVARCHAR(255)", "TEXT",
 			"CLOB", "TEXT", "BLOB"},
@@ -67,7 +68,7 @@ func TestSql_DataTypeString(t *testing.T) {
 		t.Run(dbtype, func(t *testing.T) {
 			// init table
 			sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tblName))
-			if sqlc.flavor == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				stm := fmt.Sprintf("CREATE COLLECTION %s WITH pk=/%s", tblName, colNameList[0])
 				if _, err := sqlc.GetDB().Exec(stm); err != nil {
 					t.Fatalf("%s failed: %s", testName, err)
@@ -109,7 +110,7 @@ func TestSql_DataTypeString(t *testing.T) {
 				params := []interface{}{row.id, row.dataChar,
 					row.dataVchar, row.dataBinchar, row.dataText, row.dataUchar, row.dataUvchar, row.dataUtext,
 					row.dataClob, row.dataUclob, row.dataBlob}
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					params = append(params, row.id)
 				}
 				_, err := sqlc.GetDB().Exec(sql, params...)
@@ -122,7 +123,7 @@ func TestSql_DataTypeString(t *testing.T) {
 			id := rand.Intn(numRows) + 1
 			placeholder := _generatePlaceholders(1, sqlc)
 			sql = "SELECT * FROM %s WHERE id>=%s ORDER BY id"
-			if sqlc.flavor == FlavorCosmosDb {
+			if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 				sql = "SELECT * FROM %s t WHERE t.id>=%s ORDER BY t.id WITH cross_partition=true"
 			}
 			sql = fmt.Sprintf(sql, tblName, placeholder)
@@ -175,7 +176,7 @@ func TestSql_DataTypeString(t *testing.T) {
 				e := expected.dataBinchar
 				f := colNameList[3]
 				v, ok := row[f].([]byte)
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					var t string
 					t, ok = row[f].(string)
 					if ok {
@@ -240,7 +241,7 @@ func TestSql_DataTypeString(t *testing.T) {
 				e := expected.dataBlob
 				f := colNameList[10]
 				v, ok := row[f].([]byte)
-				if sqlc.flavor == FlavorCosmosDb {
+				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					var t string
 					t, ok = row[f].(string)
 					if ok {

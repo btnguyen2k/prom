@@ -57,9 +57,6 @@ type SqlConnect struct {
 	dbProxy        *DBProxy       // (since v0.3.0) wrapper around the real sql.DB instance
 	loc            *time.Location // timezone location to parse date/time data, new since v0.1.2
 	mysqlParseTime bool           // set to 'true' if specifying parseTime=true in MySQL connection string, new since v0.2.12
-
-	//poolOptions    *PoolOpts           // connection pool options
-	//metricsLogger  prom.IMetricsLogger // (since v0.3.0) if non-nil, SqlConnect automatically logs executing commands.
 }
 
 // NewSqlConnectWithFlavor constructs a new SqlConnect instance.
