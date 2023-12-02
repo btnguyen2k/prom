@@ -13,7 +13,10 @@ Supported/Tested databases and drivers:
   - PostgreSQL versions: 11, 12, 13, 14, 15, 16
   - Drivers:
     - [github.com/jackc/pgx/v5](https://github.com/jackc/pgx): pure Go
-
+- MySQL:
+  - MySQL versions: 5.7, 8.0, 8.2
+  - Drivers:
+    - [github.com/go-sql-driver/mysql](github.com/go-sql-driver/mysql): pure Go
 
 > Supported/Tested libraries/drivers+version:
 > - [x] Azure Cosmos DB: [github.com/btnguyen2k/gocosmos](https://github.com/btnguyen2k/gocosmos) v0.1.6

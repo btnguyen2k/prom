@@ -56,9 +56,10 @@ jobs:
           go version
           cd ./sql_test \
             && mkdir -p ./temp \
-            && cp -f driver_test_sqlite1.test driver_test.go && go mod tidy \
+            && cp -f driver_test_sqlite1.test driver_test.go \
+            && cp -f go.mod go.mod.backup && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile=../coverage_sqlite_1.txt ./ \
-            && cd ..
+            && cp -f go.mod.backup go.mod && cd ..
       - name: Run tests (driver modernc.org/sqlite)
         run: |
           export TIMEZONE="Asia/Ho_Chi_Minh"
@@ -67,9 +68,10 @@ jobs:
           go version
           cd ./sql_test \
             && mkdir -p ./temp \
-            && cp -f driver_test_sqlite2.test driver_test.go && go mod tidy \
+            && cp -f driver_test_sqlite2.test driver_test.go \
+            && cp -f go.mod go.mod.backup && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile=../coverage_sqlite_2.txt ./ \
-            && cd ..
+            && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -99,9 +101,10 @@ jobs:
           export PGSQL_URL="postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
           go version
           cd ./sql_test \
-            && cp -f driver_test_pgsql1.test driver_test.go && go mod tidy \
+            && cp -f driver_test_pgsql1.test driver_test.go \
+            && cp -f go.mod go.mod.backup && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_pgsql_1.txt ./ \
-            && cd ..
+            && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -136,48 +139,51 @@ jobs:
 #        with:
 #          flags: mssql
 #          name: mssql
-#
-#  TestMySql:
-#    runs-on: ubuntu-latest
-#    strategy:
-#      matrix:
-#        go: [ '1.18', 'oldstable', 'stable' ]
-#        mysql: [ '5.7', '8.0', '8.2' ]
-#    name: Run MySQL ${{ matrix.mysql }} tests with Go ${{ matrix.go }}
-#    steps:
-#      - name: Check out code
-#        uses: actions/checkout@v4
-#      - name: Set up Go env
-#        uses: actions/setup-go@v4
-#        with:
-#          go-version: ${{ matrix.go }}
-#      - name: Start MySQL server
-#        run: docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_USER=test -e MYSQL_PASSWORD=test -p 3306:3306 mysql:${{ matrix.mysql }} --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-#      - name: Run tests with parseTime
-#        run: |
-#          export TIMEZONE="Asia/Ho_Chi_Minh"
-#          export MYSQL_DRIVER="mysql"
-#          export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=true&loc=\${loc}"
-#          go version
-#          cd ./sql_test && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_mysql_parsetime.txt ./ && cd ..
-#      - name: Codecov
-#        uses: codecov/codecov-action@v3
-#        with:
-#          flags: mysql_parsetime
-#          name: mysql_parsetime
-#      - name: Run tests without parseTime
-#        run: |
-#          export TIMEZONE="Asia/Ho_Chi_Minh"
-#          export MYSQL_DRIVER="mysql"
-#          export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=\${loc}"
-#          go version
-#          cd ./sql_test && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_mysql.txt ./ && cd ..
-#      - name: Codecov
-#        uses: codecov/codecov-action@v3
-#        with:
-#          flags: mysql
-#          name: mysql
-#
+
+  TestMySql:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.18', 'oldstable', 'stable' ]
+        mysql: [ '5.7', '8.0', '8.2' ]
+    name: Run MySQL ${{ matrix.mysql }} tests with Go ${{ matrix.go }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Start MySQL server
+        run: docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=test -e MYSQL_DATABASE=test -e MYSQL_USER=test -e MYSQL_PASSWORD=test -p 3306:3306 mysql:${{ matrix.mysql }} --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      - name: Run tests with parseTime (driver github.com/go-sql-driver/mysql)
+        run: |
+          export TIMEZONE="Asia/Ho_Chi_Minh"
+          export MYSQL_DRIVER="mysql"
+          export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=true&loc=\${loc}"
+          go version
+          cd ./sql_test \
+            && cp -f driver_test_mysql1.test driver_test.go \
+            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_mysql_1_parsetime.txt ./ \
+            && cp -f go.mod.backup go.mod && cd ..
+      - name: Run tests without parseTime (driver github.com/go-sql-driver/mysql)
+        run: |
+          export TIMEZONE="Asia/Ho_Chi_Minh"
+          export MYSQL_DRIVER="mysql"
+          export MYSQL_URL="test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc=\${loc}"
+          go version
+          cd ./sql_test \
+            && cp -f driver_test_mysql1.test driver_test.go \
+            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_mysql_1.txt ./ \
+            && cp -f go.mod.backup go.mod && cd ..
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          flags: mysql
+          name: mysql
+
 #  TestCoverage:
 #    runs-on: ubuntu-latest
 #    strategy:
