@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.18', 'oldstable', 'stable' ]
+        go: [ '1.19', 'oldstable', 'stable' ]
     name: Run SQLite tests with Go ${{ matrix.go }}
     steps:
       - name: Check out code
@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.18', 'oldstable', 'stable' ]
+        go: [ '1.19', 'oldstable', 'stable' ]
         pgsql: [ '11', '12', '13', '14', '15', '16' ]
     name: Run PostgreSQL ${{ matrix.pgsql }} tests with Go ${{ matrix.go }}
     steps:
