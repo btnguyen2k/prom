@@ -6,9 +6,13 @@ This package helps with managing shared `database/sql` connections and handling 
 
 Supported/Tested databases and drivers:
 - SQLite:
-  - [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3): CGO
-  - [modernc.org/sqlite](https://modernc.org/sqlite): pure Go
-
+  - Drivers:
+    - [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3): CGO
+    - [modernc.org/sqlite](https://modernc.org/sqlite): pure Go
+- PostgreSQL:
+  - PostgreSQL versions: 11, 12, 13, 14, 15, 16
+  - Drivers:
+    - [github.com/jackc/pgx/v5](https://github.com/jackc/pgx): pure Go
 
 
 > Supported/Tested libraries/drivers+version:
