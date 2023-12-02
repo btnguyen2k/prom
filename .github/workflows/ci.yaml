@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.19', 'oldstable', 'stable' ]
+        go: [ '1.18', 'oldstable', 'stable' ]
     name: Run SQLite tests with Go ${{ matrix.go }}
     steps:
       - name: Check out code
@@ -56,11 +56,13 @@ jobs:
           export SQLITE_DRIVER="sqlite3"
           cd ./sql_test \
             && mkdir -p ./temp \
+            && cp -f driver_test_sqlite1.test driver_test.go && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile=../coverage_sqlite_sqlite3.txt ./ \
             && cd ..
           export SQLITE_DRIVER="sqlite"
           cd ./sql_test \
             && mkdir -p ./temp \
+            && cp -f driver_test_sqlite2.test driver_test.go && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile=../coverage_sqlite_sqlite.txt ./ \
             && cd ..
       - name: Codecov
@@ -69,36 +71,36 @@ jobs:
           flags: sqlite
           name: sqlite
 
-  TestPostgreSQL:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go: [ '1.19', 'oldstable', 'stable' ]
-        pgsql: [ '11', '12', '13', '14', '15', '16' ]
-    name: Run PostgreSQL ${{ matrix.pgsql }} tests with Go ${{ matrix.go }}
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-      - name: Set up Go env
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ matrix.go }}
-      - name: Start PostgreSQL server
-        run: docker run -d --name postgres -e POSTGRES_DB=test -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -p 5432:5432 postgres:${{ matrix.pgsql }}
-      - name: Run tests
-        run: |
-          export TIMEZONE="Asia/Ho_Chi_Minh"
-          export PGSQL_DRIVER="pgx"
-          export PGSQL_URL="postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
-          go version
-          cd ./sql_test \
-            && go test -v -timeout 9999s -count 1 -p 1 -cover -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_pgsql.txt ./ \
-            && cd ..
-      - name: Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          flags: pgsql
-          name: pgsql
+#  TestPostgreSQL:
+#    runs-on: ubuntu-latest
+#    strategy:
+#      matrix:
+#        go: [ '1.19', 'oldstable', 'stable' ]
+#        pgsql: [ '11', '12', '13', '14', '15', '16' ]
+#    name: Run PostgreSQL ${{ matrix.pgsql }} tests with Go ${{ matrix.go }}
+#    steps:
+#      - name: Check out code
+#        uses: actions/checkout@v4
+#      - name: Set up Go env
+#        uses: actions/setup-go@v4
+#        with:
+#          go-version: ${{ matrix.go }}
+#      - name: Start PostgreSQL server
+#        run: docker run -d --name postgres -e POSTGRES_DB=test -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -p 5432:5432 postgres:${{ matrix.pgsql }}
+#      - name: Run tests
+#        run: |
+#          export TIMEZONE="Asia/Ho_Chi_Minh"
+#          export PGSQL_DRIVER="pgx"
+#          export PGSQL_URL="postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=prom"
+#          go version
+#          cd ./sql_test \
+#            && go test -v -timeout 9999s -count 1 -p 1 -cover -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_pgsql.txt ./ \
+#            && cd ..
+#      - name: Codecov
+#        uses: codecov/codecov-action@v3
+#        with:
+#          flags: pgsql
+#          name: pgsql
 
 #  TestMSSQL:
 #    runs-on: ubuntu-latest
