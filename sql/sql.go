@@ -546,10 +546,11 @@ func toFloatIfValidReal(v interface{}) (float64, error) {
 }
 
 const (
-	dtlayout     = "2006-01-02 15:04:05"
-	dtlayoutTz   = "2006-01-02 15:04:05-07"
-	dtlayoutTzz  = "2006-01-02 15:04:05-07:00"
-	dtlayoutNano = "2006-01-02 15:04:05.999999999"
+	dtlayout           = "2006-01-02 15:04:05"
+	dtlayoutTz         = "2006-01-02 15:04:05-07"
+	dtlayoutTzz        = "2006-01-02 15:04:05-07:00"
+	dtlayoutNanoTzzTzz = "2006-01-02 15:04:05.999999999 -0700 -0700"
+	dtlayoutNano       = "2006-01-02 15:04:05.999999999"
 )
 
 func (sc *SqlConnect) _scanMysqlDateTimeFromRawBytes(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
@@ -630,6 +631,7 @@ func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *
 	return err
 }
 
+// handle date/time types with drivers github.com/mattn/go-sqlite3 and modernc.org/sqlite
 func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
 	loc := sc.ensureLocation()
 	str, ok := val.(string)
@@ -643,8 +645,14 @@ func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.
 	if ok {
 		// date/time is fetched as string/[]byte, with timezone info
 		var err error
-		result[v.Name()], err = time.Parse(dtlayoutTzz, str)
-		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+		for _, dtLayout := range []string{dtlayoutTzz, dtlayoutNanoTzzTzz} {
+			// datetime layouts used by github.com/mattn/go-sqlite3 and modernc.org/sqlite
+			result[v.Name()], err = time.Parse(dtLayout, str)
+			if err == nil {
+				result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+				break
+			}
+		}
 		return err
 	}
 

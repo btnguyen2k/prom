@@ -12,12 +12,13 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/btnguyen2k/gocosmos"
-	_ "github.com/denisenkom/go-mssqldb"
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/godror/godror"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	//_ "github.com/btnguyen2k/gocosmos"
+	//_ "github.com/denisenkom/go-mssqldb"
+	//_ "github.com/go-sql-driver/mysql"
+	//_ "github.com/godror/godror"
+	//_ "github.com/jackc/pgx/v4/stdlib"
 	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 type _testFailedWithMsgFunc func(msg string)
@@ -101,27 +102,9 @@ const (
 	timezoneSql2 = "Europe/Rome"
 )
 
-func TestNewSqlConnect(t *testing.T) {
-	testName := "TestNewSqlConnect"
-	driver := "mysql"
-	dsn := "test:test@tcp(localhost:3306)/test?charset=utf8mb4,utf8&parseTime=false&loc="
-	dsn += strings.ReplaceAll(timezoneSql, "/", "%2f")
-	sqlc, err := prom_sql.NewSqlConnectWithFlavor(driver, dsn, 10000, nil, prom_sql.FlavorDefault)
-	if err != nil {
-		t.Fatalf("%s failed: error [%s]", testName, err)
-	}
-	if sqlc == nil {
-		t.Fatalf("%s failed: nil", testName)
-	}
-}
-
 func TestSqlConnect_GetInfo(t *testing.T) {
 	testName := "TestSqlConnect_GetInfo"
-	type testInfo struct {
-		driver, dsn string
-		dbFlavor    prom_sql.DbFlavor
-	}
-	driver, dsn, dbFlavor := "sqlite3", "./temp/temp.db", prom_sql.FlavorSqlite
+	driver, dsn, dbFlavor := "sqlite", "./temp/temp.db", prom_sql.FlavorSqlite
 	sqlc, err := newSqlConnectSqlite(driver, dsn, timezoneSql, -1, nil)
 	if err != nil {
 		t.Fatalf("%s failed: error [%s]", testName, err)
@@ -630,13 +613,15 @@ func TestSqlConnect_FetchRowsCallback(t *testing.T) {
 				t.Fatalf("%s failed: nil", testName+"/Query/"+dbtype)
 			}
 			dataRows := make([]map[string]interface{}, 0)
-			sqlc.FetchRowsCallback(dbRows, func(row map[string]interface{}, err error) bool {
+			if err := sqlc.FetchRowsCallback(dbRows, func(row map[string]interface{}, err error) bool {
 				if err != nil {
 					return false
 				}
 				dataRows = append(dataRows, row)
 				return true
-			})
+			}); err != nil {
+				t.Fatalf("%s failed: error [%s]", testName+"/FetchRowsCallback/"+dbtype, err)
+			}
 			if len(dataRows) != i {
 				t.Fatalf("%s failed: expected %d fields but received %d", testName+"/FetchRowsCallback/"+dbtype, i, len(dataRows))
 			}

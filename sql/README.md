@@ -1,6 +1,15 @@
 **'Prom' for the `database/sql` package (https://pkg.go.dev/database/sql)**
 
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom)](https://pkg.go.dev/github.com/btnguyen2k/prom/sql)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/btnguyen2k/prom/sql)](https://pkg.go.dev/github.com/btnguyen2k/prom/sql)
+
+This package helps with managing shared `database/sql` connections and handling niche cases with various drivers and database types.
+
+Supported/Tested databases and drivers:
+- SQLite:
+  - [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3): CGO
+  - [modernc.org/sqlite](https://modernc.org/sqlite): pure Go
+
+
 
 > Supported/Tested libraries/drivers+version:
 > - [x] Azure Cosmos DB: [github.com/btnguyen2k/gocosmos](https://github.com/btnguyen2k/gocosmos) v0.1.6

@@ -3,11 +3,10 @@ package sql_test
 import (
 	"context"
 	"fmt"
+	"github.com/btnguyen2k/prom"
 	prom_sql "github.com/btnguyen2k/prom/sql"
 	"strings"
 	"testing"
-
-	"github.com/btnguyen2k/prom"
 )
 
 func _sqlcVerifyLastCommand(f _testFailedWithMsgFunc, testName string, sqlc *prom_sql.SqlConnect, cmdName string, cmdCats ...string) {
