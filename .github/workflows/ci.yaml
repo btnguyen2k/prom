@@ -165,7 +165,7 @@ jobs:
           cd ./sql_test \
             && cp -f driver_test_mysql1.test driver_test.go \
             && cp -f go.mod go.mod.backup && go mod tidy \
-            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_mysql_1_parsetime.txt ./ \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mysql_1_parsetime.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Run tests without parseTime (driver github.com/go-sql-driver/mysql)
         run: |
@@ -176,7 +176,7 @@ jobs:
           cd ./sql_test \
             && cp -f driver_test_mysql1.test driver_test.go \
             && cp -f go.mod go.mod.backup && go mod tidy \
-            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_mysql_1.txt ./ \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mysql_1.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
