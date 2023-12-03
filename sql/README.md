@@ -17,15 +17,13 @@ Supported/Tested databases and drivers:
   - MySQL versions: 5.7, 8.0, 8.2
   - Drivers:
     - [github.com/go-sql-driver/mysql](github.com/go-sql-driver/mysql): pure Go
+- MSSQL:
+  - MSSQL versions: 2017-latest, 2019-latest, 2022-latest
+  - Drivers:
+    - [github.com/microsoft/go-mssqldb](https://github.com/microsoft/go-mssqldb): pure Go
+    - [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb): pure Go (deprecated soon, use Microsoft's driver)
 
 
-> Supported/Tested libraries/drivers+version:
-> - [x] Azure Cosmos DB: [github.com/btnguyen2k/gocosmos](https://github.com/btnguyen2k/gocosmos) v0.1.6
-> - [x] MSSQL: [github.com/denisenkom/go-mssqldb](https://github.com/denisenkom/go-mssqldb) v0.12.2
-> - [x] MySQL: [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql) v1.6.0
-> - [x] Oracle: [github.com/godror/godror](https://github.com/godror/godror) v0.33.3
-> - [x] PostgreSQL:[github.com/jackc/pgx/v4](https://github.com/jackc/pgx) v4.16.1
-> - [x] SQLite3: [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3) v1.14.14
 
 Sample usage (MySQL):
 

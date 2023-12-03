@@ -111,34 +111,49 @@ jobs:
           flags: pgsql
           name: pgsql
 
-#  TestMSSQL:
-#    runs-on: ubuntu-latest
-#    strategy:
-#      matrix:
-#        go: [ '1.18', 'oldstable', 'stable' ]
-#        mssql: [ '2017-latest', '2019-latest', '2022-latest' ]
-#    name: Run MSSQL ${{ matrix.mssql }} tests with Go ${{ matrix.go }}
-#    steps:
-#      - name: Check out code
-#        uses: actions/checkout@v4
-#      - name: Set up Go env
-#        uses: actions/setup-go@v4
-#        with:
-#          go-version: ${{ matrix.go }}
-#      - name: Start MSSQL server
-#        run: docker run -d --name mssql-express -e ACCEPT_EULA=Y -e SA_PASSWORD=SecretPassword1 -e MSSQL_PID=Express -p 1433:1433 mcr.microsoft.com/mssql/server:${{ matrix.mssql }}
-#      - name: Run tests
-#        run: |
-#          export TIMEZONE="Asia/Ho_Chi_Minh"
-#          export MSSQL_DRIVER="sqlserver"
-#          export MSSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
-#          go version
-#          cd ./sql_test && go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile ../coverage_mssql.txt ./ && cd ..
-#      - name: Codecov
-#        uses: codecov/codecov-action@v3
-#        with:
-#          flags: mssql
-#          name: mssql
+  TestMSSQL:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.18', 'oldstable', 'stable' ]
+        mssql: [ '2017-latest', '2019-latest', '2022-latest' ]
+    name: Run MSSQL ${{ matrix.mssql }} tests with Go ${{ matrix.go }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Start MSSQL server
+        run: docker run -d --name mssql-express -e ACCEPT_EULA=Y -e SA_PASSWORD=SecretPassword1 -e MSSQL_PID=Express -p 1433:1433 mcr.microsoft.com/mssql/server:${{ matrix.mssql }}
+      - name: Run tests (driver github.com/microsoft/go-mssqldb)
+        run: |
+          export TIMEZONE="Asia/Ho_Chi_Minh"
+          export MSSQL_DRIVER="sqlserver"
+          export MSSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
+          go version
+          cd ./sql_test \
+            && cp -f driver_test_mssql1.test driver_test.go \
+            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mssql_1.txt ./ \
+            && cp -f go.mod.backup go.mod && cd ..
+      - name: Run tests (driver github.com/denisenkom/go-mssqldb)
+        run: |
+          export TIMEZONE="Asia/Ho_Chi_Minh"
+          export MSSQL_DRIVER="sqlserver"
+          export MSSQL_URL="sqlserver://sa:SecretPassword1@localhost:1433?database=tempdb"
+          go version
+          cd ./sql_test \
+            && cp -f driver_test_mssql2.test driver_test.go \
+            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mssql_2.txt ./ \
+            && cp -f go.mod.backup go.mod && cd ..
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          flags: mssql
+          name: mssql
 
   TestMySql:
     runs-on: ubuntu-latest

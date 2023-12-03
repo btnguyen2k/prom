@@ -1,0 +1,6 @@
+package sql_test
+
+import (
+	_ "github.com/microsoft/go-mssqldb"
+	_ "modernc.org/sqlite"
+)
