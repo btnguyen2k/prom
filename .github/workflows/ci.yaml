@@ -32,6 +32,7 @@ jobs:
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           flags: common
           name: common
 
@@ -75,6 +76,7 @@ jobs:
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           flags: sqlite
           name: sqlite
 
@@ -108,6 +110,7 @@ jobs:
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           flags: pgsql
           name: pgsql
 
@@ -152,6 +155,7 @@ jobs:
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           flags: mssql
           name: mssql
 
@@ -196,6 +200,7 @@ jobs:
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           flags: mysql
           name: mysql
 
@@ -235,5 +240,6 @@ jobs:
 #      - name: Codecov
 #        uses: codecov/codecov-action@v3
 #        with:
+#          token: ${{ secrets.CODECOV_TOKEN }}
 #          flags: coverage
 #          name: coverage
