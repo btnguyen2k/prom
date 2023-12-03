@@ -15,7 +15,7 @@ jobs:
         go: [ '1.18', 'oldstable', 'stable' ]
     name: General tests with Go ${{ matrix.go }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Go env
       uses: actions/setup-go@v4
       with:
@@ -118,7 +118,7 @@ jobs:
 #        redis: [ '6.0.0', '6.2.0', '7.0.0' ]
 #    name: Redis tests with Go ${{ matrix.go }}, Redis ${{ matrix.redis }}
 #    steps:
-#      - uses: actions/checkout@v3
+#      - uses: actions/checkout@v4
 #      - name: Set up Go env
 #        uses: actions/setup-go@v4
 #        with:

@@ -18,7 +18,7 @@ jobs:
         redis: [ '6.0.0', '6.2.0', '7.0.0' ]
     name: GoRedis tests with Go ${{ matrix.go }} - Redis server ${{ matrix.redis }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Go env
       uses: actions/setup-go@v4
       with:
