@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -32,6 +33,29 @@ const (
 	FlavorSqlite
 	FlavorCosmosDb
 )
+
+// DurationToOracleDayToSecond converts a time.Duration value to Oracle's INTERVAL DAY TO SECOND literals (e.g. "d HH:mm:ss.SSSSSSSSS").
+//
+// @Available since <<VERSION>>
+func DurationToOracleDayToSecond(v time.Duration, precision int) string {
+	z := time.Unix(0, 0).UTC()
+	hms := z.Add(v).Format("15:04:05")
+	days := int(v.Truncate(24*time.Hour).Hours() / 24)
+	result := fmt.Sprintf("%d %s", days, hms)
+	if precision > 0 {
+		if precision > 9 {
+			precision = 9
+		}
+		v = v.Round(time.Duration(math.Pow10(9-precision)) * time.Nanosecond)
+		layout := strings.Repeat("9", precision)
+		trailing := z.Add(v).Format("." + layout)
+		for len(trailing) < precision+1 {
+			trailing += "0"
+		}
+		result += trailing
+	}
+	return result
+}
 
 // PoolOpts configures database connection pooling options.
 //
@@ -343,7 +367,7 @@ func (sc *SqlConnect) FetchRow(row *sql.Row, numCols int) ([]interface{}, error)
 		scanVals[i] = &vals[i]
 	}
 	err := row.Scan(scanVals...)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return vals, err
@@ -416,12 +440,17 @@ var dbDateTimeTypes = map[string]map[DbFlavor]bool{
 	"TIMESTAMP WITH LOCAL TIME ZONE": {FlavorDefault: true, FlavorOracle: true},
 }
 
+var dbDurationTypes = map[string]map[DbFlavor]bool{
+	"INTERVALDS_DTY": {FlavorDefault: true, FlavorOracle: true},
+	"INTERVALYM_DTY": {FlavorDefault: true, FlavorOracle: true},
+}
+
 var reDbTypeName = regexp.MustCompile(`^(?i)(.*?)\(.*$`)
 
 func _normalizeDbTypeName(ct *sql.ColumnType) string {
-	rawDbTypeName := ct.DatabaseTypeName()
+	rawDbTypeName := strings.ToUpper(ct.DatabaseTypeName())
 	if matches := reDbTypeName.FindStringSubmatch(rawDbTypeName); len(matches) > 1 {
-		return strings.ToUpper(strings.TrimSpace(matches[1]))
+		return strings.TrimSpace(matches[1])
 	}
 	return rawDbTypeName
 }
@@ -493,6 +522,16 @@ func (sc *SqlConnect) isDateTimeType(col *sql.ColumnType) bool {
 	return ok
 }
 
+func (sc *SqlConnect) isDurationType(col *sql.ColumnType) bool {
+	dbTypeName := _normalizeDbTypeName(col)
+	m, ok := dbDurationTypes[dbTypeName]
+	if !ok {
+		return false
+	}
+	_, ok = m[sc.flavor]
+	return ok
+}
+
 func isValueTypeRawBytes(v interface{}) bool {
 	if v == nil {
 		return false
@@ -518,8 +557,9 @@ func toIntIfValidInteger(v interface{}) (int64, error) {
 		return strconv.ParseInt(rv.String(), 10, 64)
 	case rawBytesType.Kind(), bytesArrType.Kind(), uint8ArrType.Kind():
 		return strconv.ParseInt(string(rv.Bytes()), 10, 64)
+	default:
+		return 0, errors.New("input is not a valid integer")
 	}
-	return 0, errors.New("input is not a valid integer")
 }
 
 // toFloatIfValidReal converts the input to float64 if:
@@ -541,8 +581,9 @@ func toFloatIfValidReal(v interface{}) (float64, error) {
 		return strconv.ParseFloat(rv.String(), 64)
 	case rawBytesType.Kind(), bytesArrType.Kind(), uint8ArrType.Kind():
 		return strconv.ParseFloat(string(rv.Bytes()), 64)
+	default:
+		return 0, errors.New("input is not a valid floating point number")
 	}
-	return 0, errors.New("input is not a valid floating point number")
 }
 
 const (
@@ -670,19 +711,66 @@ func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v 
 	loc := sc.ensureLocation()
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
+
+	//fmt.Printf("[DEBUG] %s/%s - %s - %s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, val.(time.Time).Location(), val.(time.Time).Format(time.RFC3339))
+
 	switch dbTypeName {
-	case "DATE":
-		// FIXME: not sure if it's behavior of Oracle or godror but this seems wrong!
-		// DATE does not support timezone, but Oracle converts DATE to UTC before storing.
-		// Hence, we just need to convert it back to correct timezone/location
-		result[v.Name()] = val.(time.Time).In(loc)
+	case "DATE", "TIMESTAMP", "TIMESTAMPDTY":
+		// Oracle's DATE/TIMESTAMP/TIMESTAMPDTY types are non-timezone, Oracle returns value as UTC.
+		// Hence, we need to convert it back to the configured timezone/location.
+		valT := val.(time.Time)
+		if valT.Location().String() == "UTC" {
+			valT, _ = time.ParseInLocation(dtlayoutNano, valT.Format(dtlayoutNano), loc)
+		}
+		result[v.Name()] = valT
+
+		//TODO: smoke test with godror driver
+		//result[v.Name()] = val.(time.Time).In(loc)
+
 	default:
-		// FIXME: not sure if it's behavior of Oracle or godror but this seems wrong!
-		// first "parse in UTC" and then convert to the target timezone/location
-		// assume other types support timezone,convert to the target timezone/location
-		result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), time.UTC)
-		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+		// assume other date/time types support timezone, convert to the configured timezone/location
+		valT := val.(time.Time)
+		result[v.Name()] = valT.In(loc)
+
+		// TODO: smoke test with godror driver
+		//// first "parse in UTC" and then convert to the target timezone/location
+		//// assume other types support timezone,convert to the target timezone/location
+		//result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), time.UTC)
+		//result[v.Name()] = result[v.Name()].(time.Time).In(loc)
 	}
+	return err
+}
+
+func (sc *SqlConnect) _transformOracleDuration(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	var err error
+	dbTypeName := _normalizeDbTypeName(v)
+
+	fmt.Printf("[DEBUG-_transformOracleDuration] %s/%s - %T/%s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, val, val)
+
+	//switch dbTypeName {
+	//case "DATE", "TIMESTAMP", "TIMESTAMPDTY":
+	//	// Oracle's DATE/TIMESTAMP/TIMESTAMPDTY types are non-timezone, Oracle returns value as UTC.
+	//	// Hence, we need to convert it back to the configured timezone/location.
+	//	valT := val.(time.Time)
+	//	if valT.Location().String() == "UTC" {
+	//		valT, _ = time.ParseInLocation(dtlayoutNano, valT.Format(dtlayoutNano), loc)
+	//	}
+	//	result[v.Name()] = valT
+	//
+	//	//TODO: smoke test with godror driver
+	//	//result[v.Name()] = val.(time.Time).In(loc)
+	//
+	//default:
+	//	// assume other date/time types support timezone, convert to the configured timezone/location
+	//	valT := val.(time.Time)
+	//	result[v.Name()] = valT.In(loc)
+	//
+	//	// TODO: smoke test with godror driver
+	//	//// first "parse in UTC" and then convert to the target timezone/location
+	//	//// assume other types support timezone,convert to the target timezone/location
+	//	//result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), time.UTC)
+	//	//result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+	//}
 	return err
 }
 
@@ -715,6 +803,9 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 	}
 	result := map[string]interface{}{}
 	for i, v := range colsAndTypes {
+		//dbTypeName := _normalizeDbTypeName(v)
+		//fmt.Printf("[DEBUG] %s/%s - %T/%s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, vals[i], vals[i])
+
 		switch {
 		case vals[i] == nil:
 			// special care for nil value
@@ -789,6 +880,11 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 		case sc.flavor == FlavorOracle && v.ScanType().Kind() == sqlNullTime.Kind():
 			// special care for Oracle's date/time types
 			if err := sc._transformOracleDateTime(result, v, vals[i]); err != nil {
+				return nil, err
+			}
+		case sc.flavor == FlavorOracle && sc.isDurationType(v):
+			// special care for Oracle's duration types
+			if err := sc._transformOracleDuration(result, v, vals[i]); err != nil {
 				return nil, err
 			}
 		case sc.flavor == FlavorOracle && sc.isNumberType(v):
