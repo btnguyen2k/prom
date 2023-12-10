@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up Go env
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go }}
     - name: Check out code into the Go module directory
@@ -38,7 +38,7 @@ jobs:
 #      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dynamodb'
 #    steps:
 #    - name: Set up Go env
-#      uses: actions/setup-go@v4
+#      uses: actions/setup-go@v5
 #      with:
 #        go-version: ^1.13
 #    - name: Check out code into the Go module directory
@@ -65,7 +65,7 @@ jobs:
 #      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/mongo'
 #    steps:
 #    - name: Set up Go env
-#      uses: actions/setup-go@v4
+#      uses: actions/setup-go@v5
 #      with:
 #        go-version: ^1.13
 #    - name: Check out code into the Go module directory
@@ -90,7 +90,7 @@ jobs:
 #      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/mongo'
 #    steps:
 #    - name: Set up Go env
-#      uses: actions/setup-go@v4
+#      uses: actions/setup-go@v5
 #      with:
 #        go-version: ^1.13
 #    - name: Check out code into the Go module directory
@@ -120,7 +120,7 @@ jobs:
 #    steps:
 #      - uses: actions/checkout@v3
 #      - name: Set up Go env
-#        uses: actions/setup-go@v4
+#        uses: actions/setup-go@v5
 #        with:
 #<<<<<<< HEAD
 #          go-version: ${{ matrix.go }}
@@ -155,7 +155,7 @@ jobs:
 #      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/sql'
 #    steps:
 #    - name: Set up Go env
-#      uses: actions/setup-go@v4
+#      uses: actions/setup-go@v5
 #      with:
 #        go-version: ^1.13
 #    - name: Check out code into the Go module directory
@@ -180,7 +180,7 @@ jobs:
 #      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/sql'
 #    steps:
 #    - name: Set up Go env
-#      uses: actions/setup-go@v4
+#      uses: actions/setup-go@v5
 #      with:
 #        go-version: ^1.13
 #    - name: Check out code into the Go module directory
@@ -217,7 +217,7 @@ jobs:
 #      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/sql'
 #    steps:
 #    - name: Set up Go env
-#      uses: actions/setup-go@v4
+#      uses: actions/setup-go@v5
 #      with:
 #        go-version: ^1.13
 #    - name: Check out code into the Go module directory
@@ -243,7 +243,7 @@ jobs:
 #      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/sql'
 #    steps:
 #    - name: Set up Go env
-#      uses: actions/setup-go@v4
+#      uses: actions/setup-go@v5
 #      with:
 #        go-version: ^1.13
 #    - name: Check out code into the Go module directory
@@ -269,7 +269,7 @@ jobs:
 #      github.ref == 'refs/heads/master' || github.ref == 'refs/heads/gocosmos'
 #    steps:
 #    - name: Set up Go env
-#      uses: actions/setup-go@v4
+#      uses: actions/setup-go@v5
 #      with:
 #        go-version: ^1.13
 #    - name: Check out code into the Go module directory
