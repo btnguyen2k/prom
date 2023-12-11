@@ -34,6 +34,34 @@ const (
 	FlavorCosmosDb
 )
 
+// DurationToOracleYearToMonth converts a time.Duration value to Oracle's INTERVAL YEAR TO MONTH literals (e.g. "YY-MM").
+//
+// Note: a month is assumed to have 30 days; and a year is 12 months. Hence, the conversion is not accurate as a year is only 360 days.
+//
+// @Available since <<VERSION>>
+func DurationToOracleYearToMonth(v time.Duration) string {
+	months := int(v.Truncate(24*time.Hour).Hours()) / 24 / 30
+	years := months / 12
+	months -= years * 12
+	return fmt.Sprintf("%d-%d", years, months)
+}
+
+// ParseOracleIntervalYearToMonth parses an Oracle's INTERVAL YEAR TO MONTH literal (e.g. "+YY-MM") to time.Duration.
+//
+// Note: a month is assumed to have 30 days; and a year is 12 months. Hence, the conversion is not accurate as a year is only 360 days.
+//
+// @Available since <<VERSION>>
+func ParseOracleIntervalYearToMonth(v string) (time.Duration, error) {
+	re := regexp.MustCompile(`^\+?(\d+)-(\d+)$`)
+	matches := re.FindStringSubmatch(v)
+	if matches == nil {
+		return 0, fmt.Errorf("cannot parse [%s] as Oracle's INTERVAL YEAR TO MONTH", v)
+	}
+	years, _ := strconv.Atoi(matches[1])
+	months, _ := strconv.Atoi(matches[2])
+	return time.Duration(years*12+months) * 30 * 24 * time.Hour, nil
+}
+
 // DurationToOracleDayToSecond converts a time.Duration value to Oracle's INTERVAL DAY TO SECOND literals (e.g. "d HH:mm:ss.SSSSSSSSS").
 //
 // @Available since <<VERSION>>
@@ -55,6 +83,30 @@ func DurationToOracleDayToSecond(v time.Duration, precision int) string {
 		result += trailing
 	}
 	return result
+}
+
+// ParseOracleIntervalDayToSecond parses an Oracle's INTERVAL DAY TO SECOND literal (e.g. "+6 13:44:50.123457") to time.Duration .
+//
+// @Available since <<VERSION>>
+func ParseOracleIntervalDayToSecond(v string) (time.Duration, error) {
+	re := regexp.MustCompile(`^\+?(\d+)\s(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$`)
+	matches := re.FindStringSubmatch(v)
+	if matches == nil {
+		return 0, fmt.Errorf("cannot parse [%s] as Oracle's INTERVAL DAY TO SECOND", v)
+	}
+	days, _ := strconv.Atoi(matches[1])
+	hours, _ := strconv.Atoi(matches[2])
+	minutes, _ := strconv.Atoi(matches[3])
+	seconds, _ := strconv.Atoi(matches[4])
+	nanos := 0
+	if len(matches) > 5 {
+		for len(matches[5]) < 9 {
+			matches[5] += "0"
+		}
+		nanos, _ = strconv.Atoi(matches[5])
+	}
+	return time.Duration(days)*24*time.Hour + time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute +
+		time.Duration(seconds)*time.Second + time.Duration(nanos)*time.Nanosecond, nil
 }
 
 // PoolOpts configures database connection pooling options.
@@ -742,35 +794,17 @@ func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v 
 }
 
 func (sc *SqlConnect) _transformOracleDuration(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	var err error
 	dbTypeName := _normalizeDbTypeName(v)
+	var err error = fmt.Errorf("unknown duration column type %s", dbTypeName)
 
-	fmt.Printf("[DEBUG-_transformOracleDuration] %s/%s - %T/%s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, val, val)
+	//fmt.Printf("[DEBUG-_transformOracleDuration] %s/%s - %T/%s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, val, val)
 
-	//switch dbTypeName {
-	//case "DATE", "TIMESTAMP", "TIMESTAMPDTY":
-	//	// Oracle's DATE/TIMESTAMP/TIMESTAMPDTY types are non-timezone, Oracle returns value as UTC.
-	//	// Hence, we need to convert it back to the configured timezone/location.
-	//	valT := val.(time.Time)
-	//	if valT.Location().String() == "UTC" {
-	//		valT, _ = time.ParseInLocation(dtlayoutNano, valT.Format(dtlayoutNano), loc)
-	//	}
-	//	result[v.Name()] = valT
-	//
-	//	//TODO: smoke test with godror driver
-	//	//result[v.Name()] = val.(time.Time).In(loc)
-	//
-	//default:
-	//	// assume other date/time types support timezone, convert to the configured timezone/location
-	//	valT := val.(time.Time)
-	//	result[v.Name()] = valT.In(loc)
-	//
-	//	// TODO: smoke test with godror driver
-	//	//// first "parse in UTC" and then convert to the target timezone/location
-	//	//// assume other types support timezone,convert to the target timezone/location
-	//	//result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), time.UTC)
-	//	//result[v.Name()] = result[v.Name()].(time.Time).In(loc)
-	//}
+	switch dbTypeName {
+	case "INTERVALDS_DTY":
+		result[v.Name()], err = ParseOracleIntervalDayToSecond(val.(string))
+	case "INTERVALYM_DTY":
+		result[v.Name()], err = ParseOracleIntervalYearToMonth(val.(string))
+	}
 	return err
 }
 
