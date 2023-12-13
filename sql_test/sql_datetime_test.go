@@ -265,7 +265,10 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 					}
 				}
 				{
-					e := expected.dataDurationBig.Truncate(30 * 24 * time.Hour)
+					e := expected.dataDurationBig
+					if os.Getenv("ORACLESTR") == "true" {
+						e = e.Truncate(30 * 24 * time.Hour)
+					}
 					f := colNameList[6]
 					v, err := _toIntIfInteger(row[f])
 					if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
