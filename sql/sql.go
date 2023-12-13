@@ -386,7 +386,8 @@ func (sc *SqlConnect) Ping(ctx context.Context) error {
 
 // IsConnected returns true if the connection to the database is alive.
 func (sc *SqlConnect) IsConnected() bool {
-	return sc.Ping(nil) == nil
+	ctx, _ := sc.NewContextWithCancel()
+	return sc.Ping(ctx) == nil
 }
 
 // Conn returns a single connection by either opening a new connection or returning an existing connection from the connection pool.
