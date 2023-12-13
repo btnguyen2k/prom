@@ -8,7 +8,6 @@ require (
 	github.com/jackc/pgx/v5 v5.5.0
 	github.com/mattn/go-sqlite3 v1.14.18
 	github.com/microsoft/go-mssqldb v1.6.0
-	github.com/sijms/go-ora/v2 v2.7.25
 	modernc.org/sqlite v1.27.0
 )
 
