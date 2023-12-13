@@ -12,6 +12,39 @@ env:
   COVER_PKG: github.com/btnguyen2k/prom,github.com/btnguyen2k/prom/sql
 
 jobs:
+  GoFmt:
+    runs-on: ubuntu-latest
+    name: Check format with go fmt
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v5
+        with:
+          # pick one Go version to check format
+          go-version: 'stable'
+      - name: Run go fmt
+        run: |
+          go version
+          go fmt ./...
+
+  GoLint:
+    name: GoLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v5
+        with:
+          # pick one Go version for linting
+          go-version: 'stable'
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          only-new-issues: true
+
   TestCommon:
     runs-on: ubuntu-latest
     strategy:
