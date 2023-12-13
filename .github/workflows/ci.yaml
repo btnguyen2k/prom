@@ -105,7 +105,7 @@ jobs:
           cd ./sql_test \
             && cp -f driver_test_pgsql1.test driver_test.go \
             && cp -f go.mod go.mod.backup && go mod tidy \
-            && go test -v -timeout 9999s -count 1 -p 1 -cover -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_pgsql_1.txt ./ \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_pgsql_1.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
@@ -139,7 +139,7 @@ jobs:
           cd ./sql_test \
             && cp -f driver_test_mssql1.test driver_test.go \
             && cp -f go.mod go.mod.backup && go mod tidy \
-            && go test -v -timeout 9999s -count 1 -p 1 -cover -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mssql_1.txt ./ \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mssql_1.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Run tests (driver github.com/denisenkom/go-mssqldb)
         run: |
@@ -150,7 +150,7 @@ jobs:
           cd ./sql_test \
             && cp -f driver_test_mssql2.test driver_test.go \
             && cp -f go.mod go.mod.backup && go mod tidy \
-            && go test -v -timeout 9999s -count 1 -p 1 -cover -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mssql_2.txt ./ \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mssql_2.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
@@ -196,6 +196,42 @@ jobs:
             && cp -f driver_test_mysql1.test driver_test.go \
             && cp -f go.mod go.mod.backup && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mysql_1.txt ./ \
+            && cp -f go.mod.backup go.mod && cd ..
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: mysql
+          name: mysql
+
+  TestOracle:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.18', 'oldstable', 'stable' ]
+        oracle: [ '18.4.0-xe', '21.3.0-xe' ]
+    name: Run OracleDB ${{ matrix.mysql }} tests with Go ${{ matrix.go }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Start OracleDB server
+        run: docker run -d --name oracle-xe -p 1521:1521 -e ORACLE_PWD=SecretPassword1 container-registry.oracle.com/database/express:${{ matrix.oracle }}
+      - name: Run tests (driver github.com/sijms/go-ora/v2)
+        run: |
+          export TIMEZONE="Asia/Ho_Chi_Minh"
+          export ORACLE_DRIVER="oracle"
+          export ORACLE_URL="oracle://system:SecretPassword1@localhost:1521/?SID=XE"
+          export DATASET="simple"
+          export ORACLESTR="true"
+          go version
+          cd ./sql_test \
+            && cp -f driver_test_oracle1.test driver_test.go \
+            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle1.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3

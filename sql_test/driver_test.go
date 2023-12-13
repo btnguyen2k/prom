@@ -8,5 +8,6 @@ import (
 	//_ "github.com/godror/godror"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/sijms/go-ora/v2"
 	_ "modernc.org/sqlite"
 )

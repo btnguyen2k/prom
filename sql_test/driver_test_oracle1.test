@@ -1,6 +1,6 @@
 package sql_test
 
 import (
-	_ "github.com/microsoft/go-mssqldb"
+	_ "github.com/sijms/go-ora/v2"
 	_ "modernc.org/sqlite"
 )

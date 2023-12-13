@@ -5,6 +5,7 @@ import (
 	"fmt"
 	prom_sql "github.com/btnguyen2k/prom/sql"
 	"math/rand"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -91,6 +92,15 @@ func TestSql_DataTypeString(t *testing.T) {
 			sql += strings.Join(colNameList, ",")
 			sql += ") VALUES ("
 			sql += _generatePlaceholders(len(colNameList), sqlc) + ")"
+			dataSet := strings.ToLower(os.Getenv("DATASET"))
+			unicodeStr := "Chào buổi sáng, доброе утро, ສະ​ບາຍ​ດີ​ຕອນ​ເຊົ້າ, สวัสดีตอนเช้า"
+			unicodeStrLong := "Chào buổi sáng, đây sẽ là một đoạn văn bản dài. доброе утро, ສະ​ບາຍ​ດີ​ຕອນ​ເຊົ້າ, สวัสดีตอนเช้า"
+			longRepeat := 10
+			if dataSet == "simple" {
+				unicodeStr = "Chào buổi sáng"
+				unicodeStrLong = "Chào buổi sáng, đây sẽ là một đoạn văn bản dài."
+				longRepeat = 5
+			}
 			for i := 1; i <= numRows; i++ {
 				id := fmt.Sprintf("%03d", i)
 				row := Row{
@@ -99,12 +109,12 @@ func TestSql_DataTypeString(t *testing.T) {
 					dataVchar:   "VCHAR " + id,
 					dataBinchar: []byte("BINCHAR " + id),
 					dataText:    strings.Repeat("This is supposed to be a long text ", i*2),
-					dataUchar:   "Chào buổi sáng, доброе утро, ສະ​ບາຍ​ດີ​ຕອນ​ເຊົ້າ, สวัสดีตอนเช้า",
-					dataUvchar:  "Chào buổi sáng, доброе утро, ສະ​ບາຍ​ດີ​ຕອນ​ເຊົ້າ, สวัสดีตอนเช้า",
-					dataUtext:   strings.Repeat("Chào buổi sáng, đây sẽ là một đoạn văn bản dài. доброе утро, ສະ​ບາຍ​ດີ​ຕອນ​ເຊົ້າ, สวัสดีตอนเช้า ", i*2),
-					dataClob:    strings.Repeat("This is supposed to be a long text ", i*10),
-					dataUclob:   strings.Repeat("Chào buổi sáng, đây sẽ là một đoạn văn bản dài. доброе утро, ສະ​ບາຍ​ດີ​ຕອນ​ເຊົ້າ, สวัสดีตอนเช้า ", i*10),
-					dataBlob:    []byte(strings.Repeat("This is supposed to be a long text ", i*10)),
+					dataUchar:   unicodeStr,
+					dataUvchar:  unicodeStr,
+					dataUtext:   strings.Repeat(unicodeStr, i*2),
+					dataClob:    strings.Repeat("This is supposed to be a long text ", i*longRepeat),
+					dataUclob:   strings.Repeat(unicodeStrLong, i*longRepeat),
+					dataBlob:    []byte(strings.Repeat("This is supposed to be a long text ", i*longRepeat)),
 				}
 				rowArr = append(rowArr, row)
 				params := []interface{}{row.id, row.dataChar,

@@ -5,6 +5,7 @@ import (
 	prom_sql "github.com/btnguyen2k/prom/sql"
 	"math"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -27,7 +28,7 @@ func _changeLoc(t time.Time, loc *time.Location) time.Time {
 	return _t
 }
 
-var sqlColNamesTestDataTypeDatetime = []string{"id", "data_date", "data_time", "data_datetime", "data_datetimez", "data_duration"}
+var sqlColNamesTestDataTypeDatetime = []string{"id", "data_date", "data_time", "data_datetime", "data_datetimez", "data_duration", "data_duration_big"}
 
 func TestSql_DataTypeDatetime(t *testing.T) {
 	testName := "TestSql_DataTypeDatetime"
@@ -41,19 +42,20 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 	colNameList := sqlColNamesTestDataTypeDatetime
 	colTypesMap := map[prom_sql.DbFlavor][]string{
 		prom_sql.FlavorCosmosDb: nil,
-		prom_sql.FlavorMsSql:    {"NVARCHAR(8)", "DATE", "TIME", "DATETIME2", "DATETIMEOFFSET", "BIGINT"},
-		prom_sql.FlavorMySql:    {"VARCHAR(8)", "DATE", "TIME", "DATETIME", "TIMESTAMP", "BIGINT"},
-		prom_sql.FlavorOracle:   {"NVARCHAR2(8)", "DATE", "DATE", "DATE", "TIMESTAMP(0) WITH TIME ZONE", "INTERVAL DAY TO SECOND"},
-		prom_sql.FlavorPgSql:    {"VARCHAR(8)", "DATE", "TIME(0)", "TIMESTAMP(0)", "TIMESTAMP(0) WITH TIME ZONE", "BIGINT"},
-		prom_sql.FlavorSqlite:   {"VARCHAR(8)", "DATE", "TIME", "DATETIME", "DATETIME", "BIGINT"},
+		prom_sql.FlavorMsSql:    {"NVARCHAR(8)", "DATE", "TIME", "DATETIME2", "DATETIMEOFFSET", "BIGINT", "BIGINT"},
+		prom_sql.FlavorMySql:    {"VARCHAR(8)", "DATE", "TIME", "DATETIME", "TIMESTAMP", "BIGINT", "BIGINT"},
+		prom_sql.FlavorOracle:   {"NVARCHAR2(8)", "DATE", "DATE", "DATE", "TIMESTAMP(0) WITH TIME ZONE", "INTERVAL DAY TO SECOND", "INTERVAL YEAR TO MONTH"},
+		prom_sql.FlavorPgSql:    {"VARCHAR(8)", "DATE", "TIME(0)", "TIMESTAMP(0)", "TIMESTAMP(0) WITH TIME ZONE", "BIGINT", "BIGINT"},
+		prom_sql.FlavorSqlite:   {"VARCHAR(8)", "DATE", "TIME", "DATETIME", "DATETIME", "BIGINT", "BIGINT"},
 	}
 	type Row struct {
-		id            string
-		dataDate      time.Time
-		dataTime      time.Time
-		dataDatetime  time.Time
-		dataDatetimez time.Time
-		dataDuration  time.Duration
+		id              string
+		dataDate        time.Time
+		dataTime        time.Time
+		dataDatetime    time.Time
+		dataDatetimez   time.Time
+		dataDuration    time.Duration
+		dataDurationBig time.Duration
 	}
 	for index, dbtype := range dbtypeList {
 		sqlc := sqlcList[index]
@@ -89,21 +91,44 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 			sql += ") VALUES ("
 			sql += _generatePlaceholders(len(colNameList), sqlc) + ")"
 			for i := 1; i <= numRows; i++ {
+				innerSql := sql
 				vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", time.UTC)
 				row := Row{
-					id:            fmt.Sprintf("%03d", i),
-					dataDate:      _changeLoc(_startOfDay(vDatetime), sqlc.GetLocation()), // no timezone support
-					dataTime:      _changeLoc(vDatetime, sqlc.GetLocation()),              // no timezone support
-					dataDatetime:  _changeLoc(vDatetime, sqlc.GetLocation()),              // no timezone support
-					dataDatetimez: vDatetime,
-					dataDuration:  time.Duration(rand.Int63n(1024)) * time.Second,
+					id:              fmt.Sprintf("%03d", i),
+					dataDate:        _changeLoc(_startOfDay(vDatetime), sqlc.GetLocation()), // no timezone support
+					dataTime:        _changeLoc(vDatetime, sqlc.GetLocation()),              // no timezone support
+					dataDatetime:    _changeLoc(vDatetime, sqlc.GetLocation()),              // no timezone support
+					dataDatetimez:   vDatetime,
+					dataDuration:    128 * time.Duration(rand.Int63n(1024)) * time.Second,
+					dataDurationBig: 64 * time.Duration(rand.Int63n(1024)) * time.Hour,
 				}
 				rowArr = append(rowArr, row)
-				params := []interface{}{row.id, row.dataDate, row.dataTime, row.dataDatetime, row.dataDatetimez, row.dataDuration}
+				params := []interface{}{row.id, row.dataDate, row.dataTime, row.dataDatetime, row.dataDatetimez, row.dataDuration, row.dataDurationBig}
+
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATE_FORMAT") != "" {
+					params[1] = row.dataDate.Format(os.Getenv("DATE_FORMAT"))
+				}
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("TIME_FORMAT") != "" {
+					params[2] = row.dataTime.Format(os.Getenv("TIME_FORMAT"))
+				}
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATETIME_FORMAT") != "" {
+					params[3] = row.dataDatetime.Format(os.Getenv("DATETIME_FORMAT"))
+				}
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATETIMEZ_FORMAT") != "" {
+					params[4] = row.dataDatetimez.Format(os.Getenv("DATETIMEZ_FORMAT"))
+				}
+				if os.Getenv("ORACLESTR") == "true" {
+					vtempDur := prom_sql.DurationToOracleDayToSecond(row.dataDuration, 0)
+					innerSql = strings.Replace(innerSql, ":6", fmt.Sprintf("INTERVAL '%s' DAY TO SECOND", vtempDur), -1)
+					vtempDurBig := prom_sql.DurationToOracleYearToMonth(row.dataDurationBig)
+					innerSql = strings.Replace(innerSql, ":7", fmt.Sprintf("INTERVAL '%s' YEAR TO MONTH", vtempDurBig), -1)
+					params = params[:5]
+				}
+
 				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					params = append(params, row.id)
 				}
-				_, err := sqlc.GetDB().Exec(sql, params...)
+				_, err := sqlc.GetDB().Exec(innerSql, params...)
 				if err != nil {
 					t.Fatalf("%s failed: %s", testName, err)
 				}
@@ -236,7 +261,18 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 						v, err = _toIntIfNumber(row[f])
 					}
 					if err != nil || v != int64(e) {
-						t.Fatalf("%s failed: [%s] expected %#v(%T) but received %#v(%T) (error: %s)", testName, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+						t.Fatalf("%s failed: [%s]\nexpected %#v(%T)\nreceived %#v(%T)\n(error: %s)", testName, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
+					}
+				}
+				{
+					e := expected.dataDurationBig.Truncate(30 * 24 * time.Hour)
+					f := colNameList[6]
+					v, err := _toIntIfInteger(row[f])
+					if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
+						v, err = _toIntIfNumber(row[f])
+					}
+					if err != nil || v != int64(e) {
+						t.Fatalf("%s failed: [%s]\nexpected %#v(%T)\nreceived %#v(%T)\n(error: %s)", testName, row["id"].(string)+"/"+f, e, e, row[f], row[f], err)
 					}
 				}
 			}
@@ -311,6 +347,7 @@ func TestSql_DataTypeNull(t *testing.T) {
 			sql += ") VALUES ("
 			sql += _generatePlaceholders(len(colNameList), sqlc) + ")"
 			for i := 1; i <= numRows; i++ {
+				innerSql := sql
 				vInt := rand.Int63n(1024)
 				vFloat := math.Round(rand.Float64()*1e3) / 1e3
 				vString := strconv.Itoa(rand.Intn(1024))
@@ -341,10 +378,27 @@ func TestSql_DataTypeNull(t *testing.T) {
 				}
 				rowArr = append(rowArr, row)
 				params := []interface{}{row.id, row.dataInt, row.dataFloat, row.dataString, row.dataMoney, row.dataDate, row.dataTime, row.dataDatetime, row.dataDuration}
+
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATE_FORMAT") != "" && row.dataDate != nil {
+					params[5] = row.dataDate.Format(os.Getenv("DATE_FORMAT"))
+				}
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("TIME_FORMAT") != "" && row.dataTime != nil {
+					params[6] = row.dataTime.Format(os.Getenv("TIME_FORMAT"))
+				}
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATETIME_FORMAT") != "" && row.dataDatetime != nil {
+					params[7] = row.dataDatetime.Format(os.Getenv("DATETIME_FORMAT"))
+				}
+				if os.Getenv("ORACLESTR") == "true" && row.dataDuration != nil {
+					vtempDur := prom_sql.DurationToOracleDayToSecond(*row.dataDuration, 0)
+					innerSql = strings.Replace(innerSql, ":9", fmt.Sprintf("INTERVAL '%s' DAY TO SECOND", vtempDur), -1)
+					params = params[:8]
+				} else if os.Getenv("ORACLESTR") == "true" && row.dataDuration == nil {
+					params[8] = nil
+				}
 				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					params = append(params, row.id)
 				}
-				_, err := sqlc.GetDB().Exec(sql, params...)
+				_, err := sqlc.GetDB().Exec(innerSql, params...)
 				if err != nil {
 					t.Fatalf("%s failed: %s", testName, err)
 				}
@@ -610,6 +664,20 @@ func TestSql_Timezone(t *testing.T) {
 				}
 				rowArr = append(rowArr, row)
 				params := []interface{}{row.id, row.dataDate, row.dataTime, row.dataDatetime, row.dataDatetimez}
+
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATE_FORMAT") != "" {
+					params[1] = row.dataDate.Format(os.Getenv("DATE_FORMAT"))
+				}
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("TIME_FORMAT") != "" {
+					params[2] = row.dataTime.Format(os.Getenv("TIME_FORMAT"))
+				}
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATETIME_FORMAT") != "" {
+					params[3] = row.dataDatetime.Format(os.Getenv("DATETIME_FORMAT"))
+				}
+				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATETIMEZ_FORMAT") != "" {
+					params[4] = row.dataDatetimez.Format(os.Getenv("DATETIMEZ_FORMAT"))
+				}
+
 				if sqlc.GetDbFlavor() == prom_sql.FlavorCosmosDb {
 					params = append(params, row.id)
 				}
@@ -664,7 +732,7 @@ func TestSql_Timezone(t *testing.T) {
 						}
 						v = _changeLoc(v, e.Location())
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
-							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", testName,
+							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nreceived %#v/%#v/%#v(%T) (Ok: %#v)", testName,
 								"idx:"+strconv.Itoa(idx)+"/row:"+row["id"].(string)+"/field:"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
 								vstr, v.Format(time.RFC3339), v.In(LOC2).Format(time.RFC3339), row[f], ok)
 						}
@@ -679,11 +747,11 @@ func TestSql_Timezone(t *testing.T) {
 							v = _changeLoc(t, sqlc.GetLocation())
 							ok = err == nil
 						}
-						if conn.GetDbFlavor() != prom_sql.FlavorOracle && conn.GetDbFlavor() != prom_sql.FlavorSqlite {
+						if /*conn.GetDbFlavor() != prom_sql.FlavorOracle && */ conn.GetDbFlavor() != prom_sql.FlavorSqlite {
 							v = _changeLoc(v, e.Location())
 						}
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
-							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", testName,
+							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nreceived %#v/%#v/%#v(%T) (Ok: %#v)", testName,
 								"idx:"+strconv.Itoa(idx)+"/row:"+row["id"].(string)+"/field:"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
 								vstr, v.Format(time.RFC3339), v.In(LOC2).Format(time.RFC3339), row[f], ok)
 						}
@@ -698,7 +766,7 @@ func TestSql_Timezone(t *testing.T) {
 							v = _changeLoc(t, sqlc.GetLocation())
 							ok = err == nil
 						}
-						if conn.GetDbFlavor() != prom_sql.FlavorOracle && conn.GetDbFlavor() != prom_sql.FlavorSqlite {
+						if /*conn.GetDbFlavor() != prom_sql.FlavorOracle && */ conn.GetDbFlavor() != prom_sql.FlavorSqlite {
 							v = _changeLoc(v, e.Location())
 						}
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
@@ -722,7 +790,7 @@ func TestSql_Timezone(t *testing.T) {
 							v = _changeLoc(v, e.Location())
 						}
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
-							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", testName,
+							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nreceived %#v/%#v/%#v(%T) (Ok: %#v)", testName,
 								"idx:"+strconv.Itoa(idx)+"/row:"+row["id"].(string)+"/field:"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
 								vstr, v.Format(time.RFC3339), v.In(LOC2).Format(time.RFC3339), row[f], ok)
 						}
