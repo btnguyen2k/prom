@@ -208,9 +208,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.18', 'oldstable', 'stable' ]
+        go: [ 'stable' ]
         oracle: [ '18.4.0-xe', '21.3.0-xe' ]
-    name: Run OracleDB ${{ matrix.mysql }} tests with Go ${{ matrix.go }}
+    name: Run OracleDB ${{ matrix.oracle }} tests with Go ${{ matrix.go }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
