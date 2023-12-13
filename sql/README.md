@@ -26,6 +26,7 @@ Supported/Tested databases and drivers:
   - Oracle database versions: 18.4.0-xe, 21.3.0-xe
   - Drivers:
     - [github.com/sijms/go-ora/v2](https://github.com/sijms/go-ora): pure Go
+    - 
 
 
 Sample usage (MySQL):

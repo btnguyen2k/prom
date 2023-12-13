@@ -221,7 +221,10 @@ jobs:
       - name: Start OracleDB server
         run: |
           docker run -d --name oracle-xe -p 1521:1521 -e ORACLE_PWD=SecretPassword1 container-registry.oracle.com/database/express:${{ matrix.oracle }}
-          sleep 180
+          sleep 30
+          if [ "${{ matrix.oracle }}"=="18.4.0-xe" ]; then
+              sleep 240
+          fi
       - name: Run tests (driver github.com/sijms/go-ora/v2)
         run: |
           export TIMEZONE="Asia/Ho_Chi_Minh"
