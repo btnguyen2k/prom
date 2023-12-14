@@ -117,7 +117,7 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATETIMEZ_FORMAT") != "" {
 					params[4] = row.dataDatetimez.Format(os.Getenv("DATETIMEZ_FORMAT"))
 				}
-				if os.Getenv("ORACLESTR") == "true" {
+				if sqlc.GetDbFlavor() == promsql.FlavorOracle && os.Getenv("ORACLESTR") == "true" {
 					vtempDur := promsql.DurationToOracleDayToSecond(row.dataDuration, 0)
 					innerSql = strings.Replace(innerSql, ":6", fmt.Sprintf("INTERVAL '%s' DAY TO SECOND", vtempDur), -1)
 					vtempDurBig := promsql.DurationToOracleYearToMonth(row.dataDurationBig)
@@ -201,11 +201,9 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 					if eloc, vloc := sqlc.GetLocation(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 						t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", testName, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 					}
-					if sqlc.GetDbFlavor() != promsql.FlavorOracle && sqlc.GetDbFlavor() != promsql.FlavorSqlite {
-						v = _changeLoc(v, e.Location())
-					}
+					v = _changeLoc(v, e.Location())
 					if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
-						t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", testName,
+						t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nreceived %#v/%#v/%#v(%T) (Ok: %#v)", testName,
 							row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
 							vstr, v.Format(time.RFC3339), v.In(LOC2).Format(time.RFC3339), row[f], ok)
 					}
@@ -223,9 +221,7 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 					if eloc, vloc := sqlc.GetLocation(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 						t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", testName, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 					}
-					if sqlc.GetDbFlavor() != promsql.FlavorOracle && sqlc.GetDbFlavor() != promsql.FlavorSqlite {
-						v = _changeLoc(v, e.Location())
-					}
+					v = _changeLoc(v, e.Location())
 					if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 						t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", testName,
 							row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
@@ -536,9 +532,7 @@ func TestSql_DataTypeNull(t *testing.T) {
 						if eloc, vloc := sqlc.GetLocation(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 							t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", testName, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 						}
-						if sqlc.GetDbFlavor() != promsql.FlavorOracle && sqlc.GetDbFlavor() != promsql.FlavorSqlite {
-							v = _changeLoc(v, e.Location())
-						}
+						v = _changeLoc(v, e.Location())
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 							fmt.Printf("Expected: %s / %s (UTC) / %s (%s) / %s (%s)\n", e.Location(), e.In(time.UTC), e.In(LOC), LOC, e.In(LOC2), LOC2)
 							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", testName,
@@ -563,9 +557,7 @@ func TestSql_DataTypeNull(t *testing.T) {
 						if eloc, vloc := sqlc.GetLocation(), v.Location(); eloc == nil || vloc == nil || eloc.String() != vloc.String() {
 							t.Fatalf("%s failed: [%s] expected %s(%T) but received %s(%T)", testName, row["id"].(string)+"/"+f, eloc, eloc, vloc, vloc)
 						}
-						if sqlc.GetDbFlavor() != promsql.FlavorOracle && sqlc.GetDbFlavor() != promsql.FlavorSqlite {
-							v = _changeLoc(v, e.Location())
-						}
+						v = _changeLoc(v, e.Location())
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v(%T)\nbut received %#v/%#v(%T) (Ok: %#v)", testName,
 								row["id"].(string)+"/"+f, estr, e.Format(time.RFC3339), e,
@@ -750,9 +742,7 @@ func TestSql_Timezone(t *testing.T) {
 							v = _changeLoc(t, sqlc.GetLocation())
 							ok = err == nil
 						}
-						if /*conn.GetDbFlavor() != prom_sql.FlavorOracle && */ conn.GetDbFlavor() != promsql.FlavorSqlite {
-							v = _changeLoc(v, e.Location())
-						}
+						v = _changeLoc(v, e.Location())
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nreceived %#v/%#v/%#v(%T) (Ok: %#v)", testName,
 								"idx:"+strconv.Itoa(idx)+"/row:"+row["id"].(string)+"/field:"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
@@ -769,9 +759,7 @@ func TestSql_Timezone(t *testing.T) {
 							v = _changeLoc(t, sqlc.GetLocation())
 							ok = err == nil
 						}
-						if /*conn.GetDbFlavor() != prom_sql.FlavorOracle && */ conn.GetDbFlavor() != promsql.FlavorSqlite {
-							v = _changeLoc(v, e.Location())
-						}
+						v = _changeLoc(v, e.Location())
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", testName,
 								"idx:"+strconv.Itoa(idx)+"/row:"+row["id"].(string)+"/field:"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,

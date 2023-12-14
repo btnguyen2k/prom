@@ -271,12 +271,23 @@ jobs:
             && cp -f go.mod go.mod.backup && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle1.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
+      - name: Run tests (driver github.com/godror/godror)
+        run: |
+          export TIMEZONE="Asia/Ho_Chi_Minh"
+          export ORACLE_DRIVER=godror
+          export ORACLE_URL="system/SecretPassword1@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=tcp)(HOST=localhost)(PORT=1521)))(CONNECT_DATA=(SID=XE)))"
+          go version
+          cd ./sql_test \
+            && cp -f driver_test_oracle2.test driver_test.go \
+            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle2.txt ./ \
+            && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          flags: mysql
-          name: mysql
+          flags: oracle
+          name: oracle
 
 #  TestCoverage:
 #    runs-on: ubuntu-latest

@@ -10,3 +10,4 @@
 /sql_test/temp/
 /sql_test/coverage*
 /sql_test/vendor/
+/sql_test_oracle/temp/
