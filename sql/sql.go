@@ -494,8 +494,10 @@ var dbDateTimeTypes = map[string]map[DbFlavor]bool{
 }
 
 var dbDurationTypes = map[string]map[DbFlavor]bool{
-	"INTERVALDS_DTY": {FlavorDefault: true, FlavorOracle: true},
-	"INTERVALYM_DTY": {FlavorDefault: true, FlavorOracle: true},
+	"INTERVALDS_DTY":         {FlavorDefault: true, FlavorOracle: true},
+	"INTERVALYM_DTY":         {FlavorDefault: true, FlavorOracle: true},
+	"INTERVAL DAY TO SECOND": {FlavorDefault: true, FlavorOracle: true},
+	"INTERVAL YEAR TO MONTH": {FlavorDefault: true, FlavorOracle: true},
 }
 
 var reDbTypeName = regexp.MustCompile(`^(?i)(.*?)\(.*$`)
@@ -765,7 +767,7 @@ func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v 
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
 
-	//fmt.Printf("[DEBUG] %s/%s - %s - %s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, val.(time.Time).Location(), val.(time.Time).Format(time.RFC3339))
+	//fmt.Printf("[DEBUG_transformOracleDateTime] %s/%s - %s - %s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, val.(time.Time).Location(), val.(time.Time).Format(time.RFC3339))
 
 	switch dbTypeName {
 	case "DATE", "TIMESTAMP", "TIMESTAMPDTY":
@@ -773,40 +775,45 @@ func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v 
 		// Hence, we need to convert it back to the configured timezone/location.
 		valT := val.(time.Time)
 		if valT.Location().String() == "UTC" {
-			valT, _ = time.ParseInLocation(dtlayoutNano, valT.Format(dtlayoutNano), loc)
+			if sc.GetDriver() == "godror" {
+				// godror "moves" the date/time to the configured timezone/location, so we need to "move" it back
+				valT = valT.In(loc)
+			} else {
+				valT, _ = time.ParseInLocation(dtlayoutNano, valT.Format(dtlayoutNano), loc)
+			}
 		}
 		result[v.Name()] = valT
-
-		//TODO: smoke test with godror driver
-		//result[v.Name()] = val.(time.Time).In(loc)
-
 	default:
 		// assume other date/time types support timezone, convert to the configured timezone/location
 		valT := val.(time.Time)
 		result[v.Name()] = valT.In(loc)
-
-		// TODO: smoke test with godror driver
-		//// first "parse in UTC" and then convert to the target timezone/location
-		//// assume other types support timezone,convert to the target timezone/location
-		//result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), time.UTC)
-		//result[v.Name()] = result[v.Name()].(time.Time).In(loc)
 	}
 	return err
 }
 
 func (sc *SqlConnect) _transformOracleDuration(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
 	dbTypeName := _normalizeDbTypeName(v)
-	var err error = fmt.Errorf("unknown duration column type %s", dbTypeName)
 
-	//fmt.Printf("[DEBUG-_transformOracleDuration] %s/%s - %T/%s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, val, val)
+	//fmt.Printf("[DEBUG_transformOracleDuration] %s/%s - %T/%s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, val, val)
 
-	switch dbTypeName {
-	case "INTERVALDS_DTY":
-		result[v.Name()], err = ParseOracleIntervalDayToSecond(val.(string))
-	case "INTERVALYM_DTY":
-		result[v.Name()], err = ParseOracleIntervalYearToMonth(val.(string))
+	switch vt := val.(type) {
+	case time.Duration:
+		result[v.Name()] = vt
+	case string:
+		var err error
+		switch dbTypeName {
+		case "INTERVALDS_DTY", "INTERVAL DAY TO SECOND":
+			result[v.Name()], err = ParseOracleIntervalDayToSecond(val.(string))
+		case "INTERVALYM_DTY", "INTERVAL YEAR TO MONTH":
+			result[v.Name()], err = ParseOracleIntervalYearToMonth(val.(string))
+		default:
+			return fmt.Errorf("unknown duration column type %s", dbTypeName)
+		}
+		return err
+	default:
+		return fmt.Errorf("unknown duration column type (scanned) %T", val)
 	}
-	return err
+	return nil
 }
 
 func (sc *SqlConnect) _scanNilValue(result map[string]interface{}, v *sql.ColumnType) error {
@@ -839,7 +846,7 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 	result := map[string]interface{}{}
 	for i, v := range colsAndTypes {
 		//dbTypeName := _normalizeDbTypeName(v)
-		//fmt.Printf("[DEBUG] %s/%s - %T/%s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, vals[i], vals[i])
+		//fmt.Printf("[DEBUG-fetchOneRow] %s/%s - %T/%s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, vals[i], vals[i])
 
 		switch {
 		case vals[i] == nil:

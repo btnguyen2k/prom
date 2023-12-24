@@ -57,8 +57,8 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 		dataDuration    time.Duration
 		dataDurationBig time.Duration
 	}
-	for index, dbtype := range dbtypeList {
-		sqlc := sqlcList[index]
+	for idx, dbtype := range dbtypeList {
+		sqlc := sqlcList[idx]
 		colTypes := colTypesMap[sqlc.GetDbFlavor()]
 		t.Run(dbtype, func(t *testing.T) {
 			// init table
@@ -82,7 +82,7 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 			rowArr := make([]Row, 0)
 			numRows := 100
 
-			// LOC, _ := time.LoadLocation(timezoneSql)
+			LOC, _ := time.LoadLocation(timezoneSql)
 			LOC2, _ := time.LoadLocation(timezoneSql2)
 
 			// insert some rows
@@ -92,7 +92,8 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 			sql += _generatePlaceholders(len(colNameList), sqlc) + ")"
 			for i := 1; i <= numRows; i++ {
 				innerSql := sql
-				vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", time.UTC)
+				vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", LOC)
+				//vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", time.UTC)
 				row := Row{
 					id:              fmt.Sprintf("%03d", i),
 					dataDate:        _changeLoc(_startOfDay(vDatetime), sqlc.GetLocation()), // no timezone support
@@ -117,7 +118,10 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATETIMEZ_FORMAT") != "" {
 					params[4] = row.dataDatetimez.Format(os.Getenv("DATETIMEZ_FORMAT"))
 				}
-				if sqlc.GetDbFlavor() == promsql.FlavorOracle && os.Getenv("ORACLESTR") == "true" {
+				if sqlc.GetDbFlavor() == promsql.FlavorOracle {
+					// godror/godror automatically converts time.Duration to INTERVAL DAY TO SECOND, but not INTERVAL YEAR TO MONTH
+					// sijms/go-ora/v2 treats time.Duration as number
+					// hence, to be safe, convert time.Duration to INTERVAL literate
 					vtempDur := promsql.DurationToOracleDayToSecond(row.dataDuration, 0)
 					innerSql = strings.Replace(innerSql, ":6", fmt.Sprintf("INTERVAL '%s' DAY TO SECOND", vtempDur), -1)
 					vtempDurBig := promsql.DurationToOracleYearToMonth(row.dataDurationBig)
@@ -262,7 +266,7 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 				}
 				{
 					e := expected.dataDurationBig
-					if os.Getenv("ORACLESTR") == "true" {
+					if sqlc.GetDbFlavor() == promsql.FlavorOracle {
 						e = e.Truncate(30 * 24 * time.Hour)
 					}
 					f := colNameList[6]
@@ -351,7 +355,8 @@ func TestSql_DataTypeNull(t *testing.T) {
 				vFloat := math.Round(rand.Float64()*1e3) / 1e3
 				vString := strconv.Itoa(rand.Intn(1024))
 				vMoney := math.Round(rand.Float64()*1e2) / 1e2
-				vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", time.UTC)
+				vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", LOC)
+				//vDatetime, _ := time.ParseInLocation("2006-01-02T15:04:05", "2021-02-28T23:24:25", time.UTC)
 				vDuration := time.Duration(rand.Int63n(1024)) * time.Second
 				row := Row{id: fmt.Sprintf("%03d", i)}
 				if i%2 == 0 {
@@ -387,11 +392,14 @@ func TestSql_DataTypeNull(t *testing.T) {
 				if os.Getenv("DATETIMEASSTR") == "true" && os.Getenv("DATETIME_FORMAT") != "" && row.dataDatetime != nil {
 					params[7] = row.dataDatetime.Format(os.Getenv("DATETIME_FORMAT"))
 				}
-				if os.Getenv("ORACLESTR") == "true" && row.dataDuration != nil {
+				if sqlc.GetDbFlavor() == promsql.FlavorOracle && row.dataDuration != nil {
+					// godror/godror automatically converts time.Duration to INTERVAL DAY TO SECOND, but not INTERVAL YEAR TO MONTH
+					// sijms/go-ora/v2 treats time.Duration as number
+					// hence, to be safe, convert time.Duration to INTERVAL literate
 					vtempDur := promsql.DurationToOracleDayToSecond(*row.dataDuration, 0)
 					innerSql = strings.Replace(innerSql, ":9", fmt.Sprintf("INTERVAL '%s' DAY TO SECOND", vtempDur), -1)
 					params = params[:8]
-				} else if os.Getenv("ORACLESTR") == "true" && row.dataDuration == nil {
+				} else if sqlc.GetDbFlavor() == promsql.FlavorOracle && row.dataDuration == nil {
 					params[8] = nil
 				}
 				if sqlc.GetDbFlavor() == promsql.FlavorCosmosDb {
@@ -720,12 +728,15 @@ func TestSql_Timezone(t *testing.T) {
 						e := expected.dataDate
 						f := colNameList[1]
 						v, ok := row[f].(time.Time)
-						if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
-							t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
-							v = _changeLoc(t, sqlc.GetLocation())
-							ok = err == nil
+						//if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
+						//	t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
+						//	v = _changeLoc(t, sqlc.GetLocation())
+						//	ok = err == nil
+						//}
+						if conn.GetDbFlavor() != promsql.FlavorSqlite {
+							//SQLite always stores timezone, hence no need to change location for SQLite
+							v = _changeLoc(v, e.Location())
 						}
-						v = _changeLoc(v, e.Location())
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nreceived %#v/%#v/%#v(%T) (Ok: %#v)", testName,
 								"idx:"+strconv.Itoa(idx)+"/row:"+row["id"].(string)+"/field:"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
@@ -737,12 +748,16 @@ func TestSql_Timezone(t *testing.T) {
 						e := expected.dataTime
 						f := colNameList[2]
 						v, ok := row[f].(time.Time)
-						if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
-							t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
-							v = _changeLoc(t, sqlc.GetLocation())
-							ok = err == nil
+						//if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
+						//	t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
+						//	v = _changeLoc(t, sqlc.GetLocation())
+						//	ok = err == nil
+						//}
+						if conn.GetDbFlavor() != promsql.FlavorSqlite && conn.GetDriver() != "godror" {
+							//SQLite always stores timezone, hence no need to change location for SQLite
+							//godror "moves" the date/time to the configured timezone/location, this is fixed by driver already, hence no need to change location for godror
+							v = _changeLoc(v, e.Location())
 						}
-						v = _changeLoc(v, e.Location())
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nreceived %#v/%#v/%#v(%T) (Ok: %#v)", testName,
 								"idx:"+strconv.Itoa(idx)+"/row:"+row["id"].(string)+"/field:"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
@@ -754,12 +769,17 @@ func TestSql_Timezone(t *testing.T) {
 						e := expected.dataDatetime
 						f := colNameList[3]
 						v, ok := row[f].(time.Time)
-						if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
-							t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
-							v = _changeLoc(t, sqlc.GetLocation())
-							ok = err == nil
+						//if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
+						//	t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
+						//	v = _changeLoc(t, sqlc.GetLocation())
+						//	ok = err == nil
+						//}
+						//fmt.Printf("[DEBUG]: %d-%d-Conn: %s / E: %s - L1: %s - L2: %s\nExpected: %s\nReceived: %s\n", idx, i, conn.GetLocation(), e.Location(), LOC, LOC2, e, v)
+						if conn.GetDbFlavor() != promsql.FlavorSqlite && conn.GetDriver() != "godror" {
+							//SQLite always stores timezone, hence no need to change location for SQLite
+							//godror "moves" the date/time to the configured timezone/location, this is fixed by driver already, hence no need to change location for godror
+							v = _changeLoc(v, e.Location())
 						}
-						v = _changeLoc(v, e.Location())
 						if estr, vstr := e.In(LOC2).Format(layout), v.In(LOC2).Format(layout); !ok || vstr != estr {
 							t.Fatalf("%s failed: [%s]\nexpected %#v/%#v/%#v(%T)\nbut received %#v/%#v/%#v(%T) (Ok: %#v)", testName,
 								"idx:"+strconv.Itoa(idx)+"/row:"+row["id"].(string)+"/field:"+f, estr, e.Format(time.RFC3339), e.In(LOC2).Format(time.RFC3339), e,
@@ -771,11 +791,11 @@ func TestSql_Timezone(t *testing.T) {
 						e := expected.dataDatetimez
 						f := colNameList[4]
 						v, ok := row[f].(time.Time)
-						if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
-							t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
-							v = t.In(sqlc.GetLocation())
-							ok = err == nil
-						}
+						//if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
+						//	t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
+						//	v = t.In(sqlc.GetLocation())
+						//	ok = err == nil
+						//}
 						if conn.GetDbFlavor() == promsql.FlavorMySql {
 							// currently, the Go driver treats parseTime=false for "TIME" column
 							v = _changeLoc(v, e.Location())
