@@ -10,7 +10,7 @@ require (
 	github.com/btnguyen2k/consu/reddo v0.1.8
 	github.com/btnguyen2k/consu/semita v0.1.5
 	github.com/btnguyen2k/consu/semver v0.2.1
-	github.com/btnguyen2k/gocosmos v0.3.0
+	github.com/btnguyen2k/gocosmos v1.0.0
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/godror/godror v0.40.4
@@ -22,8 +22,8 @@ require (
 )
 
 require (
-	github.com/btnguyen2k/consu/checksum v0.1.2 // indirect
-	github.com/btnguyen2k/consu/gjrc v0.1.1 // indirect
+	github.com/btnguyen2k/consu/checksum v1.1.0 // indirect
+	github.com/btnguyen2k/consu/gjrc v0.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
