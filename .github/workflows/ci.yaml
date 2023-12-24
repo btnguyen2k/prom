@@ -293,6 +293,7 @@ jobs:
           export ORACLE_URL="user=system password=SecretPassword1 connectString=localhost:1521/XE libDir=./instantclient_21_12"
           go version
           cd ./sql_test_oracle \
+            && unzip -o instantclient-basiclite-linux.x64-21.12.0.0.0dbru.zip -d . \
             && echo cp -f driver_test_oracle2.test driver_test.go \
             && cp -f go.mod go.mod.backup && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle2.txt ./ \
