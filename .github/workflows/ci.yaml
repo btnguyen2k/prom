@@ -281,11 +281,22 @@ jobs:
           go-version: ${{ matrix.go }}
       - name: Start OracleDB server
         run: |
-          docker run -d --name oracle-xe -p 1521:1521 -e ORACLE_PWD=SecretPassword1 container-registry.oracle.com/database/express:${{ matrix.oracle }}
+          docker run -d --name oracle-xe -p 1521:1521 -e ORACLE_PWD=SecretPassword1 -e ORACLE_CHARACTERSET=UTF8 container-registry.oracle.com/database/express:${{ matrix.oracle }}
           sleep 30
           if [ "${{ matrix.oracle }}"=="18.4.0-xe" ]; then
               sleep 240
           fi
+      - name: Run tests (driver github.com/godror/godror)
+        run: |
+          export TIMEZONE="Asia/Ho_Chi_Minh"
+          export ORACLE_DRIVER=godror
+          export ORACLE_URL="user=system password=SecretPassword1 connectString=localhost:1521/XE libDir=./instantclient_21_12"
+          go version
+          cd ./sql_test \
+            && cp -f driver_test_oracle2.test driver_test.go \
+            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle2.txt ./ \
+            && cp -f go.mod.backup go.mod && cd ..
       - name: Run tests (driver github.com/sijms/go-ora/v2)
         run: |
           export TIMEZONE="Asia/Ho_Chi_Minh"
@@ -297,17 +308,6 @@ jobs:
             && cp -f driver_test_oracle1.test driver_test.go \
             && cp -f go.mod go.mod.backup && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle1.txt ./ \
-            && cp -f go.mod.backup go.mod && cd ..
-      - name: Run tests (driver github.com/godror/godror)
-        run: |
-          export TIMEZONE="Asia/Ho_Chi_Minh"
-          export ORACLE_DRIVER=godror
-          export ORACLE_URL="user=system password=SecretPassword1 connectString=localhost:1521/XE libDir=./instantclient_21_12"
-          go version
-          cd ./sql_test \
-            && cp -f driver_test_oracle2.test driver_test.go \
-            && cp -f go.mod go.mod.backup && go mod tidy \
-            && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle2.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
