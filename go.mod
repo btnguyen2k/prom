@@ -13,7 +13,7 @@ require (
 	github.com/btnguyen2k/gocosmos v0.3.0
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/go-sql-driver/mysql v1.7.1
-	github.com/godror/godror v0.40.4
+	github.com/godror/godror v0.41.0
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/mattn/go-sqlite3 v1.14.18
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
