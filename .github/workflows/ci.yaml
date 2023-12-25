@@ -294,8 +294,8 @@ jobs:
           go version
           cd ./sql_test_oracle \
             && unzip -o instantclient-basiclite-linux.x64-21.12.0.0.0dbru.zip -d . \
-            && ls -l . && ls -l ./instantclient_21_12 \
-            && echo cp -f driver_test_oracle2.test driver_test.go \
+            && dpkg -i libaio1_0.3.112-13build1_amd64.deb \
+            && export LD_LIBRARY_PATH=$(pwd)/instantclient_21_12:$LD_LIBRARY_PATH \
             && cp -f go.mod go.mod.backup && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle2.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
@@ -307,7 +307,6 @@ jobs:
           export DATASET="simple"
           go version
           cd ./sql_test_oracle \
-            && echo cp -f driver_test_oracle1.test driver_test.go \
             && cp -f go.mod go.mod.backup && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle1.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
