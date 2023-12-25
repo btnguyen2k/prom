@@ -286,8 +286,8 @@ jobs:
         run: |
           docker run -d --name oracle-xe -p 1521:1521 -e ORACLE_PWD=SecretPassword1 -e ORACLE_CHARACTERSET=UTF8 container-registry.oracle.com/database/express:${{ matrix.oracle }}
           sleep 30
-          if [ "${{ matrix.oracle }}"=="18.4.0-xe" ]; then
-              sleep 240
+          if [ "${{ matrix.oracle }}" == "18.4.0-xe" ]; then
+              sleep 480
           fi
       - name: Run tests (driver github.com/godror/godror)
         run: |
