@@ -130,9 +130,9 @@ func TestSqlConnect_GetInfo(t *testing.T) {
 	if sqlc.GetDbFlavor() != dbFlavor {
 		t.Fatalf("%s failed: expected dbflavor %#v but received %#v", testName, dbFlavor, sqlc.GetDbFlavor())
 	}
-	sqlc.SetDbFlavor(promsql.FlavorDefault)
-	if sqlc.GetDbFlavor() != promsql.FlavorDefault {
-		t.Fatalf("%s failed: expected dbflavor %#v but received %#v", testName, promsql.FlavorDefault, sqlc.GetDbFlavor())
+	sqlc.SetDbFlavor(promsql.FlavorUnknown)
+	if sqlc.GetDbFlavor() != promsql.FlavorUnknown {
+		t.Fatalf("%s failed: expected dbflavor %#v but received %#v", testName, promsql.FlavorUnknown, sqlc.GetDbFlavor())
 	}
 	if sqlc.PoolOpts() == nil {
 		t.Fatalf("%s failed: PoolOpts is nil", testName)
