@@ -279,6 +279,9 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go }}
+      - name: Pull OracleDB image
+        run: |
+          docker pull container-registry.oracle.com/database/express:${{ matrix.oracle }}
       - name: Start OracleDB server
         run: |
           docker run -d --name oracle-xe -p 1521:1521 -e ORACLE_PWD=SecretPassword1 -e ORACLE_CHARACTERSET=UTF8 container-registry.oracle.com/database/express:${{ matrix.oracle }}
