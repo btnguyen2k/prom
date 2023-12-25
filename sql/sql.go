@@ -16,16 +16,61 @@ import (
 	"github.com/btnguyen2k/prom"
 )
 
+// DbFlavorFromString parses a string to DbFlavor.
+//
+// @Available since <<VERSION>>
+func DbFlavorFromString(v string) DbFlavor {
+	v = strings.TrimSpace(strings.ToUpper(v))
+	switch v {
+	case "MYSQL":
+		return FlavorMySql
+	case "PGSQL", "POSTGRESQL":
+		return FlavorPgSql
+	case "MSSQL", "SQLSERVER":
+		return FlavorMsSql
+	case "ORACLE", "ORACLEDB":
+		return FlavorOracle
+	case "SQLITE", "SQLITE3":
+		return FlavorSqlite
+	case "COSMOSDB", "COSMOS DB", "AZURE COSMOSDB", "AZURE COSMOS DB":
+		return FlavorCosmosDb
+	default:
+		return FlavorUnknown
+	}
+}
+
 // DbFlavor specifies the flavor or database server/vendor.
 //
 // Available: since v0.1.0
 type DbFlavor int
 
+// String implements fmt.Stringer interface.
+//
+// @Available since <<VERSION>>
+func (f DbFlavor) String() string {
+	switch f {
+	case FlavorMySql:
+		return "MYSQL"
+	case FlavorPgSql:
+		return "POSTGRESQL"
+	case FlavorMsSql:
+		return "MSSQL"
+	case FlavorOracle:
+		return "ORACLE"
+	case FlavorSqlite:
+		return "SQLITE"
+	case FlavorCosmosDb:
+		return "COSMOSDB"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 // Predefined db flavors.
 //
 // Available: since v0.1.0
 const (
-	FlavorDefault DbFlavor = iota
+	FlavorUnknown DbFlavor = iota
 	FlavorMySql
 	FlavorPgSql
 	FlavorMsSql
@@ -437,67 +482,67 @@ var sqlNullTime = reflect.TypeOf(sql.NullTime{})
 // var sqlNullFloat64 = reflect.TypeOf(sql.NullFloat64{})
 
 var dbIntTypes = map[string]map[DbFlavor]bool{
-	"TINYINT":   {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"SMALLINT":  {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"MEDIUMINT": {FlavorDefault: true, FlavorMySql: true, FlavorSqlite: true},
-	"INT":       {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"INTEGER":   {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"BIGINT":    {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"INT2":      {FlavorDefault: true, FlavorPgSql: true, FlavorSqlite: true},
-	"INT4":      {FlavorDefault: true, FlavorPgSql: true},
-	"INT8":      {FlavorDefault: true, FlavorPgSql: true, FlavorSqlite: true},
+	"TINYINT":   {FlavorUnknown: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"SMALLINT":  {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"MEDIUMINT": {FlavorUnknown: true, FlavorMySql: true, FlavorSqlite: true},
+	"INT":       {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"INTEGER":   {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"BIGINT":    {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"INT2":      {FlavorUnknown: true, FlavorPgSql: true, FlavorSqlite: true},
+	"INT4":      {FlavorUnknown: true, FlavorPgSql: true},
+	"INT8":      {FlavorUnknown: true, FlavorPgSql: true, FlavorSqlite: true},
 }
 var dbFloatTypes = map[string]map[DbFlavor]bool{
-	"FLOAT":            {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"FLOAT4":           {FlavorDefault: true, FlavorPgSql: true},
-	"FLOAT8":           {FlavorDefault: true, FlavorPgSql: true},
-	"REAL":             {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"NUMBER":           {FlavorDefault: true, FlavorSqlite: true},
-	"NUMERIC":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"DECIMAL":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"DOUBLE":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"DOUBLE PRECISION": {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"BINARY_FLOAT":     {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"BINARY_DOUBLE":    {FlavorDefault: true, FlavorOracle: true},
-	"MONEY":            {FlavorDefault: true, FlavorMsSql: true, FlavorPgSql: true},
-	"SMALLMONEY":       {FlavorDefault: true, FlavorMsSql: true},
+	"FLOAT":            {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"FLOAT4":           {FlavorUnknown: true, FlavorPgSql: true},
+	"FLOAT8":           {FlavorUnknown: true, FlavorPgSql: true},
+	"REAL":             {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"NUMBER":           {FlavorUnknown: true, FlavorSqlite: true},
+	"NUMERIC":          {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"DECIMAL":          {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"DOUBLE":           {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"DOUBLE PRECISION": {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"BINARY_FLOAT":     {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"BINARY_DOUBLE":    {FlavorUnknown: true, FlavorOracle: true},
+	"MONEY":            {FlavorUnknown: true, FlavorMsSql: true, FlavorPgSql: true},
+	"SMALLMONEY":       {FlavorUnknown: true, FlavorMsSql: true},
 	"790":              {FlavorPgSql: true},
 }
 var dbStringTypes = map[string]map[DbFlavor]bool{
-	"CHAR":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"VARCHAR":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"TEXT":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"CHARACTER":         {FlavorDefault: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"CHARACTER VARYING": {FlavorDefault: true, FlavorPgSql: true, FlavorOracle: true},
-	"NCHAR":             {FlavorDefault: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"NVARCHAR":          {FlavorDefault: true, FlavorMsSql: true, FlavorSqlite: true},
-	"NTEXT":             {FlavorDefault: true, FlavorMsSql: true},
-	"VARCHAR2":          {FlavorDefault: true, FlavorOracle: true},
-	"NVARCHAR2":         {FlavorDefault: true, FlavorOracle: true},
-	"CLOB":              {FlavorDefault: true, FlavorOracle: true, FlavorSqlite: true},
-	"NCLOB":             {FlavorDefault: true, FlavorOracle: true},
-	"LONG":              {FlavorDefault: true, FlavorOracle: true},
-	"BPCHAR":            {FlavorDefault: true, FlavorPgSql: true},
+	"CHAR":              {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"VARCHAR":           {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"TEXT":              {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"CHARACTER":         {FlavorUnknown: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"CHARACTER VARYING": {FlavorUnknown: true, FlavorPgSql: true, FlavorOracle: true},
+	"NCHAR":             {FlavorUnknown: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"NVARCHAR":          {FlavorUnknown: true, FlavorMsSql: true, FlavorSqlite: true},
+	"NTEXT":             {FlavorUnknown: true, FlavorMsSql: true},
+	"VARCHAR2":          {FlavorUnknown: true, FlavorOracle: true},
+	"NVARCHAR2":         {FlavorUnknown: true, FlavorOracle: true},
+	"CLOB":              {FlavorUnknown: true, FlavorOracle: true, FlavorSqlite: true},
+	"NCLOB":             {FlavorUnknown: true, FlavorOracle: true},
+	"LONG":              {FlavorUnknown: true, FlavorOracle: true},
+	"BPCHAR":            {FlavorUnknown: true, FlavorPgSql: true},
 }
 var dbDateTimeTypes = map[string]map[DbFlavor]bool{
-	"1266":                           {FlavorDefault: true, FlavorPgSql: true},
-	"TIME":                           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"DATE":                           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"YEAR":                           {FlavorDefault: true, FlavorMySql: true},
-	"DATETIME":                       {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"DATETIME2":                      {FlavorDefault: true, FlavorMsSql: true},
-	"DATETIMEOFFSET":                 {FlavorDefault: true, FlavorMsSql: true},
-	"SMALLDATETIME":                  {FlavorDefault: true, FlavorMsSql: true},
-	"TIMESTAMP":                      {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"TIMESTAMP WITH TIME ZONE":       {FlavorDefault: true, FlavorOracle: true},
-	"TIMESTAMP WITH LOCAL TIME ZONE": {FlavorDefault: true, FlavorOracle: true},
+	"1266":                           {FlavorUnknown: true, FlavorPgSql: true},
+	"TIME":                           {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"DATE":                           {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"YEAR":                           {FlavorUnknown: true, FlavorMySql: true},
+	"DATETIME":                       {FlavorUnknown: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"DATETIME2":                      {FlavorUnknown: true, FlavorMsSql: true},
+	"DATETIMEOFFSET":                 {FlavorUnknown: true, FlavorMsSql: true},
+	"SMALLDATETIME":                  {FlavorUnknown: true, FlavorMsSql: true},
+	"TIMESTAMP":                      {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"TIMESTAMP WITH TIME ZONE":       {FlavorUnknown: true, FlavorOracle: true},
+	"TIMESTAMP WITH LOCAL TIME ZONE": {FlavorUnknown: true, FlavorOracle: true},
 }
 
 var dbDurationTypes = map[string]map[DbFlavor]bool{
-	"INTERVALDS_DTY":         {FlavorDefault: true, FlavorOracle: true},
-	"INTERVALYM_DTY":         {FlavorDefault: true, FlavorOracle: true},
-	"INTERVAL DAY TO SECOND": {FlavorDefault: true, FlavorOracle: true},
-	"INTERVAL YEAR TO MONTH": {FlavorDefault: true, FlavorOracle: true},
+	"INTERVALDS_DTY":         {FlavorUnknown: true, FlavorOracle: true},
+	"INTERVALYM_DTY":         {FlavorUnknown: true, FlavorOracle: true},
+	"INTERVAL DAY TO SECOND": {FlavorUnknown: true, FlavorOracle: true},
+	"INTERVAL YEAR TO MONTH": {FlavorUnknown: true, FlavorOracle: true},
 }
 
 var reDbTypeName = regexp.MustCompile(`^(?i)(.*?)\(.*$`)
