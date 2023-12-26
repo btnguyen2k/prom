@@ -92,6 +92,16 @@ via proxy version of `sql.DB` (obtained from `SqlConnect.GetDBProxy()`) or `sql.
 
 See [examples](../examples/PromLogAndMetrics.go) for more details.
 
+**Others**
+
+- Database's `NULL` values are converted to corresponding Go's `nil` points:
+  - `NULL` integer is converted to `(*int64)(nil)`
+  - `NULL` float is converted to `(*float64)(nil)`
+  - `NULL` string is converted to `(*string)(nil)`
+  - `NULL` date/time is converted to `(*time.Time)(nil)`
+- `SQLite`'s numbers are converted to correct Go data types: `int64` for integers, `float64` for floats.
+- In the case a string is loaded as `[]byte`, it is mapped to Go `string` type automatically.
+
 ## Supported/Tested databases and drivers:
 
 - SQLite:
