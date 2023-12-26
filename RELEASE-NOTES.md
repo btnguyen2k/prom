@@ -1,5 +1,29 @@
 # prom release notes
 
+## 2023-12-26 - v1.0.0
+
+### Changed
+
+- BREAKING: rename FlavorDefault to FlavorUnknown
+- BREAKING: refactor subpackage sql
+- BREAKING: Cleanup sub packages and examples
+- BREAKING: Refactor to move sub packages to separated repos
+- Breaking: min Go version bumped to 1.18
+- Breaking Change: prom/goredis - logged command changed from cammelCase to snake_case
+- Change: Migrate to github.com/redis/go-redis/v9
+
+### Added/Refactoring
+
+- Feature: Automatically handle parameter parseTime for MySQL driver
+- Add support for Oracle INTERVAL DAY TO SECOND and INTERVAL YEAR TO MONTH
+- Add function DurationToOracleDayToSecond
+
+### Fixed/Improvement
+
+- Fix: Oracle drivers
+- Fix golangci-lint
+- Dependencies update
+
 ## 2022-10-28 - v0.4.1
 
 Bug fixed: `AwsDynamodbConnect.PutItemIfNotExistXXX` must return `(nil, nil)` if item already existed.

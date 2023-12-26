@@ -4,13 +4,13 @@ import "time"
 
 // IBasePoolOpts is the base interface to define configurations for a connection pool.
 //
-// @Available since <<VERSION>>
+// @Available since v1.0.0
 type IBasePoolOpts interface {
 }
 
 // BasePoolOpts is an abstract implementation of IBasePoolOpts.
 //
-// @Available since <<VERSION>>
+// @Available since v1.0.0
 type BasePoolOpts struct {
 	// Maximum number of connections.
 	// Set to zero or negative value to use default value.
@@ -26,7 +26,7 @@ type BasePoolOpts struct {
 
 // IBaseConnection is the base interface to define a connection.
 //
-// @Available since <<VERSION>>
+// @Available since v1.0.0
 type IBaseConnection interface {
 	// PoolOpts returns the pooling options attached to this connection.
 	PoolOpts() IBasePoolOpts
@@ -53,7 +53,7 @@ type IBaseConnection interface {
 
 // BaseConnection is an abstract implementation of IBaseConnection.
 //
-// @Available since <<VERSION>>
+// @Available since v1.0.0
 type BaseConnection struct {
 	poolOpts      IBasePoolOpts
 	metricsLogger IMetricsLogger
