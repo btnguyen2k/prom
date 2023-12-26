@@ -2,9 +2,12 @@
 /.idea/
 /.vscode/
 /vendor/
-/coverage.out
 /temp/
 /examples/temp/
 /coverage*
 /qnd/
 /.fleet/
+/sql_test/temp/
+/sql_test/coverage*
+/sql_test/vendor/
+/sql_test_oracle/temp/

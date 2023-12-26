@@ -1,0 +1,5 @@
+package sql_test
+
+import (
+	_ "modernc.org/sqlite"
+)
