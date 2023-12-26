@@ -214,6 +214,8 @@ func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOpts 
 	return sc, sc.Init()
 }
 
+var reMysqlParseTime = regexp.MustCompile(`(?i)\bparsetime=true\b`)
+
 // Init should be called to initialize the SqlConnect instance before use.
 //
 // Available since v0.2.8
@@ -221,6 +223,11 @@ func (sc *SqlConnect) Init() error {
 	if sc.db != nil {
 		return nil
 	}
+
+	if !sc.mysqlParseTime && sc.flavor == FlavorMySql {
+		sc.mysqlParseTime = reMysqlParseTime.MatchString(sc.dsn)
+	}
+
 	db, err := sql.Open(sc.driver, sc.dsn)
 	if err != nil {
 		return err

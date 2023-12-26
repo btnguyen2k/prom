@@ -57,7 +57,7 @@ func newSqlConnectMysql(driver, url, timezone string, timeoutMs int, poolOptions
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
 	}
-	sqlc.SetMysqlParseTime(strings.Index(strings.ToLower(url), "parsetime=true") >= 0)
+	//sqlc.SetMysqlParseTime(strings.Index(strings.ToLower(url), "parsetime=true") >= 0)
 	return sqlc, err
 }
 
