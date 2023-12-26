@@ -121,7 +121,7 @@ jobs:
             });
             console.log('✅ Created release: ', release);
 
-  MergeToMain:
+  MergeToMaster:
     runs-on: ubuntu-latest
     needs: [ Release ]
     permissions:
@@ -140,10 +140,10 @@ jobs:
             const {data: pr} = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: "Merge to main after releasing new version ${{ needs.Release.outputs.VERSION }}",
+              title: "Merge to master after releasing new version ${{ needs.Release.outputs.VERSION }}",
               body: process['env']['RELEASE_NOTES'],
               head: process['env']['BRANCH_TO_RELEASE'],
-              base: 'main',
+              base: 'master',
               maintainer_can_modify: true,
             });
             console.log('✅ Created PR: ', pr);
