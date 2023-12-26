@@ -1,10 +1,7 @@
-// go run Commons.go PromLogAndMetrics.go
+// go run Commons.go PromFetchRows.go
 package main
 
-import (
-	"fmt"
-	"github.com/btnguyen2k/prom"
-)
+import "fmt"
 
 func main() {
 	sqlC := newSqlConnect()
@@ -25,21 +22,25 @@ func main() {
 		"INSERT INTO tbl_temp (id, name) VALUES (9, 'name9')",
 	}
 	for _, sqlStm := range sqls {
-		_, err := sqlC.GetDBProxy().Exec(sqlStm)
+		_, err := sqlC.GetDB().Exec(sqlStm)
 		if err != nil {
 			panic(err)
 		}
 	}
-	metrics, err := sqlC.Metrics(prom.MetricsCatAll, prom.MetricsOpts{ReturnLatestCommands: 100})
+
+	dbrows, err := sqlC.GetDB().Query("SELECT id, name FROM tbl_temp WHERE 3 < id AND id < 9 ORDER BY id")
 	if err != nil {
 		panic(err)
 	}
+	defer func() { _ = dbrows.Close() }()
 
-	fmt.Printf("Last %d queries:\n", len(metrics.LastNCmds))
-	for i, cmd := range metrics.LastNCmds {
-		fmt.Printf("  %02d/Execution time (ms): %06.3f: %s\n", i+1, cmd.Cost/1000, cmd.CmdRequest)
+	// fetch all queried rows. Note: FetchRows will NOT close dbrows!
+	rows, err := sqlC.FetchRows(dbrows)
+	if err != nil {
+		panic(err)
 	}
-
-	fmt.Printf("Execution time (ms) - P99: %.3f, P95: %.3f, P90: %.3f, P75: %.3f, P50: %.3f\n",
-		metrics.P99Cost/1000, metrics.P95Cost/1000, metrics.P90Cost/1000, metrics.P75Cost/1000, metrics.P50Cost/1000)
+	for i, row := range rows {
+		// row is a map[string]interface{} type
+		fmt.Printf("Row #%d: %#v / Id: %T / Name: %T\n", i, row, row["id"], row["name"])
+	}
 }

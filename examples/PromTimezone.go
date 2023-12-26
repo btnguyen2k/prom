@@ -1,45 +1,46 @@
-// go run Commons.go PromLogAndMetrics.go
+// go run Commons.go PromTimezone.go
 package main
 
 import (
 	"fmt"
-	"github.com/btnguyen2k/prom"
+	promsql "github.com/btnguyen2k/prom/sql"
+	"time"
 )
 
 func main() {
-	sqlC := newSqlConnect()
-	defer func() { _ = sqlC.Close() }()
-
-	sqls := []string{
-		"DROP TABLE IF EXISTS tbl_temp",
-		"CREATE TABLE tbl_temp (id BIGINT PRIMARY KEY, name VARCHAR(64))",
-		"INSERT INTO tbl_temp (id, name) VALUES (0, 'name0')",
-		"INSERT INTO tbl_temp (id, name) VALUES (1, 'name1')",
-		"INSERT INTO tbl_temp (id, name) VALUES (2, 'name2')",
-		"INSERT INTO tbl_temp (id, name) VALUES (3, 'name3')",
-		"INSERT INTO tbl_temp (id, name) VALUES (4, 'name4')",
-		"INSERT INTO tbl_temp (id, name) VALUES (5, 'name5')",
-		"INSERT INTO tbl_temp (id, name) VALUES (6, 'name6')",
-		"INSERT INTO tbl_temp (id, name) VALUES (7, 'name7')",
-		"INSERT INTO tbl_temp (id, name) VALUES (8, 'name8')",
-		"INSERT INTO tbl_temp (id, name) VALUES (9, 'name9')",
-	}
-	for _, sqlStm := range sqls {
-		_, err := sqlC.GetDBProxy().Exec(sqlStm)
+	locationStrs := []string{"Asia/Ho_Chi_Minh", "America/Los_Angeles", "Australia/Sydney"}
+	locations := make([]*time.Location, 0)
+	sqlCArr := make([]*promsql.SqlConnect, 0)
+	for _, locStr := range locationStrs {
+		loc, err := time.LoadLocation(locStr)
 		if err != nil {
 			panic(err)
 		}
-	}
-	metrics, err := sqlC.Metrics(prom.MetricsCatAll, prom.MetricsOpts{ReturnLatestCommands: 100})
-	if err != nil {
-		panic(err)
-	}
+		locations = append(locations, loc)
 
-	fmt.Printf("Last %d queries:\n", len(metrics.LastNCmds))
-	for i, cmd := range metrics.LastNCmds {
-		fmt.Printf("  %02d/Execution time (ms): %06.3f: %s\n", i+1, cmd.Cost/1000, cmd.CmdRequest)
+		sqlC := newSqlConnect()
+		sqlC.SetLocation(loc)
+		sqlCArr = append(sqlCArr, sqlC)
 	}
+	defer func() {
+		for _, sqlC := range sqlCArr {
+			_ = sqlC.Close()
+		}
+	}()
 
-	fmt.Printf("Execution time (ms) - P99: %.3f, P95: %.3f, P90: %.3f, P75: %.3f, P50: %.3f\n",
-		metrics.P99Cost/1000, metrics.P95Cost/1000, metrics.P90Cost/1000, metrics.P75Cost/1000, metrics.P50Cost/1000)
+	v, _ := time.ParseInLocation("2006-01-02 15:04:05", "2023-12-26 09:27:18", locations[0])
+	executeSql(sqlCArr[0], "DROP TABLE IF EXISTS tbl_temp")
+	executeSql(sqlCArr[0], "CREATE TABLE tbl_temp (id BIGINT PRIMARY KEY, t TIMESTAMP(0), tz TIMESTAMP(0) WITH TIME ZONE)")
+	executeSql(sqlCArr[0], "INSERT INTO tbl_temp (id, t, tz) VALUES ($1, $2, $3)", 0, v, v)
+
+	fmt.Printf("Original value (%s): %s\n", locations[0], v)
+	for _, sqlC := range sqlCArr {
+		dbrows := executeQuery(sqlC, "SELECT * FROM tbl_temp WHERE id=$1", 0)
+		rows, err := sqlC.FetchRows(dbrows)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Fetched value (%s):\n\tt : %s\n\ttz: %s\n", sqlC.GetLocation(), rows[0]["t"], rows[0]["tz"])
+		_ = dbrows.Close()
+	}
 }

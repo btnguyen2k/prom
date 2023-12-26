@@ -1,4 +1,4 @@
-// go run Commons.go PromFetchRows.go
+// go run Commons.go PromFetchRowsCallback.go
 package main
 
 import "fmt"
@@ -28,19 +28,20 @@ func main() {
 		}
 	}
 
-	dbrows, err := sqlC.GetDB().Query("SELECT id, name FROM tbl_temp WHERE 3 < id AND id < 7")
+	dbrows, err := sqlC.GetDB().Query("SELECT id, name FROM tbl_temp WHERE 3 < id AND id < 9 ORDER BY id DESC")
 	if err != nil {
 		panic(err)
 	}
 	defer func() { _ = dbrows.Close() }()
 
 	// fetch all queried rows. Note: FetchRows will NOT close dbrows!
-	rows, err := sqlC.FetchRows(dbrows)
+	i := 0
+	err = sqlC.FetchRowsCallback(dbrows, func(row map[string]interface{}, err error) bool {
+		fmt.Printf("Row #%d: %#v / Id: %T / Name: %T\n", i, row, row["id"], row["name"])
+		i++
+		return i < 2 // return true means continue, return false means break
+	})
 	if err != nil {
 		panic(err)
-	}
-	for i, row := range rows {
-		// row is a map[string]interface{} type
-		fmt.Printf("Row #%d: %#v / Id: %T / Name: %T\n", i, row, row["id"], row["name"])
 	}
 }
