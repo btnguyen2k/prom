@@ -13,8 +13,8 @@ type m map[string]interface{}
 
 var firstWordRegEx = regexp.MustCompile(`^\s*(\w+)`)
 var sqlDMLCmds = m{"INSERT": true, "DELETE": true, "UPDATE": true, "UPSERT": true}
-var sqlDDLCmds = m{"ALTER": true, "CREATE": true, "DROP": true}
 var sqlDQLCmds = m{"SELECT": true}
+var sqlDDLCmds = m{"ALTER": true, "CREATE": true, "DROP": true}
 
 // DBProxy is a proxy that can be used as replacement for sql.DB.
 //
@@ -26,7 +26,7 @@ type DBProxy struct {
 	sqlc *SqlConnect
 }
 
-// BeginProxy is similar to sql.DB.Begin, but returns a proxy that can be used as a replacement.
+// BeginProxy is similar to sql.DB/Begin, but returns a proxy that can be used as a replacement.
 //
 // See TxProxy.
 func (dbp *DBProxy) BeginProxy() (*TxProxy, error) {
@@ -34,7 +34,7 @@ func (dbp *DBProxy) BeginProxy() (*TxProxy, error) {
 	return &TxProxy{Tx: tx, sqlc: dbp.sqlc}, err
 }
 
-// BeginTxProxy is similar to sql.DB.BeginTx, but returns a proxy that can be used as a replacement.
+// BeginTxProxy is similar to sql.DB/BeginTx, but returns a proxy that can be used as a replacement.
 //
 // See TxProxy.
 func (dbp *DBProxy) BeginTxProxy(ctx context.Context, opts *sql.TxOptions) (*TxProxy, error) {
@@ -42,7 +42,7 @@ func (dbp *DBProxy) BeginTxProxy(ctx context.Context, opts *sql.TxOptions) (*TxP
 	return &TxProxy{Tx: tx, sqlc: dbp.sqlc}, err
 }
 
-// ConnProxy is similar to sql.DB.Conn, but returns a proxy that can be used as a replacement.
+// ConnProxy is similar to sql.DB/Conn, but returns a proxy that can be used as a replacement.
 //
 // See ConnProxy.
 func (dbp *DBProxy) ConnProxy(ctx context.Context) (*ConnProxy, error) {
@@ -50,17 +50,17 @@ func (dbp *DBProxy) ConnProxy(ctx context.Context) (*ConnProxy, error) {
 	return &ConnProxy{Conn: conn, sqlc: dbp.sqlc}, err
 }
 
-// Ping overrides sql.DB.Ping to log execution metrics.
+// Ping overrides sql.DB/Ping to log execution metrics.
 func (dbp *DBProxy) Ping() error {
 	return dbp.PingContext(context.Background())
 }
 
-// PingContext overrides sql.DB.PingContext to log execution metrics.
+// PingContext overrides sql.DB/PingContext to log execution metrics.
 func (dbp *DBProxy) PingContext(ctx context.Context) error {
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	defer func() {
-		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
-		dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+		_ = dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "ping"
 	err := dbp.DB.PingContext(ctx)
@@ -68,12 +68,12 @@ func (dbp *DBProxy) PingContext(ctx context.Context) error {
 	return err
 }
 
-// Close overrides sql.DB.Close to log execution metrics.
+// Close overrides sql.DB/Close to log execution metrics.
 func (dbp *DBProxy) Close() error {
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	defer func() {
-		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
-		dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+		_ = dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "close"
 	err := dbp.DB.Close()
@@ -81,17 +81,17 @@ func (dbp *DBProxy) Close() error {
 	return err
 }
 
-// Prepare overrides sql.DB.Prepare to log execution metrics.
+// Prepare overrides sql.DB/Prepare to log execution metrics.
 func (dbp *DBProxy) Prepare(query string) (*sql.Stmt, error) {
 	return dbp.PrepareContext(context.Background(), query)
 }
 
-// PrepareContext overrides sql.DB.PrepareContext to log execution metrics.
+// PrepareContext overrides sql.DB/PrepareContext to log execution metrics.
 func (dbp *DBProxy) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	defer func() {
-		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
-		dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+		_ = dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "prepare", m{"query": query}
 	result, err := dbp.DB.PrepareContext(ctx, query)
@@ -99,7 +99,7 @@ func (dbp *DBProxy) PrepareContext(ctx context.Context, query string) (*sql.Stmt
 	return result, err
 }
 
-// Exec overrides sql.DB.Exec to log execution metrics.
+// Exec overrides sql.DB/Exec to log execution metrics.
 func (dbp *DBProxy) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return dbp.ExecContext(context.Background(), query, args...)
 }
@@ -109,13 +109,15 @@ func (dbp *DBProxy) ExecContext(ctx context.Context, query string, args ...inter
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			dbp.sqlc.LogMetrics(prom.MetricsCatDML, cmd)
+			_ = dbp.sqlc.LogMetrics(prom.MetricsCatDML, cmd)
 		} else if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			dbp.sqlc.LogMetrics(prom.MetricsCatDDL, cmd)
+			_ = dbp.sqlc.LogMetrics(prom.MetricsCatDDL, cmd)
+		} else if v, ok := sqlDDLCmds[firstWord]; ok && v.(bool) {
+			_ = dbp.sqlc.LogMetrics(prom.MetricsCatDDL, cmd)
 		} else {
-			dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+			_ = dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -129,21 +131,21 @@ func (dbp *DBProxy) ExecContext(ctx context.Context, query string, args ...inter
 	return result, err
 }
 
-// Query overrides sql.DB.Query to log execution metrics.
+// Query overrides sql.DB/Query to log execution metrics.
 func (dbp *DBProxy) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return dbp.QueryContext(context.Background(), query, args...)
 }
 
-// QueryContext overrides sql.DB.QueryContext to log execution metrics.
+// QueryContext overrides sql.DB/QueryContext to log execution metrics.
 func (dbp *DBProxy) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			dbp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
+			_ = dbp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+			_ = dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -152,21 +154,21 @@ func (dbp *DBProxy) QueryContext(ctx context.Context, query string, args ...inte
 	return result, err
 }
 
-// QueryRow overrides sql.DB.QueryRow to log execution metrics.
+// QueryRow overrides sql.DB/QueryRow to log execution metrics.
 func (dbp *DBProxy) QueryRow(query string, args ...interface{}) *sql.Row {
 	return dbp.QueryRowContext(context.Background(), query, args...)
 }
 
-// QueryRowContext overrides sql.DB.QueryRowContext to log execution metrics.
+// QueryRowContext overrides sql.DB/QueryRowContext to log execution metrics.
 func (dbp *DBProxy) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
 	cmd := dbp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = dbp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			dbp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
+			_ = dbp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+			_ = dbp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -187,7 +189,7 @@ type ConnProxy struct {
 	sqlc *SqlConnect
 }
 
-// BeginTxProxy is similar to sql.Conn.BeginTx, but returns a proxy that can be used as a replacement.
+// BeginTxProxy is similar to sql.Conn/BeginTx, but returns a proxy that can be used as a replacement.
 //
 // See TxProxy.
 func (cp *ConnProxy) BeginTxProxy(ctx context.Context, opts *sql.TxOptions) (*TxProxy, error) {
@@ -195,12 +197,12 @@ func (cp *ConnProxy) BeginTxProxy(ctx context.Context, opts *sql.TxOptions) (*Tx
 	return &TxProxy{Tx: tx, sqlc: cp.sqlc}, err
 }
 
-// PingContext overrides sql.Conn.PingContext to log execution metrics.
+// PingContext overrides sql.Conn/PingContext to log execution metrics.
 func (cp *ConnProxy) PingContext(ctx context.Context) error {
 	cmd := cp.sqlc.NewCmdExecInfo()
 	defer func() {
-		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
-		cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+		_ = cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "ping"
 	err := cp.Conn.PingContext(ctx)
@@ -208,12 +210,12 @@ func (cp *ConnProxy) PingContext(ctx context.Context) error {
 	return err
 }
 
-// Close overrides sql.Conn.Close to log execution metrics.
+// Close overrides sql.Conn/Close to log execution metrics.
 func (cp *ConnProxy) Close() error {
 	cmd := cp.sqlc.NewCmdExecInfo()
 	defer func() {
-		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
-		cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+		_ = cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "close"
 	err := cp.Conn.Close()
@@ -221,12 +223,12 @@ func (cp *ConnProxy) Close() error {
 	return err
 }
 
-// PrepareContext overrides sql.Conn.PrepareContext to log execution metrics.
+// PrepareContext overrides sql.Conn/PrepareContext to log execution metrics.
 func (cp *ConnProxy) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
 	cmd := cp.sqlc.NewCmdExecInfo()
 	defer func() {
-		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
-		cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+		_ = cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "prepare", m{"query": query}
 	result, err := cp.Conn.PrepareContext(ctx, query)
@@ -234,18 +236,18 @@ func (cp *ConnProxy) PrepareContext(ctx context.Context, query string) (*sql.Stm
 	return result, err
 }
 
-// ExecContext overrides sql.Conn.ExecContext to log execution metrics.
+// ExecContext overrides sql.Conn/ExecContext to log execution metrics.
 func (cp *ConnProxy) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	cmd := cp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			cp.sqlc.LogMetrics(prom.MetricsCatDML, cmd)
-		} else if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			cp.sqlc.LogMetrics(prom.MetricsCatDDL, cmd)
+			_ = cp.sqlc.LogMetrics(prom.MetricsCatDML, cmd)
+		} else if v, ok := sqlDDLCmds[firstWord]; ok && v.(bool) {
+			_ = cp.sqlc.LogMetrics(prom.MetricsCatDDL, cmd)
 		} else {
-			cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+			_ = cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -259,16 +261,16 @@ func (cp *ConnProxy) ExecContext(ctx context.Context, query string, args ...inte
 	return result, err
 }
 
-// QueryContext overrides sql.Conn.QueryContext to log execution metrics.
+// QueryContext overrides sql.Conn/QueryContext to log execution metrics.
 func (cp *ConnProxy) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	cmd := cp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			cp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
+			_ = cp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+			_ = cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -277,16 +279,16 @@ func (cp *ConnProxy) QueryContext(ctx context.Context, query string, args ...int
 	return result, err
 }
 
-// QueryRowContext overrides sql.Conn.QueryRowContext to log execution metrics.
+// QueryRowContext overrides sql.Conn/QueryRowContext to log execution metrics.
 func (cp *ConnProxy) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
 	cmd := cp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = cp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			cp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
+			_ = cp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+			_ = cp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -307,12 +309,12 @@ type TxProxy struct {
 	sqlc *SqlConnect
 }
 
-// Commit overrides sql.Tx.Commit to log execution metrics.
+// Commit overrides sql.Tx/Commit to log execution metrics.
 func (tp *TxProxy) Commit() error {
 	cmd := tp.sqlc.NewCmdExecInfo()
 	defer func() {
-		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
-		tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+		_ = tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "commit"
 	err := tp.Tx.Commit()
@@ -320,12 +322,12 @@ func (tp *TxProxy) Commit() error {
 	return err
 }
 
-// Rollback overrides sql.Tx.Rollback to log execution metrics.
+// Rollback overrides sql.Tx/Rollback to log execution metrics.
 func (tp *TxProxy) Rollback() error {
 	cmd := tp.sqlc.NewCmdExecInfo()
 	defer func() {
-		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
-		tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+		_ = tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName = "rollback"
 	err := tp.Tx.Rollback()
@@ -333,17 +335,17 @@ func (tp *TxProxy) Rollback() error {
 	return err
 }
 
-// Prepare overrides sql.Tx.Prepare to log execution metrics.
+// Prepare overrides sql.Tx/Prepare to log execution metrics.
 func (tp *TxProxy) Prepare(query string) (*sql.Stmt, error) {
 	return tp.PrepareContext(context.Background(), query)
 }
 
-// PrepareContext overrides sql.Tx.PrepareContext to log execution metrics.
+// PrepareContext overrides sql.Tx/PrepareContext to log execution metrics.
 func (tp *TxProxy) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
 	cmd := tp.sqlc.NewCmdExecInfo()
 	defer func() {
-		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
-		tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+		_ = tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 	}()
 	cmd.CmdName, cmd.CmdRequest = "prepare", m{"query": query}
 	result, err := tp.Tx.PrepareContext(ctx, query)
@@ -351,23 +353,23 @@ func (tp *TxProxy) PrepareContext(ctx context.Context, query string) (*sql.Stmt,
 	return result, err
 }
 
-// Exec overrides sql.Tx.Exec to log execution metrics.
+// Exec overrides sql.Tx/Exec to log execution metrics.
 func (tp *TxProxy) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return tp.ExecContext(context.Background(), query, args...)
 }
 
-// ExecContext overrides sql.Tx.ExecContext to log execution metrics.
+// ExecContext overrides sql.Tx/ExecContext to log execution metrics.
 func (tp *TxProxy) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	cmd := tp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			tp.sqlc.LogMetrics(prom.MetricsCatDML, cmd)
-		} else if v, ok := sqlDMLCmds[firstWord]; ok && v.(bool) {
-			tp.sqlc.LogMetrics(prom.MetricsCatDDL, cmd)
+			_ = tp.sqlc.LogMetrics(prom.MetricsCatDML, cmd)
+		} else if v, ok := sqlDDLCmds[firstWord]; ok && v.(bool) {
+			_ = tp.sqlc.LogMetrics(prom.MetricsCatDDL, cmd)
 		} else {
-			tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+			_ = tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -381,21 +383,21 @@ func (tp *TxProxy) ExecContext(ctx context.Context, query string, args ...interf
 	return result, err
 }
 
-// Query overrides sql.Tx.Query to log execution metrics.
+// Query overrides sql.Tx/Query to log execution metrics.
 func (tp *TxProxy) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return tp.QueryContext(context.Background(), query, args...)
 }
 
-// QueryContext overrides sql.Tx.QueryContext to log execution metrics.
+// QueryContext overrides sql.Tx/QueryContext to log execution metrics.
 func (tp *TxProxy) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	cmd := tp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			tp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
+			_ = tp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+			_ = tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}
@@ -404,21 +406,21 @@ func (tp *TxProxy) QueryContext(ctx context.Context, query string, args ...inter
 	return result, err
 }
 
-// QueryRow overrides sql.Tx.QueryRow to log execution metrics.
+// QueryRow overrides sql.Tx/QueryRow to log execution metrics.
 func (tp *TxProxy) QueryRow(query string, args ...interface{}) *sql.Row {
 	return tp.QueryRowContext(context.Background(), query, args...)
 }
 
-// QueryRowContext overrides sql.Tx.QueryRowContext to log execution metrics.
+// QueryRowContext overrides sql.Tx/QueryRowContext to log execution metrics.
 func (tp *TxProxy) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
 	cmd := tp.sqlc.NewCmdExecInfo()
 	firstWord := strings.ToUpper(firstWordRegEx.FindString(query))
 	defer func() {
-		tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
+		_ = tp.sqlc.LogMetrics(prom.MetricsCatAll, cmd)
 		if v, ok := sqlDQLCmds[firstWord]; ok && v.(bool) {
-			tp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
+			_ = tp.sqlc.LogMetrics(prom.MetricsCatDQL, cmd)
 		} else {
-			tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
+			_ = tp.sqlc.LogMetrics(prom.MetricsCatOther, cmd)
 		}
 	}()
 	cmd.CmdName, cmd.CmdRequest = firstWord, m{"query": query, "params": args}

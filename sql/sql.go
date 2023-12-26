@@ -1,3 +1,4 @@
+// Package sql provides database/sql specific implementation of btnguyen2k/prom and other utilities.
 package sql
 
 import (
@@ -5,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -14,16 +16,61 @@ import (
 	"github.com/btnguyen2k/prom"
 )
 
+// DbFlavorFromString parses a string to DbFlavor.
+//
+// @Available since <<VERSION>>
+func DbFlavorFromString(v string) DbFlavor {
+	v = strings.TrimSpace(strings.ToUpper(v))
+	switch v {
+	case "MYSQL":
+		return FlavorMySql
+	case "PGSQL", "POSTGRESQL":
+		return FlavorPgSql
+	case "MSSQL", "SQLSERVER":
+		return FlavorMsSql
+	case "ORACLE", "ORACLEDB":
+		return FlavorOracle
+	case "SQLITE", "SQLITE3":
+		return FlavorSqlite
+	case "COSMOSDB", "COSMOS DB", "AZURE COSMOSDB", "AZURE COSMOS DB":
+		return FlavorCosmosDb
+	default:
+		return FlavorUnknown
+	}
+}
+
 // DbFlavor specifies the flavor or database server/vendor.
 //
 // Available: since v0.1.0
 type DbFlavor int
 
+// String implements fmt.Stringer interface.
+//
+// @Available since <<VERSION>>
+func (f DbFlavor) String() string {
+	switch f {
+	case FlavorMySql:
+		return "MYSQL"
+	case FlavorPgSql:
+		return "POSTGRESQL"
+	case FlavorMsSql:
+		return "MSSQL"
+	case FlavorOracle:
+		return "ORACLE"
+	case FlavorSqlite:
+		return "SQLITE"
+	case FlavorCosmosDb:
+		return "COSMOSDB"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 // Predefined db flavors.
 //
 // Available: since v0.1.0
 const (
-	FlavorDefault DbFlavor = iota
+	FlavorUnknown DbFlavor = iota
 	FlavorMySql
 	FlavorPgSql
 	FlavorMsSql
@@ -32,77 +79,142 @@ const (
 	FlavorCosmosDb
 )
 
-// SqlPoolOptions configures database connection pooling options.
-type SqlPoolOptions struct {
-	// Maximum amount of time a connection may be reused, default is 1 hour,
-	// see https://golang.org/pkg/database/sql/#DB.SetConnMaxLifetime
-	ConnMaxLifetime time.Duration
-
-	// Maximum number of idle connections in the pool, default is 1,
-	// see https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns
-	MaxIdleConns int
-
-	// Maximum number of open connections to the database, default is 2,
-	// see https://golang.org/pkg/database/sql/#DB.SetMaxOpenConns
-	MaxOpenConns int
+// DurationToOracleYearToMonth converts a time.Duration value to Oracle's INTERVAL YEAR TO MONTH literals (e.g. "YY-MM").
+//
+// Note: a month is assumed to have 30 days, and a year is 12 months. Hence, the conversion is not accurate as a year has only 360 days.
+//
+// @Available since <<VERSION>>
+func DurationToOracleYearToMonth(v time.Duration) string {
+	months := int(v.Truncate(24*time.Hour).Hours()) / 24 / 30
+	years := months / 12
+	months -= years * 12
+	return fmt.Sprintf("%d-%d", years, months)
 }
 
-var defaultSqlPoolOptions = &SqlPoolOptions{ConnMaxLifetime: 1 * time.Hour, MaxIdleConns: 1, MaxOpenConns: 2}
+// ParseOracleIntervalYearToMonth parses an Oracle's INTERVAL YEAR TO MONTH literal (e.g. "+YY-MM") to time.Duration.
+//
+// Note: a month is assumed to have 30 days, and a year is 12 months. Hence, the conversion is not accurate as a year has only 360 days.
+//
+// @Available since <<VERSION>>
+func ParseOracleIntervalYearToMonth(v string) (time.Duration, error) {
+	re := regexp.MustCompile(`^\+?(\d+)-(\d+)$`)
+	matches := re.FindStringSubmatch(v)
+	if matches == nil {
+		return 0, fmt.Errorf("cannot parse [%s] as Oracle's INTERVAL YEAR TO MONTH", v)
+	}
+	years, _ := strconv.Atoi(matches[1])
+	months, _ := strconv.Atoi(matches[2])
+	return time.Duration(years*12+months) * 30 * 24 * time.Hour, nil
+}
+
+// DurationToOracleDayToSecond converts a time.Duration value to Oracle's INTERVAL DAY TO SECOND literals (e.g. "d HH:mm:ss.SSSSSSSSS").
+//
+// @Available since <<VERSION>>
+func DurationToOracleDayToSecond(v time.Duration, precision int) string {
+	z := time.Unix(0, 0).UTC()
+	hms := z.Add(v).Format("15:04:05")
+	days := int(v.Truncate(24*time.Hour).Hours() / 24)
+	result := fmt.Sprintf("%d %s", days, hms)
+	if precision > 0 {
+		if precision > 9 {
+			precision = 9
+		}
+		v = v.Round(time.Duration(math.Pow10(9-precision)) * time.Nanosecond)
+		layout := strings.Repeat("9", precision)
+		trailing := z.Add(v).Format("." + layout)
+		for len(trailing) < precision+1 {
+			trailing += "0"
+		}
+		result += trailing
+	}
+	return result
+}
+
+// ParseOracleIntervalDayToSecond parses an Oracle's INTERVAL DAY TO SECOND literal (e.g. "+6 13:44:50.123457") to time.Duration .
+//
+// @Available since <<VERSION>>
+func ParseOracleIntervalDayToSecond(v string) (time.Duration, error) {
+	re := regexp.MustCompile(`^\+?(\d+)\s(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$`)
+	matches := re.FindStringSubmatch(v)
+	if matches == nil {
+		return 0, fmt.Errorf("cannot parse [%s] as Oracle's INTERVAL DAY TO SECOND", v)
+	}
+	days, _ := strconv.Atoi(matches[1])
+	hours, _ := strconv.Atoi(matches[2])
+	minutes, _ := strconv.Atoi(matches[3])
+	seconds, _ := strconv.Atoi(matches[4])
+	nanos := 0
+	if len(matches) > 5 {
+		for len(matches[5]) < 9 {
+			matches[5] += "0"
+		}
+		nanos, _ = strconv.Atoi(matches[5])
+	}
+	return time.Duration(days)*24*time.Hour + time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute +
+		time.Duration(seconds)*time.Second + time.Duration(nanos)*time.Nanosecond, nil
+}
+
+// PoolOpts configures database connection pooling options.
+//
+// See:
+//   - Connection's max lifetime: https://golang.org/pkg/database/sql/#DB.SetConnMaxLifetime
+//   - Max idle connections: https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns
+//   - Max open connections: https://golang.org/pkg/database/sql/#DB.SetMaxOpenConns
+//
+// @Available since <<VERSION>>
+type PoolOpts struct {
+	prom.BasePoolOpts
+}
+
+var defaultPoolOpts = &PoolOpts{prom.BasePoolOpts{ConnLifetime: 1 * time.Hour, MinPoolSize: 1, MaxPoolSize: 2}}
 
 // SqlConnect holds a database/sql DB instance (https://golang.org/pkg/database/sql/#DB) that can be shared within the application.
 type SqlConnect struct {
-	driver, dsn    string              // driver and data source name (DSN)
-	poolOptions    *SqlPoolOptions     // connection pool options
-	timeoutMs      int                 // default timeout for db operations, in milliseconds
-	flavor         DbFlavor            // database flavor
-	db             *sql.DB             // database instance
-	dbProxy        *DBProxy            // (since v0.3.0) wrapper around the real sql.DB instance
-	loc            *time.Location      // timezone location to parse date/time data, new since v0.1.2
-	mysqlParseTime bool                // set to 'true' if specifying parseTime=true in MySQL connection string, new since v0.2.12
-	metricsLogger  prom.IMetricsLogger // (since v0.3.0) if non-nil, SqlConnect automatically logs executing commands.
-}
-
-// NewSqlConnect constructs a new SqlConnect instance.
-//
-// Parameters: see NewSqlConnectWithFlavor.
-//
-// @Deprecated: use NewSqlConnectWithFlavor.
-func NewSqlConnect(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions) (*SqlConnect, error) {
-	return NewSqlConnectWithFlavor(driver, dsn, defaultTimeoutMs, poolOptions, FlavorDefault)
+	*prom.BaseConnection
+	driver, dsn    string         // driver and data source name (DSN)
+	timeoutMs      int            // default timeout for db operations, in milliseconds
+	flavor         DbFlavor       // database flavor
+	db             *sql.DB        // database instance
+	dbProxy        *DBProxy       // (since v0.3.0) wrapper around the real sql.DB instance
+	loc            *time.Location // timezone location to parse date/time data, new since v0.1.2
+	mysqlParseTime bool           // set to 'true' if specifying parseTime=true in MySQL connection string, new since v0.2.12
 }
 
 // NewSqlConnectWithFlavor constructs a new SqlConnect instance.
 //
 // Parameters:
-// 	 - driver          : database driver name
-// 	 - dsn             : data source name (sample format [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN])
-// 	 - defaultTimeoutMs: default timeout for db operations, in milliseconds
-// 	 - poolOptions     : connection pool options. If nil, default value is used
-// 	 - flavor          : database flavor associated with the SqlConnect instance.
+//   - driver          : database driver name
+//   - dsn             : data source name (sample format [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN])
+//   - defaultTimeoutMs: default timeout for db operations, in milliseconds
+//   - poolOpts        : connection pool options. If nil, default value is used
+//   - flavor          : database flavor associated with the SqlConnect instance. See DbFlavor for details.
 //
 // Return: the SqlConnect instance and error (if any). Note:
 //   - In case of connection error: this function returns the SqlConnect instance and the error.
 //   - Other error: this function returns (nil, error)
 //
 // Available: since v0.1.0
-func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOptions *SqlPoolOptions, flavor DbFlavor) (*SqlConnect, error) {
+func NewSqlConnectWithFlavor(driver, dsn string, defaultTimeoutMs int, poolOpts *PoolOpts, flavor DbFlavor) (*SqlConnect, error) {
 	if defaultTimeoutMs < 0 {
 		defaultTimeoutMs = 0
 	}
-	if poolOptions == nil {
-		poolOptions = defaultSqlPoolOptions
+	if poolOpts == nil {
+		poolOpts = defaultPoolOpts
 	}
+	baseConn := &prom.BaseConnection{}
+	baseConn.SetPoolOpts(poolOpts).RegisterMetricsLogger(prom.NewMemoryStoreMetricsLogger(1028))
 	sc := &SqlConnect{
-		driver:        driver,
-		dsn:           dsn,
-		poolOptions:   poolOptions,
-		timeoutMs:     defaultTimeoutMs,
-		flavor:        flavor,
-		loc:           time.UTC,
-		metricsLogger: prom.NewMemoryStoreMetricsLogger(1028),
+		BaseConnection: baseConn,
+		driver:         driver,
+		dsn:            dsn,
+		timeoutMs:      defaultTimeoutMs,
+		flavor:         flavor,
+		loc:            time.UTC,
 	}
 	return sc, sc.Init()
 }
+
+var reMysqlParseTime = regexp.MustCompile(`(?i)\bparsetime=true\b`)
 
 // Init should be called to initialize the SqlConnect instance before use.
 //
@@ -111,80 +223,32 @@ func (sc *SqlConnect) Init() error {
 	if sc.db != nil {
 		return nil
 	}
+
+	if !sc.mysqlParseTime && sc.flavor == FlavorMySql {
+		sc.mysqlParseTime = reMysqlParseTime.MatchString(sc.dsn)
+	}
+
 	db, err := sql.Open(sc.driver, sc.dsn)
 	if err != nil {
 		return err
 	}
-	if sc.poolOptions != nil {
-		if sc.poolOptions.MaxOpenConns > 0 {
-			db.SetMaxOpenConns(sc.poolOptions.MaxOpenConns)
+	if poolOpts := sc.PoolOpts(); poolOpts != nil {
+		if poolOpts.MaxPoolSize > 0 {
+			db.SetMaxOpenConns(poolOpts.MaxPoolSize)
 		}
-		if sc.poolOptions.MaxIdleConns > 0 {
-			db.SetMaxIdleConns(sc.poolOptions.MaxIdleConns)
+		if poolOpts.MinPoolSize > 0 {
+			db.SetMaxIdleConns(poolOpts.MinPoolSize)
 		}
-		if sc.poolOptions.ConnMaxLifetime > 0 {
-			db.SetConnMaxLifetime(sc.poolOptions.ConnMaxLifetime)
+		if poolOpts.ConnLifetime > 0 {
+			db.SetConnMaxLifetime(poolOpts.ConnLifetime)
 		}
 	}
-	if sc.metricsLogger == nil {
+	if sc.MetricsLogger() == nil {
 		sc.RegisterMetricsLogger(prom.NewMemoryStoreMetricsLogger(1028))
 	}
 	sc.db = db
 	sc.dbProxy = &DBProxy{DB: db, sqlc: sc}
 	return err
-}
-
-// RegisterMetricsLogger associates an IMetricsLogger instance with this SqlConnect.
-// If non-nil, SqlConnect automatically logs executing commands.
-//
-// Available since v0.3.0
-func (sc *SqlConnect) RegisterMetricsLogger(metricsLogger prom.IMetricsLogger) *SqlConnect {
-	sc.metricsLogger = metricsLogger
-	return sc
-}
-
-// MetricsLogger returns the associated IMetricsLogger instance.
-//
-// Available since v0.3.0
-func (sc *SqlConnect) MetricsLogger() prom.IMetricsLogger {
-	return sc.metricsLogger
-}
-
-// NewCmdExecInfo is convenient function to create a new CmdExecInfo instance.
-//
-// The returned CmdExecInfo has its 'id' and 'begin-time' fields initialized.
-//
-// Available since v0.3.0
-func (sc *SqlConnect) NewCmdExecInfo() *prom.CmdExecInfo {
-	return &prom.CmdExecInfo{
-		Id:        prom.NewId(),
-		BeginTime: time.Now(),
-		Cost:      -1,
-	}
-}
-
-// LogMetrics is convenient function to put the CmdExecInfo to the metrics log.
-//
-// This function is silently no-op of the input if nil or there is no associated metrics logger.
-//
-// Available since v0.3.0
-func (sc *SqlConnect) LogMetrics(category string, cmd *prom.CmdExecInfo) error {
-	if cmd != nil && sc.metricsLogger != nil {
-		return sc.metricsLogger.Put(category, cmd)
-	}
-	return nil
-}
-
-// Metrics is convenient function to capture the snapshot of command execution metrics.
-//
-// This function is silently no-op of there is no associated metrics logger.
-//
-// Available since v0.3.0
-func (sc *SqlConnect) Metrics(category string, opts ...prom.MetricsOpts) (*prom.Metrics, error) {
-	if sc.metricsLogger != nil {
-		return sc.metricsLogger.Metrics(category, opts...)
-	}
-	return nil, nil
 }
 
 // GetDriver returns the database driver setting.
@@ -234,20 +298,13 @@ func (sc *SqlConnect) SetTimeoutMs(timeoutMs int) *SqlConnect {
 	return sc
 }
 
-// GetSqlPoolOptions returns the database connection pool configurations.
-//
-// Available: since v0.2.8
-func (sc *SqlConnect) GetSqlPoolOptions() *SqlPoolOptions {
-	return sc.poolOptions
-}
-
-// SetSqlPoolOptions sets the database connection pool configurations.
-// Note: the change does not take effect if called after Init has been called.
-//
-// Available: since v0.2.8
-func (sc *SqlConnect) SetSqlPoolOptions(poolOptions *SqlPoolOptions) *SqlConnect {
-	sc.poolOptions = poolOptions
-	return sc
+// PoolOpts overrides prom.BaseConnection/PoolOpts.
+func (sc *SqlConnect) PoolOpts() *PoolOpts {
+	poolOpts := sc.BaseConnection.PoolOpts()
+	if sqlPoolOpts, ok := poolOpts.(*PoolOpts); ok {
+		return sqlPoolOpts
+	}
+	return nil
 }
 
 // GetDbFlavor returns the current database flavor associated with this SqlConnect.
@@ -285,11 +342,11 @@ func (sc *SqlConnect) GetLocation() *time.Location {
 //   - In any case, the returned date/time is attached with the specified timezone/location.
 //
 // Available: since v0.1.2
-func (sc *SqlConnect) SetLocation(loc *time.Location) *SqlConnect {
-	if loc == nil {
+func (sc *SqlConnect) SetLocation(inLocation *time.Location) *SqlConnect {
+	if inLocation == nil {
 		sc.loc = time.UTC
 	} else {
-		sc.loc = loc
+		sc.loc = inLocation
 	}
 	return sc
 }
@@ -381,7 +438,8 @@ func (sc *SqlConnect) Ping(ctx context.Context) error {
 
 // IsConnected returns true if the connection to the database is alive.
 func (sc *SqlConnect) IsConnected() bool {
-	return sc.Ping(nil) == nil
+	ctx, _ := sc.NewContextWithCancel()
+	return sc.Ping(ctx) == nil
 }
 
 // Conn returns a single connection by either opening a new connection or returning an existing connection from the connection pool.
@@ -414,7 +472,7 @@ func (sc *SqlConnect) FetchRow(row *sql.Row, numCols int) ([]interface{}, error)
 		scanVals[i] = &vals[i]
 	}
 	err := row.Scan(scanVals...)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return vals, err
@@ -425,72 +483,81 @@ var bytesArrType = reflect.TypeOf([]byte{})
 var uint8ArrType = reflect.TypeOf([]uint8{})
 var timeType = reflect.TypeOf(time.Time{})
 var sqlNullTime = reflect.TypeOf(sql.NullTime{})
-var sqlNullInt32 = reflect.TypeOf(sql.NullInt32{})
-var sqlNullInt64 = reflect.TypeOf(sql.NullInt64{})
-var sqlNullFloat64 = reflect.TypeOf(sql.NullFloat64{})
+
+// var sqlNullInt32 = reflect.TypeOf(sql.NullInt32{})
+// var sqlNullInt64 = reflect.TypeOf(sql.NullInt64{})
+// var sqlNullFloat64 = reflect.TypeOf(sql.NullFloat64{})
+
 var dbIntTypes = map[string]map[DbFlavor]bool{
-	"TINYINT":   {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"SMALLINT":  {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"MEDIUMINT": {FlavorDefault: true, FlavorMySql: true, FlavorSqlite: true},
-	"INT":       {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"INTEGER":   {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"BIGINT":    {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"INT2":      {FlavorDefault: true, FlavorPgSql: true, FlavorSqlite: true},
-	"INT4":      {FlavorDefault: true, FlavorPgSql: true},
-	"INT8":      {FlavorDefault: true, FlavorPgSql: true, FlavorSqlite: true},
+	"TINYINT":   {FlavorUnknown: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"SMALLINT":  {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"MEDIUMINT": {FlavorUnknown: true, FlavorMySql: true, FlavorSqlite: true},
+	"INT":       {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"INTEGER":   {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"BIGINT":    {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"INT2":      {FlavorUnknown: true, FlavorPgSql: true, FlavorSqlite: true},
+	"INT4":      {FlavorUnknown: true, FlavorPgSql: true},
+	"INT8":      {FlavorUnknown: true, FlavorPgSql: true, FlavorSqlite: true},
 }
 var dbFloatTypes = map[string]map[DbFlavor]bool{
-	"FLOAT":            {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"FLOAT4":           {FlavorDefault: true, FlavorPgSql: true},
-	"FLOAT8":           {FlavorDefault: true, FlavorPgSql: true},
-	"REAL":             {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"NUMBER":           {FlavorDefault: true, FlavorSqlite: true},
-	"NUMERIC":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"DECIMAL":          {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"DOUBLE":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"DOUBLE PRECISION": {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"BINARY_FLOAT":     {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"BINARY_DOUBLE":    {FlavorDefault: true, FlavorOracle: true},
-	"MONEY":            {FlavorDefault: true, FlavorMsSql: true, FlavorPgSql: true},
-	"SMALLMONEY":       {FlavorDefault: true, FlavorMsSql: true},
+	"FLOAT":            {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"FLOAT4":           {FlavorUnknown: true, FlavorPgSql: true},
+	"FLOAT8":           {FlavorUnknown: true, FlavorPgSql: true},
+	"REAL":             {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"NUMBER":           {FlavorUnknown: true, FlavorSqlite: true},
+	"NUMERIC":          {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"DECIMAL":          {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"DOUBLE":           {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"DOUBLE PRECISION": {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"BINARY_FLOAT":     {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"BINARY_DOUBLE":    {FlavorUnknown: true, FlavorOracle: true},
+	"MONEY":            {FlavorUnknown: true, FlavorMsSql: true, FlavorPgSql: true},
+	"SMALLMONEY":       {FlavorUnknown: true, FlavorMsSql: true},
 	"790":              {FlavorPgSql: true},
 }
 var dbStringTypes = map[string]map[DbFlavor]bool{
-	"CHAR":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
-	"VARCHAR":           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"TEXT":              {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"CHARACTER":         {FlavorDefault: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"CHARACTER VARYING": {FlavorDefault: true, FlavorPgSql: true, FlavorOracle: true},
-	"NCHAR":             {FlavorDefault: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"NVARCHAR":          {FlavorDefault: true, FlavorMsSql: true, FlavorSqlite: true},
-	"NTEXT":             {FlavorDefault: true, FlavorMsSql: true},
-	"VARCHAR2":          {FlavorDefault: true, FlavorOracle: true},
-	"NVARCHAR2":         {FlavorDefault: true, FlavorOracle: true},
-	"CLOB":              {FlavorDefault: true, FlavorOracle: true, FlavorSqlite: true},
-	"NCLOB":             {FlavorDefault: true, FlavorOracle: true},
-	"LONG":              {FlavorDefault: true, FlavorOracle: true},
-	"BPCHAR":            {FlavorDefault: true, FlavorPgSql: true},
+	"CHAR":              {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true},
+	"VARCHAR":           {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"TEXT":              {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"CHARACTER":         {FlavorUnknown: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"CHARACTER VARYING": {FlavorUnknown: true, FlavorPgSql: true, FlavorOracle: true},
+	"NCHAR":             {FlavorUnknown: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"NVARCHAR":          {FlavorUnknown: true, FlavorMsSql: true, FlavorSqlite: true},
+	"NTEXT":             {FlavorUnknown: true, FlavorMsSql: true},
+	"VARCHAR2":          {FlavorUnknown: true, FlavorOracle: true},
+	"NVARCHAR2":         {FlavorUnknown: true, FlavorOracle: true},
+	"CLOB":              {FlavorUnknown: true, FlavorOracle: true, FlavorSqlite: true},
+	"NCLOB":             {FlavorUnknown: true, FlavorOracle: true},
+	"LONG":              {FlavorUnknown: true, FlavorOracle: true},
+	"BPCHAR":            {FlavorUnknown: true, FlavorPgSql: true},
 }
 var dbDateTimeTypes = map[string]map[DbFlavor]bool{
-	"1266":                           {FlavorDefault: true, FlavorPgSql: true},
-	"TIME":                           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"DATE":                           {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"YEAR":                           {FlavorDefault: true, FlavorMySql: true},
-	"DATETIME":                       {FlavorDefault: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
-	"DATETIME2":                      {FlavorDefault: true, FlavorMsSql: true},
-	"DATETIMEOFFSET":                 {FlavorDefault: true, FlavorMsSql: true},
-	"SMALLDATETIME":                  {FlavorDefault: true, FlavorMsSql: true},
-	"TIMESTAMP":                      {FlavorDefault: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
-	"TIMESTAMP WITH TIME ZONE":       {FlavorDefault: true, FlavorOracle: true},
-	"TIMESTAMP WITH LOCAL TIME ZONE": {FlavorDefault: true, FlavorOracle: true},
+	"1266":                           {FlavorUnknown: true, FlavorPgSql: true},
+	"TIME":                           {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"DATE":                           {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorMsSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"YEAR":                           {FlavorUnknown: true, FlavorMySql: true},
+	"DATETIME":                       {FlavorUnknown: true, FlavorMySql: true, FlavorMsSql: true, FlavorSqlite: true},
+	"DATETIME2":                      {FlavorUnknown: true, FlavorMsSql: true},
+	"DATETIMEOFFSET":                 {FlavorUnknown: true, FlavorMsSql: true},
+	"SMALLDATETIME":                  {FlavorUnknown: true, FlavorMsSql: true},
+	"TIMESTAMP":                      {FlavorUnknown: true, FlavorMySql: true, FlavorPgSql: true, FlavorOracle: true, FlavorSqlite: true},
+	"TIMESTAMP WITH TIME ZONE":       {FlavorUnknown: true, FlavorOracle: true},
+	"TIMESTAMP WITH LOCAL TIME ZONE": {FlavorUnknown: true, FlavorOracle: true},
+}
+
+var dbDurationTypes = map[string]map[DbFlavor]bool{
+	"INTERVALDS_DTY":         {FlavorUnknown: true, FlavorOracle: true},
+	"INTERVALYM_DTY":         {FlavorUnknown: true, FlavorOracle: true},
+	"INTERVAL DAY TO SECOND": {FlavorUnknown: true, FlavorOracle: true},
+	"INTERVAL YEAR TO MONTH": {FlavorUnknown: true, FlavorOracle: true},
 }
 
 var reDbTypeName = regexp.MustCompile(`^(?i)(.*?)\(.*$`)
 
 func _normalizeDbTypeName(ct *sql.ColumnType) string {
-	rawDbTypeName := ct.DatabaseTypeName()
+	rawDbTypeName := strings.ToUpper(ct.DatabaseTypeName())
 	if matches := reDbTypeName.FindStringSubmatch(rawDbTypeName); len(matches) > 1 {
-		return strings.ToUpper(strings.TrimSpace(matches[1]))
+		return strings.TrimSpace(matches[1])
 	}
 	return rawDbTypeName
 }
@@ -562,6 +629,16 @@ func (sc *SqlConnect) isDateTimeType(col *sql.ColumnType) bool {
 	return ok
 }
 
+func (sc *SqlConnect) isDurationType(col *sql.ColumnType) bool {
+	dbTypeName := _normalizeDbTypeName(col)
+	m, ok := dbDurationTypes[dbTypeName]
+	if !ok {
+		return false
+	}
+	_, ok = m[sc.flavor]
+	return ok
+}
+
 func isValueTypeRawBytes(v interface{}) bool {
 	if v == nil {
 		return false
@@ -569,13 +646,6 @@ func isValueTypeRawBytes(v interface{}) bool {
 	t := reflect.TypeOf(v)
 	return t == rawBytesType || t == bytesArrType || t == uint8ArrType
 }
-
-// func isValueTypeString(v interface{}) bool {
-// 	if v == nil {
-// 		return false
-// 	}
-// 	return reflect.TypeOf(v) == reddo.TypeString
-// }
 
 // toIntIfValidInteger converts the input to int64 if:
 //   - the input is an integer/unsigned integer
@@ -594,8 +664,9 @@ func toIntIfValidInteger(v interface{}) (int64, error) {
 		return strconv.ParseInt(rv.String(), 10, 64)
 	case rawBytesType.Kind(), bytesArrType.Kind(), uint8ArrType.Kind():
 		return strconv.ParseInt(string(rv.Bytes()), 10, 64)
+	default:
+		return 0, errors.New("input is not a valid integer")
 	}
-	return 0, errors.New("input is not a valid integer")
 }
 
 // toFloatIfValidReal converts the input to float64 if:
@@ -617,19 +688,20 @@ func toFloatIfValidReal(v interface{}) (float64, error) {
 		return strconv.ParseFloat(rv.String(), 64)
 	case rawBytesType.Kind(), bytesArrType.Kind(), uint8ArrType.Kind():
 		return strconv.ParseFloat(string(rv.Bytes()), 64)
+	default:
+		return 0, errors.New("input is not a valid floating point number")
 	}
-	return 0, errors.New("input is not a valid floating point number")
 }
 
 const (
-	dtlayout     = "2006-01-02 15:04:05"
-	dtlayoutTz   = "2006-01-02 15:04:05-07"
-	dtlayoutTzz  = "2006-01-02 15:04:05-07:00"
-	dtlayoutNano = "2006-01-02 15:04:05.999999999"
+	dtlayout           = "2006-01-02 15:04:05"
+	dtlayoutTz         = "2006-01-02 15:04:05-07"
+	dtlayoutTzz        = "2006-01-02 15:04:05-07:00"
+	dtlayoutNanoTzzTzz = "2006-01-02 15:04:05.999999999 -0700 -0700"
+	dtlayoutNano       = "2006-01-02 15:04:05.999999999"
 )
 
 func (sc *SqlConnect) _scanMysqlDateTimeFromRawBytes(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// fmt.Printf("%s / %s / %s (%s) / %s\n", v.Name(), v.DatabaseTypeName(), sc.loc, time.Now().In(sc.loc).Format("Z07:00"), val)
 	loc := sc.ensureLocation()
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
@@ -689,7 +761,6 @@ func (sc *SqlConnect) _transformPgsqlDateTime(result map[string]interface{}, v *
 }
 
 func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// fmt.Println(v.Name(), sc.loc.String(), val.(time.Time).Format(time.RFC3339))
 	loc := sc.ensureLocation()
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
@@ -708,8 +779,8 @@ func (sc *SqlConnect) _transformMssqlDateTime(result map[string]interface{}, v *
 	return err
 }
 
+// handle date/time types with drivers github.com/mattn/go-sqlite3 and modernc.org/sqlite
 func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// fmt.Printf("%s / %s / %s (%T)\n", v.Name(), sc.loc.String(), val, val)
 	loc := sc.ensureLocation()
 	str, ok := val.(string)
 	if !ok {
@@ -722,16 +793,21 @@ func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.
 	if ok {
 		// date/time is fetched as string/[]byte, with timezone info
 		var err error
-		result[v.Name()], err = time.Parse(dtlayoutTzz, str)
-		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
-		// fmt.Println("\t", v.Name(), sc.loc.String(), result[v.Name()].(time.Time).Format(dtlayoutTzz))
+		for _, dtLayout := range []string{dtlayoutTzz, dtlayoutNanoTzzTzz} {
+			// datetime layouts used by github.com/mattn/go-sqlite3 and modernc.org/sqlite
+			result[v.Name()], err = time.Parse(dtLayout, str)
+			if err == nil {
+				result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+				break
+			}
+		}
 		return err
 	}
 
-	time, ok := val.(time.Time)
+	vTime, ok := val.(time.Time)
 	if ok {
 		// date/time is fetched as time.Time, with timezone info
-		result[v.Name()] = time.In(loc)
+		result[v.Name()] = vTime.In(loc)
 		return nil
 	}
 
@@ -739,24 +815,57 @@ func (sc *SqlConnect) _scanSqliteDateTime(result map[string]interface{}, v *sql.
 }
 
 func (sc *SqlConnect) _transformOracleDateTime(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
-	// fmt.Println(v.Name(), v.ScanType(), v.DatabaseTypeName(), sc.loc.String(), val.(time.Time).Format(time.RFC3339))
 	loc := sc.ensureLocation()
 	var err error
 	dbTypeName := _normalizeDbTypeName(v)
+
+	//fmt.Printf("[DEBUG_transformOracleDateTime] %s/%s - %s - %s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, val.(time.Time).Location(), val.(time.Time).Format(time.RFC3339))
+
 	switch dbTypeName {
-	case "DATE":
-		// FIXME: not sure if it's behavior of Oracle or godror but this seems wrong!
-		// DATE does not support timezone, but Oracle converts DATE to UTC before storing.
-		// Hence, we just need to convert it back to correct timezone/location
-		result[v.Name()] = val.(time.Time).In(loc)
+	case "DATE", "TIMESTAMP", "TIMESTAMPDTY":
+		// Oracle's DATE/TIMESTAMP/TIMESTAMPDTY types are non-timezone, Oracle returns value as UTC.
+		// Hence, we need to convert it back to the configured timezone/location.
+		valT := val.(time.Time)
+		if valT.Location().String() == "UTC" {
+			if sc.GetDriver() == "godror" {
+				// godror "moves" the date/time to the configured timezone/location, so we need to "move" it back
+				valT = valT.In(loc)
+			} else {
+				valT, _ = time.ParseInLocation(dtlayoutNano, valT.Format(dtlayoutNano), loc)
+			}
+		}
+		result[v.Name()] = valT
 	default:
-		// FIXME: not sure if it's behavior of Oracle or godror but this seems wrong!
-		// first "parse in UTC" and then convert to the target timezone/location
-		// assume other types support timezone,convert to the target timezone/location
-		result[v.Name()], err = time.ParseInLocation(dtlayoutNano, val.(time.Time).Format(dtlayoutNano), time.UTC)
-		result[v.Name()] = result[v.Name()].(time.Time).In(loc)
+		// assume other date/time types support timezone, convert to the configured timezone/location
+		valT := val.(time.Time)
+		result[v.Name()] = valT.In(loc)
 	}
 	return err
+}
+
+func (sc *SqlConnect) _transformOracleDuration(result map[string]interface{}, v *sql.ColumnType, val interface{}) error {
+	dbTypeName := _normalizeDbTypeName(v)
+
+	//fmt.Printf("[DEBUG_transformOracleDuration] %s/%s - %T/%s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, val, val)
+
+	switch vt := val.(type) {
+	case time.Duration:
+		result[v.Name()] = vt
+	case string:
+		var err error
+		switch dbTypeName {
+		case "INTERVALDS_DTY", "INTERVAL DAY TO SECOND":
+			result[v.Name()], err = ParseOracleIntervalDayToSecond(val.(string))
+		case "INTERVALYM_DTY", "INTERVAL YEAR TO MONTH":
+			result[v.Name()], err = ParseOracleIntervalYearToMonth(val.(string))
+		default:
+			return fmt.Errorf("unknown duration column type %s", dbTypeName)
+		}
+		return err
+	default:
+		return fmt.Errorf("unknown duration column type (scanned) %T", val)
+	}
+	return nil
 }
 
 func (sc *SqlConnect) _scanNilValue(result map[string]interface{}, v *sql.ColumnType) error {
@@ -781,18 +890,16 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 		scanVals[i] = &vals[i]
 	}
 	if err := rows.Scan(scanVals...); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
 	result := map[string]interface{}{}
 	for i, v := range colsAndTypes {
-		// if v.Name() == "data_datetimez" {
-		// 	fmt.Printf("Column: %s / DbType: %s / GoType: %s / Value: %#v(%T)\n", v.Name(), v.DatabaseTypeName(), v.ScanType(), vals[i], vals[i])
-		// 	fmt.Println(v.DecimalSize())
-		// 	// fmt.Println(v.ScanType().Name())
-		// }
+		//dbTypeName := _normalizeDbTypeName(v)
+		//fmt.Printf("[DEBUG-fetchOneRow] %s/%s - %T/%s\n", v.Name(), v.DatabaseTypeName()+":"+dbTypeName, vals[i], vals[i])
+
 		switch {
 		case vals[i] == nil:
 			// special care for nil value
@@ -836,22 +943,9 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 			if err != nil {
 				return nil, err
 			}
-		// case isValueTypeRawBytes(vals[i]) && (sc.isNumberType(v) || sc.isStringType(v)):
 		case isValueTypeRawBytes(vals[i]) && sc.isStringType(v):
 			// when string is loaded as []byte
 			result[v.Name()] = string(vals[i].([]byte))
-
-			// switch {
-			// case sc.isStringType(v):
-			// 	// when string is loaded as []byte
-			// 	result[v.Name()] = string(vals[i].([]byte))
-			// case sc.isIntType(v):
-			// 	// when number is loaded as []byte
-			// 	result[v.Name()], _ = strconv.ParseInt(string(vals[i].([]byte)), 10, 64)
-			// case sc.isFloatType(v):
-			// 	// when number is loaded as []byte
-			// 	result[v.Name()], _ = strconv.ParseFloat(string(vals[i].([]byte)), 64)
-			// }
 		case sc.flavor == FlavorSqlite && sc.isDateTimeType(v):
 			// special care for SQLite's date/time types
 			if err := sc._scanSqliteDateTime(result, v, vals[i]); err != nil {
@@ -880,6 +974,11 @@ func (sc *SqlConnect) fetchOneRow(rows *sql.Rows, colsAndTypes []*sql.ColumnType
 		case sc.flavor == FlavorOracle && v.ScanType().Kind() == sqlNullTime.Kind():
 			// special care for Oracle's date/time types
 			if err := sc._transformOracleDateTime(result, v, vals[i]); err != nil {
+				return nil, err
+			}
+		case sc.flavor == FlavorOracle && sc.isDurationType(v):
+			// special care for Oracle's duration types
+			if err := sc._transformOracleDuration(result, v, vals[i]); err != nil {
 				return nil, err
 			}
 		case sc.flavor == FlavorOracle && sc.isNumberType(v):

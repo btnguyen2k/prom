@@ -38,7 +38,7 @@ func TestCmdExecInfo_EndWithCost(t *testing.T) {
 	if cmd.EndTime.IsZero() {
 		t.Fatalf("%s failed: field [EndTime] is zero", testName)
 	}
-	if cmd.Error != err {
+	if !errors.Is(cmd.Error, err) {
 		t.Fatalf("%s failed: expected [Error] to be %e but received %e", testName, err, cmd.Error)
 	}
 	if cmd.Result != failedResult {
@@ -82,7 +82,7 @@ func TestCmdExecInfo_EndWithCostAsExecutionTime(t *testing.T) {
 	if cmd.EndTime.IsZero() {
 		t.Fatalf("%s failed: field [EndTime] is zero", testName)
 	}
-	if cmd.Error != err {
+	if !errors.Is(cmd.Error, err) {
 		t.Fatalf("%s failed: expected [Error] to be %e but received %e", testName, err, cmd.Error)
 	}
 	if cmd.Result != failedResult {
@@ -133,7 +133,7 @@ func TestMemoryStoreMetricsLogger_Metrics(t *testing.T) {
 	capacity := 10
 	logger := &MemoryStoreMetricsLogger{capacity: capacity}
 	for i := 0; i < capacity+3; i++ {
-		logger.Put("*", &CmdExecInfo{Id: strconv.Itoa(i + 1), Cost: float64(i + 1)})
+		_ = logger.Put("*", &CmdExecInfo{Id: strconv.Itoa(i + 1), Cost: float64(i + 1)})
 		m, err := logger.Metrics("*", MetricsOpts{ReturnLatestCommands: capacity + 10})
 		if err != nil {
 			t.Fatalf("%s failed: %s", testName, err)
