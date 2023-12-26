@@ -78,7 +78,11 @@ See [examples](../examples/PromFetchRows.go) for more details.
 **Easy date/time/duration handling.**
 
 - Date/time values are automatically converted to/from `time.Time` with timezone configured via `SqlConnect.SetLocation()`.
-- `github.com/go-sql-driver/mysql`'s `parseTime` parameter is handled
+- `github.com/go-sql-driver/mysql`'s `parseTime` parameter is automatically handled.
+- Oracle's `INTERVAL DAY TO SECOND` and `INTERVAL YEAR TO MONTH` are automatically converted to `time.Duration`.
+  - A month is assumed to have 30 days, and a year is 12 months. Hence, the conversion from/to `INTERVAL YEAR TO MONTH` to/from `time.Duration` is _approximated_ only!
+
+See [examples](../examples/PromDatetime.go) for more details.
 
 **Proxy to log executed queries and/or measure execution time.**
 

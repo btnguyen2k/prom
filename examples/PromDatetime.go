@@ -1,4 +1,4 @@
-// go run Commons.go PromTimezone.go
+// go run Commons.go PromDatetime.go
 package main
 
 import (

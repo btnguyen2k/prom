@@ -81,7 +81,7 @@ const (
 
 // DurationToOracleYearToMonth converts a time.Duration value to Oracle's INTERVAL YEAR TO MONTH literals (e.g. "YY-MM").
 //
-// Note: a month is assumed to have 30 days; and a year is 12 months. Hence, the conversion is not accurate as a year is only 360 days.
+// Note: a month is assumed to have 30 days, and a year is 12 months. Hence, the conversion is not accurate as a year has only 360 days.
 //
 // @Available since <<VERSION>>
 func DurationToOracleYearToMonth(v time.Duration) string {
@@ -93,7 +93,7 @@ func DurationToOracleYearToMonth(v time.Duration) string {
 
 // ParseOracleIntervalYearToMonth parses an Oracle's INTERVAL YEAR TO MONTH literal (e.g. "+YY-MM") to time.Duration.
 //
-// Note: a month is assumed to have 30 days; and a year is 12 months. Hence, the conversion is not accurate as a year is only 360 days.
+// Note: a month is assumed to have 30 days, and a year is 12 months. Hence, the conversion is not accurate as a year has only 360 days.
 //
 // @Available since <<VERSION>>
 func ParseOracleIntervalYearToMonth(v string) (time.Duration, error) {
