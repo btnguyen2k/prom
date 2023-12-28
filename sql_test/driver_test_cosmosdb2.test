@@ -1,0 +1,6 @@
+package sql_test
+
+import (
+	_ "github.com/microsoft/gocosmos"
+	_ "modernc.org/sqlite"
+)

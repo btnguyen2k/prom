@@ -104,6 +104,10 @@ See [examples](../examples/PromLogAndMetrics.go) for more details.
 
 ## Supported/Tested databases and drivers:
 
+- Azure Cosmos DB:
+  - Drivers:
+    - [github.com/btnguyen2k/gocosmos](https://github.com/btnguyen2k/gocosmos): pure Go
+    - [github.com/microsoft/gocosmos](https://github.com/microsoft/gocosmos): pure Go
 - SQLite:
   - Drivers:
     - [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3): CGO

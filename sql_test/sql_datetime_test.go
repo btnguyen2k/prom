@@ -37,7 +37,6 @@ func TestSql_DataTypeDatetime(t *testing.T) {
 	if len(dbtypeList) == 0 {
 		t.SkipNow()
 	}
-	rand.Seed(time.Now().UnixNano())
 	tblName := "test_datetime"
 	colNameList := sqlColNamesTestDataTypeDatetime
 	colTypesMap := map[promsql.DbFlavor][]string{
@@ -294,7 +293,6 @@ func TestSql_DataTypeNull(t *testing.T) {
 	if len(dbtypeList) == 0 {
 		t.SkipNow()
 	}
-	rand.Seed(time.Now().UnixNano())
 	tblName := "test_null"
 	colNameList := sqlColNamesTestDataTypeNull
 	colTypesMap := map[promsql.DbFlavor][]string{
@@ -606,7 +604,6 @@ func TestSql_Timezone(t *testing.T) {
 	if len(dbtypeList) == 0 {
 		t.SkipNow()
 	}
-	rand.Seed(time.Now().UnixNano())
 	tblName := "test_timezone"
 	colNameList := sqlColNamesTestTimezone
 	colTypesMap := map[promsql.DbFlavor][]string{
@@ -728,11 +725,12 @@ func TestSql_Timezone(t *testing.T) {
 						e := expected.dataDate
 						f := colNameList[1]
 						v, ok := row[f].(time.Time)
-						//if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
-						//	t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
-						//	v = _changeLoc(t, sqlc.GetLocation())
-						//	ok = err == nil
-						//}
+						if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
+							// Azure Cosmos DB stores date/time as string
+							t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
+							v = _changeLoc(t, sqlc.GetLocation())
+							ok = err == nil
+						}
 						if conn.GetDbFlavor() != promsql.FlavorSqlite {
 							//SQLite always stores timezone, hence no need to change location for SQLite
 							v = _changeLoc(v, e.Location())
@@ -748,11 +746,12 @@ func TestSql_Timezone(t *testing.T) {
 						e := expected.dataTime
 						f := colNameList[2]
 						v, ok := row[f].(time.Time)
-						//if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
-						//	t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
-						//	v = _changeLoc(t, sqlc.GetLocation())
-						//	ok = err == nil
-						//}
+						if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
+							// Azure Cosmos DB stores date/time as string
+							t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
+							v = _changeLoc(t, sqlc.GetLocation())
+							ok = err == nil
+						}
 						if conn.GetDbFlavor() != promsql.FlavorSqlite && conn.GetDriver() != "godror" {
 							//SQLite always stores timezone, hence no need to change location for SQLite
 							//godror "moves" the date/time to the configured timezone/location, this is fixed by driver already, hence no need to change location for godror
@@ -769,11 +768,12 @@ func TestSql_Timezone(t *testing.T) {
 						e := expected.dataDatetime
 						f := colNameList[3]
 						v, ok := row[f].(time.Time)
-						//if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
-						//	t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
-						//	v = _changeLoc(t, sqlc.GetLocation())
-						//	ok = err == nil
-						//}
+						if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
+							// Azure Cosmos DB stores date/time as string
+							t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
+							v = _changeLoc(t, sqlc.GetLocation())
+							ok = err == nil
+						}
 						//fmt.Printf("[DEBUG]: %d-%d-Conn: %s / E: %s - L1: %s - L2: %s\nExpected: %s\nReceived: %s\n", idx, i, conn.GetLocation(), e.Location(), LOC, LOC2, e, v)
 						if conn.GetDbFlavor() != promsql.FlavorSqlite && conn.GetDriver() != "godror" {
 							//SQLite always stores timezone, hence no need to change location for SQLite
@@ -791,11 +791,12 @@ func TestSql_Timezone(t *testing.T) {
 						e := expected.dataDatetimez
 						f := colNameList[4]
 						v, ok := row[f].(time.Time)
-						//if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
-						//	t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
-						//	v = t.In(sqlc.GetLocation())
-						//	ok = err == nil
-						//}
+						if conn.GetDbFlavor() == promsql.FlavorCosmosDb {
+							// Azure Cosmos DB stores date/time as string
+							t, err := time.ParseInLocation(time.RFC3339, row[f].(string), sqlc.GetLocation())
+							v = t.In(sqlc.GetLocation())
+							ok = err == nil
+						}
 						if conn.GetDbFlavor() == promsql.FlavorMySql {
 							// currently, the Go driver treats parseTime=false for "TIME" column
 							v = _changeLoc(v, e.Location())

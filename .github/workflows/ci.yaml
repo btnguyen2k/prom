@@ -49,7 +49,6 @@ jobs:
   ReleaseDryRun:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    needs: [ GoFmt, GoLint ]
     outputs:
       RESULT: ${{ steps.release_dry_run.outputs.result }}
       VERSION: ${{ steps.release_dry_run.outputs.releaseVersion }}
@@ -120,9 +119,9 @@ jobs:
           cd ./sql_test \
             && mkdir -p ./temp \
             && cp -f driver_test_sqlite1.test driver_test.go \
-            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile=../coverage_sqlite_1.txt ./ \
-            && cp -f go.mod.backup go.mod && cd ..
+            && cd ..
       - name: Run tests (driver modernc.org/sqlite)
         run: |
           export TIMEZONE="Asia/Ho_Chi_Minh"
@@ -132,9 +131,9 @@ jobs:
           cd ./sql_test \
             && mkdir -p ./temp \
             && cp -f driver_test_sqlite2.test driver_test.go \
-            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile=../coverage_sqlite_2.txt ./ \
-            && cp -f go.mod.backup go.mod && cd ..
+            && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -166,9 +165,9 @@ jobs:
           go version
           cd ./sql_test \
             && cp -f driver_test_pgsql1.test driver_test.go \
-            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_pgsql_1.txt ./ \
-            && cp -f go.mod.backup go.mod && cd ..
+            && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -200,9 +199,9 @@ jobs:
           go version
           cd ./sql_test \
             && cp -f driver_test_mssql1.test driver_test.go \
-            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mssql_1.txt ./ \
-            && cp -f go.mod.backup go.mod && cd ..
+            && cd ..
       - name: Run tests (driver github.com/denisenkom/go-mssqldb)
         run: |
           export TIMEZONE="Asia/Ho_Chi_Minh"
@@ -211,9 +210,9 @@ jobs:
           go version
           cd ./sql_test \
             && cp -f driver_test_mssql2.test driver_test.go \
-            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mssql_2.txt ./ \
-            && cp -f go.mod.backup go.mod && cd ..
+            && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -245,9 +244,9 @@ jobs:
           go version
           cd ./sql_test \
             && cp -f driver_test_mysql1.test driver_test.go \
-            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mysql_1_parsetime.txt ./ \
-            && cp -f go.mod.backup go.mod && cd ..
+            && cd ..
       - name: Run tests without parseTime (driver github.com/go-sql-driver/mysql)
         run: |
           export TIMEZONE="Asia/Ho_Chi_Minh"
@@ -256,9 +255,9 @@ jobs:
           go version
           cd ./sql_test \
             && cp -f driver_test_mysql1.test driver_test.go \
-            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mysql_1.txt ./ \
-            && cp -f go.mod.backup go.mod && cd ..
+            && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
@@ -300,9 +299,9 @@ jobs:
             && unzip -o instantclient-basiclite-linux.x64-21.12.0.0.0dbru.zip -d . \
             && sudo dpkg -i libaio1_0.3.112-13build1_amd64.deb \
             && export LD_LIBRARY_PATH=$(pwd)/instantclient_21_12:$LD_LIBRARY_PATH \
-            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle2.txt ./ \
-            && cp -f go.mod.backup go.mod && cd ..
+            && cd ..
       - name: Run tests (driver github.com/sijms/go-ora/v2)
         run: |
           export TIMEZONE="Asia/Ho_Chi_Minh"
@@ -311,12 +310,60 @@ jobs:
           export DATASET="simple"
           go version
           cd ./sql_test_oracle \
-            && cp -f go.mod go.mod.backup && go mod tidy \
+            && go mod tidy \
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle1.txt ./ \
-            && cp -f go.mod.backup go.mod && cd ..
+            && cd ..
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: oracle
           name: oracle
+
+  TestAzureCosmosDB:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        go: [ '1.18', 'oldstable', 'stable' ]
+    name: Run Azure Cosmos DB tests with Go ${{ matrix.go }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Go env
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Start Azure Cosmos DB emulator
+        run: |
+          try { & "C:\Program Files\Azure Cosmos DB Emulator\Microsoft.Azure.Cosmos.Emulator.exe" /ShutDown } catch {}
+          choco upgrade azure-cosmosdb-emulator --no-progress
+          & "C:\Program Files\Azure Cosmos DB Emulator\Microsoft.Azure.Cosmos.Emulator.exe" /DisableRateLimiting /NoUI /NoExplorer
+          Start-Sleep -s 90
+          try { Invoke-RestMethod -Method GET https://127.0.0.1:8081/ } catch {}
+          netstat -nt
+      - name: Run tests (driver github.com/btnguyen2k/gocosmos)
+        run: |
+          $env:COSMOSDB_DRIVER="gocosmos"
+          $env:COSMOSDB_URL="AccountEndpoint=https://127.0.0.1:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;TimeoutMs=30000"
+          go version
+          cd sql_test
+          cp driver_test_cosmosdb1.test driver_test.go
+          go mod tidy
+          go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg="$env:COVER_PKG" -coverprofile ../coverage_cosmosdb1.txt ./
+          cd ..
+      - name: Run tests (driver github.com/microsoft/gocosmos)
+        run: |
+          $env:COSMOSDB_DRIVER="gocosmos"
+          $env:COSMOSDB_URL="AccountEndpoint=https://127.0.0.1:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;TimeoutMs=30000"
+          go version
+          cd sql_test
+          cp driver_test_cosmosdb2.test driver_test.go
+          go mod tidy
+          go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg="$env:COVER_PKG" -coverprofile ../coverage_cosmosdb2.txt ./
+          cd ..
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: cosmosdb
+          name: cosmosdb

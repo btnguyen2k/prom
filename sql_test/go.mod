@@ -3,6 +3,7 @@ module sql_test
 go 1.18
 
 require (
+	github.com/btnguyen2k/gocosmos v1.0.0
 	github.com/btnguyen2k/prom v0.4.1
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/jackc/pgx/v5 v5.5.0
@@ -14,7 +15,11 @@ require (
 replace github.com/btnguyen2k/prom => ../
 
 require (
+	github.com/btnguyen2k/consu/checksum v1.1.0 // indirect
+	github.com/btnguyen2k/consu/gjrc v0.2.1 // indirect
 	github.com/btnguyen2k/consu/olaf v0.1.3 // indirect
+	github.com/btnguyen2k/consu/reddo v0.1.8 // indirect
+	github.com/btnguyen2k/consu/semita v0.1.5 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect

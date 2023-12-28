@@ -80,12 +80,27 @@ func newSqlConnectPgsql(driver, url, timezone string, timeoutMs int, poolOptions
 }
 
 func newSqlConnectCosmosdb(driver, url, timezone string, timeoutMs int, poolOptions *promsql.PoolOpts) (*promsql.SqlConnect, error) {
-	sqlc, err := promsql.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, promsql.FlavorCosmosDb)
+	parts := make(map[string]string)
+	parts["Db"] = "prom"
+	tokens := strings.Split(url, ";")
+	for _, token := range tokens {
+		subTokens := strings.SplitN(token, "=", 2)
+		if len(subTokens) > 1 && (strings.ToUpper(subTokens[0]) == "DEFAULTDB" || strings.ToUpper(subTokens[0]) == "DB") {
+			parts["Db"] = subTokens[1]
+		} else {
+			parts[subTokens[0]] = subTokens[1]
+		}
+	}
+	newUrl := ""
+	for k, v := range parts {
+		newUrl += k + "=" + v + ";"
+	}
+	sqlc, err := promsql.NewSqlConnectWithFlavor(driver, newUrl, timeoutMs, poolOptions, promsql.FlavorCosmosDb)
 	if err == nil && sqlc != nil {
 		loc, _ := time.LoadLocation(timezone)
 		sqlc.SetLocation(loc)
 	}
-	sqlc.GetDB().Exec("CREATE DATABASE prom WITH maxru=10000")
+	sqlc.GetDB().Exec(fmt.Sprintf("CREATE DATABASE %s WITH maxru=10000", parts["Db"]))
 	return sqlc, err
 }
 
