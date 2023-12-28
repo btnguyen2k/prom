@@ -333,7 +333,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go }}
-      - name: Start Azure Cosmos DB emulator
+      - name: Start Azure Cosmos DB emulator and Run tests (driver github.com/btnguyen2k/gocosmos)
         run: |
           try { & "C:\Program Files\Azure Cosmos DB Emulator\Microsoft.Azure.Cosmos.Emulator.exe" /ShutDown } catch {}
           choco upgrade azure-cosmosdb-emulator --no-progress
@@ -341,8 +341,6 @@ jobs:
           Start-Sleep -s 90
           try { Invoke-RestMethod -Method GET https://127.0.0.1:8081/ } catch {}
           netstat -nt
-      - name: Run tests (driver github.com/btnguyen2k/gocosmos)
-        run: |
           $env:COSMOSDB_DRIVER="gocosmos"
           $env:COSMOSDB_URL="AccountEndpoint=https://127.0.0.1:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;TimeoutMs=30000"
           go version
@@ -351,8 +349,14 @@ jobs:
           go mod tidy
           go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg="$env:COVER_PKG" -coverprofile ../coverage_cosmosdb1.txt ./
           cd ..
-      - name: Run tests (driver github.com/microsoft/gocosmos)
+      - name: Start Azure Cosmos DB emulator and Run tests (driver github.com/microsoft/gocosmos)
         run: |
+          try { & "C:\Program Files\Azure Cosmos DB Emulator\Microsoft.Azure.Cosmos.Emulator.exe" /ShutDown } catch {}
+          choco upgrade azure-cosmosdb-emulator --no-progress
+          & "C:\Program Files\Azure Cosmos DB Emulator\Microsoft.Azure.Cosmos.Emulator.exe" /DisableRateLimiting /NoUI /NoExplorer
+          Start-Sleep -s 90
+          try { Invoke-RestMethod -Method GET https://127.0.0.1:8081/ } catch {}
+          netstat -nt
           $env:COSMOSDB_DRIVER="gocosmos"
           $env:COSMOSDB_URL="AccountEndpoint=https://127.0.0.1:8081/;AccountKey=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==;TimeoutMs=30000"
           go version
