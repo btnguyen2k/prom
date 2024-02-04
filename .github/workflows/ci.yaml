@@ -91,7 +91,7 @@ jobs:
           go version
           go test -v -timeout 9999s -count 1 -p 1 -cover -coverprofile coverage.txt ./
       - name: Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: common
@@ -135,7 +135,7 @@ jobs:
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile=../coverage_sqlite_2.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: sqlite
@@ -169,7 +169,7 @@ jobs:
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_pgsql_1.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: pgsql
@@ -214,7 +214,7 @@ jobs:
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mssql_2.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: mssql
@@ -259,7 +259,7 @@ jobs:
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_mysql_1.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: mysql
@@ -314,7 +314,7 @@ jobs:
             && go test -v -timeout 9999s -count 1 -p 1 -cover -coverpkg=${COVER_PKG} -coverprofile ../coverage_oracle1.txt ./ \
             && cp -f go.mod.backup go.mod && cd ..
       - name: Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: oracle
