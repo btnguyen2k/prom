@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/btnguyen2k/prom v0.4.1
 	github.com/go-sql-driver/mysql v1.7.1
-	github.com/jackc/pgx/v5 v5.5.0
+	github.com/jackc/pgx/v5 v5.5.4
 	github.com/mattn/go-sqlite3 v1.14.18
 	github.com/microsoft/go-mssqldb v1.6.0
 	modernc.org/sqlite v1.27.0
