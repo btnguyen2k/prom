@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/btnguyen2k/prom v0.4.1
-	github.com/jackc/pgx/v5 v5.5.1
+	github.com/jackc/pgx/v5 v5.5.4
 )
 
 replace github.com/btnguyen2k/prom => ../
