@@ -19,7 +19,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go env
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           # pick one Go version to check format
           go-version: 'stable'
@@ -35,7 +35,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go env
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           # pick one Go version for linting
           go-version: 'stable'
@@ -83,7 +83,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go env
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
       - name: Run tests
@@ -107,7 +107,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go env
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
       - name: Run tests (driver github.com/mattn/go-sqlite3)
@@ -152,7 +152,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go env
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
       - name: Start PostgreSQL server
@@ -186,7 +186,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go env
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
       - name: Start MSSQL server
@@ -231,7 +231,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go env
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
       - name: Start MySQL server
@@ -276,7 +276,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Go env
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
       - name: Pull OracleDB image
