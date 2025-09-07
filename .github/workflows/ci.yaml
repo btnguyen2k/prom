@@ -17,7 +17,7 @@ jobs:
     name: Check format with go fmt
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Go env
         uses: actions/setup-go@v5
         with:
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Go env
         uses: actions/setup-go@v5
         with:
@@ -55,7 +55,7 @@ jobs:
       RELEASE_NOTES: ${{ steps.release_dry_run.outputs.releaseNotes }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install Node
         uses: actions/setup-node@v5
         with:
@@ -81,7 +81,7 @@ jobs:
     name: Run common tests with Go ${{ matrix.go }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Go env
         uses: actions/setup-go@v4
         with:
@@ -105,7 +105,7 @@ jobs:
     name: Run SQLite tests with Go ${{ matrix.go }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Go env
         uses: actions/setup-go@v4
         with:
@@ -150,7 +150,7 @@ jobs:
     name: Run PostgreSQL ${{ matrix.pgsql }} tests with Go ${{ matrix.go }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Go env
         uses: actions/setup-go@v4
         with:
@@ -184,7 +184,7 @@ jobs:
     name: Run MSSQL ${{ matrix.mssql }} tests with Go ${{ matrix.go }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Go env
         uses: actions/setup-go@v4
         with:
@@ -229,7 +229,7 @@ jobs:
     name: Run MySQL ${{ matrix.mysql }} tests with Go ${{ matrix.go }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Go env
         uses: actions/setup-go@v4
         with:
@@ -274,7 +274,7 @@ jobs:
     name: Run OracleDB ${{ matrix.oracle }} tests with Go ${{ matrix.go }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Go env
         uses: actions/setup-go@v4
         with:
